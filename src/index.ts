@@ -1,11 +1,14 @@
+// Declare Leaflet definitions.
+declare const L: any;
+
 function createLeafletMap() {
     // Define base map layers.
-    layerOsm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const layerOsm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution:
             '<a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     });
-    layerGoogleHybridStatic = L.tileLayer(
+    const layerGoogleHybridStatic = L.tileLayer(
         "http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}",
         {
             // https://gis.stackexchange.com/a/341490
@@ -15,7 +18,7 @@ function createLeafletMap() {
                 '<a href="https://www.google.com.au/maps">NASA, TerraMetrics, Google</a>',
         }
     );
-    layerBlueMarble = L.tileLayer(
+    const layerBlueMarble = L.tileLayer(
         "https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/{layer}/default/{time}/{tileMatrixSet}/{z}/{y}/{x}.jpg",
         {
             layer: "BlueMarble_ShadedRelief_Bathymetry",
@@ -35,7 +38,7 @@ function createLeafletMap() {
     );
 
     // Initialize the map.
-    var map = L.map("map", {
+    let map = L.map("map", {
         center: [0, 0],
         zoom: 3,
         layers: [layerBlueMarble],
@@ -43,21 +46,21 @@ function createLeafletMap() {
     });
 
     // Layer control.
-    var baseMaps = {
+    const baseMaps = {
         "NASA Blue Marble": layerBlueMarble,
         "Google Hybrid (static)": layerGoogleHybridStatic,
-        OpenStreetMap: layerOsm,
+        "OpenStreetMap": layerOsm,
     };
-    var layerControl = L.control.layers(baseMaps).addTo(map);
+    L.control.layers(baseMaps).addTo(map);
 
     // Scale control.
     L.control.scale({ metric: true, imperial: true }).addTo(map);
 
     // Reset map control.
     (function () {
-        var control = new L.Control({ position: "topleft" });
+        let control = new L.Control({ position: "topleft" });
         control.onAdd = function (map) {
-            var resetView = L.DomUtil.create("a", "resetview");
+            let resetView = L.DomUtil.create("a", "resetview");
             resetView.innerHTML = "[Reset Map]";
             L.DomEvent.disableClickPropagation(resetView).addListener(
                 resetView,

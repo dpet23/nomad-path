@@ -1,0 +1,12 @@
+# Build output
+dist/
+
+# Dependency directories
+node_modules/
+
+# TypeScript
+*.tsbuildinfo
+
+# NPM
+.npm
+*.tgz
