@@ -1,10 +1,7 @@
 {
   "compilerOptions": {
-    /* Visit https://aka.ms/tsconfig to read more about this file */
-
     "target": "es2016",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "umd",
     "sourceMap": true,
     "outDir": "dist",
     "esModuleInterop": true,
