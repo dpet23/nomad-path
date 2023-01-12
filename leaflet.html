@@ -67,11 +67,16 @@
             }
         );
 
+        var layerTracks = new L.LayerGroup();
+        fetch("test.geojson").then(res => res.json()).then(data => {
+            L.geoJSON(data).addTo(layerTracks);
+        });
+
         // Initialize the map.
         var map = L.map("map", {
             center: [0, 0],
             zoom: 3,
-            layers: [layerBlueMarble],
+            layers: [layerBlueMarble, layerTracks],
             worldCopyJump: true,
         });
 
@@ -81,7 +86,10 @@
             "Google Hybrid (static)": layerGoogleHybridStatic,
             "OpenStreetMap": layerOsm,
         };
-        var layerControl = L.control.layers(baseMaps).addTo(map);
+        var overlayMaps = {
+            "Tracks": layerTracks,
+        };
+        var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
 
         // Scale control.
         L.control.scale({ metric: true, imperial: true }).addTo(map);
