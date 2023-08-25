@@ -67,16 +67,76 @@
             }
         );
 
+        // Define a layer for the stops.
+        var layerIcons = L.layerGroup();
+
+        // Define a layer for the tracks.
         var layerTracks = new L.LayerGroup();
-        fetch("test.geojson").then(res => res.json()).then(data => {
-            L.geoJSON(data).addTo(layerTracks);
+
+        // Read a GeoJSON file, processing each Feature individually.
+        // Docs: https://leafletjs.com/reference.html#geojson
+        var optionsGeojson = {
+            maxZoom: 20,
+            tolerance: 3,
+            debug: 0,
+            style: {
+                color: "#000000",
+            },
+        };
+        fetch("data.geojson").then(httpRes => httpRes.json()).then(jsonData => {
+            L.geoJSON(jsonData, {
+                ...optionsGeojson,
+                onEachFeature: (jsonFeature, geoJsonLayer) => {
+                    // console.log(jsonFeature, geoJsonLayer);
+
+                    // Add the GeoJSON Feature name and date as a tooltip.
+                    const featureDateStr = new Date(jsonFeature.properties.date).toLocaleDateString(
+                        'en-GB',
+                        { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+                    );
+                    const tooltip = `<strong>${jsonFeature.properties.name}</strong><br/>${featureDateStr}`;
+                    geoJsonLayer.bindTooltip(tooltip);
+
+                    // Add the Feature to an existing LayerGroup.
+                    switch (jsonFeature.geometry.type) {
+                        case 'Point':
+                            geoJsonLayer.addTo(layerIcons);
+                            break;
+
+                        case 'LineString':
+                        case 'MultiLineString':
+                            switch (jsonFeature.properties.transport[0]) {
+                                // Change track colour based on transport mode.
+                                // https://coolors.co/palette/ff595e-ffca3a-8ac926-1982c4-6a4c93
+                                case 'Driving':
+                                    geoJsonLayer.setStyle({ color: "#6A4C93" }); // dark moderate violet
+                                    break;
+                                case 'Passenger':
+                                    geoJsonLayer.setStyle({ color: "#1982C4" }); // strong blue
+                                    break;
+                                case 'Public transport':
+                                    geoJsonLayer.setStyle({ color: "#8AC926" }); // strong green
+                                    break;
+                                case 'Walking':
+                                    geoJsonLayer.setStyle({ color: "#FFCA3A" }); // light orange
+                                    break;
+                                case 'Tourist activity':
+                                    geoJsonLayer.setStyle({ color: "#FF595E" }); // light red
+                                    break;
+                            }
+                            geoJsonLayer.addTo(layerTracks);
+
+                            break;
+                    }
+                }
+            });
         });
 
         // Initialize the map.
         var map = L.map("map", {
             center: [0, 0],
             zoom: 3,
-            layers: [layerBlueMarble, layerTracks],
+            layers: [layerBlueMarble, layerTracks, layerIcons],
             worldCopyJump: true,
         });
 
@@ -88,6 +148,7 @@
         };
         var overlayMaps = {
             "Tracks": layerTracks,
+            "Stops": layerIcons,
         };
         var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
 
