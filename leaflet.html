@@ -66,12 +66,35 @@
                     '<a href="https://wiki.earthdata.nasa.gov/display/GIBS">NASA EOSDIS GIBS</a>',
             }
         );
+        const baseMaps = {
+            "NASA Blue Marble": layerBlueMarble,
+            "OpenStreetMap": layerOsm,
+            "Google Hybrid (static)": layerGoogleHybridStatic,
+        };
 
-        // Define a layer for the stops.
-        var layerIcons = L.layerGroup();
+        // Layer control.
+        const layerControl = L.control.layers(baseMaps, {});
 
-        // Define a layer for the tracks.
-        var layerTracks = new L.LayerGroup();
+        // Initialize the map.
+        var map = L.map('map', {
+            center: [0, 0],
+            zoom: 3,
+            layers: [layerBlueMarble],
+            worldCopyJump: true,
+        });
+
+        // Icon class
+        var LeafIcon = L.Icon.extend({
+            options: {
+                iconSize: [22, 40], // size of icon image (pixels)
+                iconAnchor: [11, 40], // coordinates of the tip (pixels, relative to top-left corner)
+                popupAnchor: [0, -29], // coordinates where popup will open (pixels, relative to icon anchor)
+                tooltipAnchor: [0, -29], // coordinates where tooltip will open (pixels, relative to icon anchor)
+            },
+        });
+
+        // Define the layers to show on top of the base map.
+        var overlayMaps = {};
 
         // Read a GeoJSON file, processing each Feature individually.
         // Docs: https://leafletjs.com/reference.html#geojson
@@ -87,27 +110,53 @@
             L.geoJSON(jsonData, {
                 ...optionsGeojson,
                 onEachFeature: (jsonFeature, geoJsonLayer) => {
-                    // console.log(jsonFeature, geoJsonLayer);
-
-                    // Add the GeoJSON Feature name and date as a tooltip.
-                    const featureDateStr = new Date(jsonFeature.properties.date).toLocaleDateString(
-                        'en-GB',
-                        { weekday: "long", year: "numeric", month: "long", day: "numeric" }
-                    );
-                    const tooltip = `<strong>${jsonFeature.properties.name}</strong><br/>${featureDateStr}`;
-                    geoJsonLayer.bindTooltip(tooltip);
+                    var layerName;
 
                     // Add the Feature to an existing LayerGroup.
                     switch (jsonFeature.geometry.type) {
                         case 'Point':
-                            geoJsonLayer.addTo(layerIcons);
+                            // Add the GeoJSON Feature properties for the Leaflet Marker.
+                            // Docs: https://leafletjs.com/reference.html#marker
+                            geoJsonLayer.bindTooltip(jsonFeature.properties.name);
+                            geoJsonLayer.setIcon(
+                                new LeafIcon({
+                                    iconUrl: jsonFeature.properties.sym,
+                                })
+                            );
+
+                            // Create layer group if it doesn't exist.
+                            layerName = "Stops";
+                            overlayMaps[layerName] = overlayMaps[layerName] || new L.LayerGroup();
+
+                            // Add layer to group.
+                            geoJsonLayer.addTo(overlayMaps[layerName]);
+
+                            if (!map.hasLayer(overlayMaps[layerName])) {
+                                // Add layer group to map.
+                                // Docs: https://leafletjs.com/reference.html#map
+                                map.addLayer(overlayMaps[layerName]);
+
+                                // Add layer group to Layer Control.
+                                // Docs: https://leafletjs.com/reference.html#control-layers
+                                layerControl.addOverlay(overlayMaps[layerName], layerName);
+                            };
+
                             break;
 
                         case 'LineString':
                         case 'MultiLineString':
+                            // Add the GeoJSON Feature properties for the Leaflet Path.
+                            // Docs: https://leafletjs.com/reference.html#path
+                            const featureDateStr = new Date(jsonFeature.properties.date).toLocaleDateString(
+                                'en-GB',
+                                { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+                            );
+                            const tooltip = `<strong>${jsonFeature.properties.name}</strong><br/>${featureDateStr}`;
+                            geoJsonLayer.bindTooltip(tooltip);
+
+                            // Change track colour based on transport mode.
+                            // https://coolors.co/palette/ff595e-ffca3a-8ac926-1982c4-6a4c93
                             switch (jsonFeature.properties.transport[0]) {
-                                // Change track colour based on transport mode.
-                                // https://coolors.co/palette/ff595e-ffca3a-8ac926-1982c4-6a4c93
                                 case 'Driving':
                                     geoJsonLayer.setStyle({ color: "#6A4C93" }); // dark moderate violet
                                     break;
@@ -124,7 +173,23 @@
                                     geoJsonLayer.setStyle({ color: "#FF595E" }); // light red
                                     break;
                             }
-                            geoJsonLayer.addTo(layerTracks);
+
+                            // Create layer group if it doesn't exist.
+                            layerName = jsonFeature.properties.date;
+                            overlayMaps[layerName] = overlayMaps[layerName] || new L.LayerGroup();
+
+                            // Add layer to group.
+                            geoJsonLayer.addTo(overlayMaps[layerName]);
+
+                            if (!map.hasLayer(overlayMaps[layerName])) {
+                                // Add layer group to map.
+                                // Docs: https://leafletjs.com/reference.html#map
+                                map.addLayer(overlayMaps[layerName]);
+
+                                // Add layer group to Layer Control.
+                                // Docs: https://leafletjs.com/reference.html#control-layers
+                                layerControl.addOverlay(overlayMaps[layerName], layerName);
+                            };
 
                             break;
                     }
@@ -132,25 +197,8 @@
             });
         });
 
-        // Initialize the map.
-        var map = L.map("map", {
-            center: [0, 0],
-            zoom: 3,
-            layers: [layerBlueMarble, layerTracks, layerIcons],
-            worldCopyJump: true,
-        });
-
-        // Layer control.
-        var baseMaps = {
-            "NASA Blue Marble": layerBlueMarble,
-            "Google Hybrid (static)": layerGoogleHybridStatic,
-            "OpenStreetMap": layerOsm,
-        };
-        var overlayMaps = {
-            "Tracks": layerTracks,
-            "Stops": layerIcons,
-        };
-        var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+        map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+        layerControl.addTo(map);
 
         // Scale control.
         L.control.scale({ metric: true, imperial: true }).addTo(map);
