@@ -30,6 +30,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
         integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
+    <script src="https://unpkg.com/Leaflet.MultiOptionsPolyline@1.0.0/Leaflet.MultiOptionsPolyline.js"></script>
 
     <script>
         // Define base map layers.
@@ -109,18 +110,21 @@
         fetch("data.geojson").then(httpRes => httpRes.json()).then(jsonData => {
             L.geoJSON(jsonData, {
                 ...optionsGeojson,
-                onEachFeature: (jsonFeature, geoJsonLayer) => {
+                onEachFeature: (geoJsonFeature, leafletLayer) => {
+                    // Called for each Feature, after it has been created and styled.
+                    // console.log('[onEachFeature]', geoJsonFeature, leafletLayer);
+
                     var layerName;
 
                     // Add the Feature to an existing LayerGroup.
-                    switch (jsonFeature.geometry.type) {
+                    switch (geoJsonFeature.geometry.type) {
                         case 'Point':
                             // Add the GeoJSON Feature properties for the Leaflet Marker.
                             // Docs: https://leafletjs.com/reference.html#marker
-                            geoJsonLayer.bindTooltip(jsonFeature.properties.name);
-                            geoJsonLayer.setIcon(
+                            leafletLayer.bindTooltip(geoJsonFeature.properties.name);
+                            leafletLayer.setIcon(
                                 new LeafIcon({
-                                    iconUrl: jsonFeature.properties.sym,
+                                    iconUrl: geoJsonFeature.properties.sym,
                                 })
                             );
 
@@ -129,7 +133,7 @@
                             overlayMaps[layerName] = overlayMaps[layerName] || new L.LayerGroup();
 
                             // Add layer to group.
-                            geoJsonLayer.addTo(overlayMaps[layerName]);
+                            leafletLayer.addTo(overlayMaps[layerName]);
 
                             if (!map.hasLayer(overlayMaps[layerName])) {
                                 // Add layer group to map.
@@ -145,41 +149,91 @@
 
                         case 'LineString':
                         case 'MultiLineString':
-                            // Add the GeoJSON Feature properties for the Leaflet Path.
-                            // Docs: https://leafletjs.com/reference.html#path
-                            const featureDateStr = new Date(jsonFeature.properties.date).toLocaleDateString(
+                            // Convert to a MultiOptionsPolyline (a FeatureGroup of Polylines).
+                            // Docs: https://github.com/hgoebl/Leaflet.MultiOptionsPolyline
+                            //       https://leafletjs.com/reference.html#featuregroup
+                            const altThresholds = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540];
+                            const leafletPolylineFeatureGroup = L.multiOptionsPolyline(
+                                leafletLayer.getLatLngs().flat(),
+                                {
+                                    multiOptions: {
+                                        optionIdxFn: (latLng) => {
+                                            if(typeof latLng.alt === "undefined") {
+                                                return 0;
+                                            }
+
+                                            for (var i = 1; i < altThresholds.length; ++i) {
+                                                if (latLng.alt <= altThresholds[i]) {
+                                                    return i;
+                                                }
+                                            }
+                                            return altThresholds.length;
+                                        },
+                                        options: [
+                                            // https://www.color-name.com/
+                                            {color: '#000000'},     // undefined        Black
+                                            {color: '#330072'},     // alt <= 30 m      Cadbury Purple
+                                            {color: '#0000FF'},     // alt <= 60 m      Blue
+                                            {color: '#0040FF'},     // alt <= 120 m     Blue (RYB)
+                                            {color: '#0080FF'},     // alt <= 180 m     Azure
+                                            {color: '#00FFB0'},     // alt <= 240 m     Medium Spring Green
+                                            {color: '#00E000'},     // alt <= 300 m     Electric Green
+                                            {color: '#80FF00'},     // alt <= 360 m     Chartreuse (Web)
+                                            {color: '#FFFF00'},     // alt <= 420 m     Yellow
+                                            {color: '#FFC000'},     // alt <= 480 m     Amber
+                                            {color: '#FF0000'},     // alt <= 540 m     Red
+                                            {color: '#7C0D0E'}      // > 540            Deep Red
+                                        ]
+                                    },
+                                    weight: 5,
+                                    lineCap: 'butt',
+                                    opacity: 0.75,
+                                    smoothFactor: 1
+                                }
+                            );
+
+                            // Add the GeoJSON Feature properties for the Leaflet Polyline.
+                            // Docs: https://leafletjs.com/reference.html#polyline
+                            const featureDateStr = new Date(geoJsonFeature.properties.date).toLocaleDateString(
                                 'en-GB',
                                 { weekday: "long", year: "numeric", month: "long", day: "numeric" }
                             );
-                            const tooltip = `<strong>${jsonFeature.properties.name}</strong><br/>${featureDateStr}`;
-                            geoJsonLayer.bindTooltip(tooltip);
+                            const tooltip = `<strong>${geoJsonFeature.properties.name}</strong><br/>${featureDateStr}`;
+                            leafletPolylineFeatureGroup.bindTooltip(tooltip);
 
+                            /*
                             // Change track colour based on transport mode.
                             // https://coolors.co/palette/ff595e-ffca3a-8ac926-1982c4-6a4c93
-                            switch (jsonFeature.properties.transport[0]) {
-                                case 'Driving':
-                                    geoJsonLayer.setStyle({ color: "#6A4C93" }); // dark moderate violet
-                                    break;
-                                case 'Passenger':
-                                    geoJsonLayer.setStyle({ color: "#1982C4" }); // strong blue
-                                    break;
-                                case 'Public transport':
-                                    geoJsonLayer.setStyle({ color: "#8AC926" }); // strong green
-                                    break;
-                                case 'Walking':
-                                    geoJsonLayer.setStyle({ color: "#FFCA3A" }); // light orange
-                                    break;
-                                case 'Tourist activity':
-                                    geoJsonLayer.setStyle({ color: "#FF595E" }); // light red
-                                    break;
+                            if(typeof geoJsonFeature.properties.transport !== "undefined") {
+                                switch (geoJsonFeature.properties.transport[0]) {
+                                    case 'Driving':
+                                        leafletLayer.setStyle({ color: "#6A4C93" }); // dark moderate violet
+                                        break;
+                                    case 'Passenger':
+                                        leafletLayer.setStyle({ color: "#1982C4" }); // strong blue
+                                        break;
+                                    case 'Public transport':
+                                        leafletLayer.setStyle({ color: "#8AC926" }); // strong green
+                                        break;
+                                    case 'Walking':
+                                        leafletLayer.setStyle({ color: "#FFCA3A" }); // light orange
+                                        break;
+                                    case 'Tourist activity':
+                                        leafletLayer.setStyle({ color: "#FF595E" }); // light red
+                                        break;
+                                    default:
+                                        // Use default colour.
+                                        break;
+                                }
                             }
+                            */
 
                             // Create layer group if it doesn't exist.
-                            layerName = jsonFeature.properties.date;
+                            layerName = geoJsonFeature.properties.date;
                             overlayMaps[layerName] = overlayMaps[layerName] || new L.LayerGroup();
 
                             // Add layer to group.
-                            geoJsonLayer.addTo(overlayMaps[layerName]);
+                            leafletPolylineFeatureGroup.addTo(overlayMaps[layerName]);
 
                             if (!map.hasLayer(overlayMaps[layerName])) {
                                 // Add layer group to map.
