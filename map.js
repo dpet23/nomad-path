@@ -1,0 +1,242 @@
+// Define base map layers.
+layerOsm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution:
+        '<a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+});
+layerGoogleHybridStatic = L.tileLayer(
+    "http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}",
+    {
+        // https://gis.stackexchange.com/a/341490
+        maxZoom: 20,
+        subdomains: ["mt0", "mt1", "mt2", "mt3"],
+        attribution:
+            '<a href="https://www.google.com.au/maps">NASA, TerraMetrics, Google</a>',
+    }
+);
+layerBlueMarble = L.tileLayer(
+    "https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/{layer}/default/{time}/{tileMatrixSet}/{z}/{y}/{x}.jpg",
+    {
+        layer: "BlueMarble_ShadedRelief_Bathymetry",
+        tileMatrixSet: "EPSG3857_500m",
+        time: "",
+        maxZoom: 8,
+        noWrap: true,
+        continuousWorld: true,
+        bounds: [
+            // Prevent Leaflet from retrieving non-existent tiles on the borders.
+            [-85.0511287776, -179.999999975],
+            [85.0511287776, 179.999999975],
+        ],
+        attribution:
+            '<a href="https://wiki.earthdata.nasa.gov/display/GIBS">NASA EOSDIS GIBS</a>',
+    }
+);
+const baseMaps = {
+    "NASA Blue Marble": layerBlueMarble,
+    "OpenStreetMap": layerOsm,
+    "Google Hybrid (static)": layerGoogleHybridStatic,
+};
+
+// Layer control.
+const layerControl = L.control.layers(baseMaps, {});
+
+// Initialize the map.
+var map = L.map('map', {
+    center: [0, 0],
+    zoom: 3,
+    layers: [layerBlueMarble],
+    worldCopyJump: true,
+});
+
+// Icon class
+var LeafIcon = L.Icon.extend({
+    options: {
+        iconSize: [22, 40], // size of icon image (pixels)
+        iconAnchor: [11, 40], // coordinates of the tip (pixels, relative to top-left corner)
+        popupAnchor: [0, -29], // coordinates where popup will open (pixels, relative to icon anchor)
+        tooltipAnchor: [0, -29], // coordinates where tooltip will open (pixels, relative to icon anchor)
+    },
+});
+
+// Define the layers to show on top of the base map.
+var overlayMaps = {};
+
+// Read a GeoJSON file, processing each Feature individually.
+// Docs: https://leafletjs.com/reference.html#geojson
+var optionsGeojson = {
+    maxZoom: 20,
+    tolerance: 3,
+    debug: 0,
+    style: {
+        color: "#000000",
+    },
+};
+fetch("data.geojson").then(httpRes => httpRes.json()).then(jsonData => {
+    L.geoJSON(jsonData, {
+        ...optionsGeojson,
+        onEachFeature: (geoJsonFeature, leafletLayer) => {
+            // Called for each Feature, after it has been created and styled.
+            // console.log('[onEachFeature]', geoJsonFeature, leafletLayer);
+
+            var layerName;
+
+            // Add the Feature to an existing LayerGroup.
+            switch (geoJsonFeature.geometry.type) {
+                case 'Point':
+                    // Add the GeoJSON Feature properties for the Leaflet Marker.
+                    // Docs: https://leafletjs.com/reference.html#marker
+                    leafletLayer.bindTooltip(geoJsonFeature.properties.name);
+                    leafletLayer.setIcon(
+                        new LeafIcon({
+                            iconUrl: geoJsonFeature.properties.sym,
+                        })
+                    );
+
+                    // Create layer group if it doesn't exist.
+                    layerName = "Stops";
+                    overlayMaps[layerName] = overlayMaps[layerName] || new L.LayerGroup();
+
+                    // Add layer to group.
+                    leafletLayer.addTo(overlayMaps[layerName]);
+
+                    if (!map.hasLayer(overlayMaps[layerName])) {
+                        // Add layer group to map.
+                        // Docs: https://leafletjs.com/reference.html#map
+                        map.addLayer(overlayMaps[layerName]);
+
+                        // Add layer group to Layer Control.
+                        // Docs: https://leafletjs.com/reference.html#control-layers
+                        layerControl.addOverlay(overlayMaps[layerName], layerName);
+                    };
+
+                    break;
+
+                case 'LineString':
+                case 'MultiLineString':
+                    // Convert to a MultiOptionsPolyline (a FeatureGroup of Polylines).
+                    // Docs: https://github.com/hgoebl/Leaflet.MultiOptionsPolyline
+                    //       https://leafletjs.com/reference.html#featuregroup
+                    const altThresholds = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540];
+                    const leafletPolylineFeatureGroup = L.multiOptionsPolyline(
+                        leafletLayer.getLatLngs().flat(),
+                        {
+                            multiOptions: {
+                                optionIdxFn: (latLng) => {
+                                    if(typeof latLng.alt === "undefined") {
+                                        return 0;
+                                    }
+
+                                    for (var i = 1; i < altThresholds.length; ++i) {
+                                        if (latLng.alt <= altThresholds[i]) {
+                                            return i;
+                                        }
+                                    }
+                                    return altThresholds.length;
+                                },
+                                options: [
+                                    // https://www.color-name.com/
+                                    {color: '#000000'},     // undefined        Black
+                                    {color: '#330072'},     // alt <= 30 m      Cadbury Purple
+                                    {color: '#0000FF'},     // alt <= 60 m      Blue
+                                    {color: '#0040FF'},     // alt <= 120 m     Blue (RYB)
+                                    {color: '#0080FF'},     // alt <= 180 m     Azure
+                                    {color: '#00FFB0'},     // alt <= 240 m     Medium Spring Green
+                                    {color: '#00E000'},     // alt <= 300 m     Electric Green
+                                    {color: '#80FF00'},     // alt <= 360 m     Chartreuse (Web)
+                                    {color: '#FFFF00'},     // alt <= 420 m     Yellow
+                                    {color: '#FFC000'},     // alt <= 480 m     Amber
+                                    {color: '#FF0000'},     // alt <= 540 m     Red
+                                    {color: '#7C0D0E'}      // > 540            Deep Red
+                                ]
+                            },
+                            weight: 5,
+                            lineCap: 'butt',
+                            opacity: 0.75,
+                            smoothFactor: 1
+                        }
+                    );
+
+                    // Add the GeoJSON Feature properties for the Leaflet Polyline.
+                    // Docs: https://leafletjs.com/reference.html#polyline
+                    const featureDateStr = new Date(geoJsonFeature.properties.date).toLocaleDateString(
+                        'en-GB',
+                        { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+                    );
+                    const tooltip = `<strong>${geoJsonFeature.properties.name}</strong><br/>${featureDateStr}`;
+                    leafletPolylineFeatureGroup.bindTooltip(tooltip);
+
+                    /*
+                    // Change track colour based on transport mode.
+                    // https://coolors.co/palette/ff595e-ffca3a-8ac926-1982c4-6a4c93
+                    if(typeof geoJsonFeature.properties.transport !== "undefined") {
+                        switch (geoJsonFeature.properties.transport[0]) {
+                            case 'Driving':
+                                leafletLayer.setStyle({ color: "#6A4C93" }); // dark moderate violet
+                                break;
+                            case 'Passenger':
+                                leafletLayer.setStyle({ color: "#1982C4" }); // strong blue
+                                break;
+                            case 'Public transport':
+                                leafletLayer.setStyle({ color: "#8AC926" }); // strong green
+                                break;
+                            case 'Walking':
+                                leafletLayer.setStyle({ color: "#FFCA3A" }); // light orange
+                                break;
+                            case 'Tourist activity':
+                                leafletLayer.setStyle({ color: "#FF595E" }); // light red
+                                break;
+                            default:
+                                // Use default colour.
+                                break;
+                        }
+                    }
+                    */
+
+                    // Create layer group if it doesn't exist.
+                    layerName = geoJsonFeature.properties.date;
+                    overlayMaps[layerName] = overlayMaps[layerName] || new L.LayerGroup();
+
+                    // Add layer to group.
+                    leafletPolylineFeatureGroup.addTo(overlayMaps[layerName]);
+
+                    if (!map.hasLayer(overlayMaps[layerName])) {
+                        // Add layer group to map.
+                        // Docs: https://leafletjs.com/reference.html#map
+                        map.addLayer(overlayMaps[layerName]);
+
+                        // Add layer group to Layer Control.
+                        // Docs: https://leafletjs.com/reference.html#control-layers
+                        layerControl.addOverlay(overlayMaps[layerName], layerName);
+                    };
+
+                    break;
+            }
+        }
+    });
+});
+
+map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+layerControl.addTo(map);
+
+// Scale control.
+L.control.scale({ metric: true, imperial: true }).addTo(map);
+
+// Reset map control.
+(function () {
+    var control = new L.Control({ position: "topleft" });
+    control.onAdd = function (map) {
+        var resetView = L.DomUtil.create("a", "resetview");
+        resetView.innerHTML = "[Reset Map]";
+        L.DomEvent.disableClickPropagation(resetView).addListener(
+            resetView,
+            "click",
+            function () {
+                map.setView(map.options.center, map.options.zoom);
+            },
+            resetView
+        );
+        return resetView;
+    };
+    return control;
+})().addTo(map);
