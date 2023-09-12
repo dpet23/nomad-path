@@ -18,7 +18,6 @@ def discover_files(search_paths: List[Path]) -> List[Path]:
     files = []
 
     for given_path in search_paths:
-
         if os.path.isfile(given_path):
             # Add GPX files to the list.
             if given_path.suffix != ".gpx":
@@ -81,6 +80,11 @@ def build_feature_point(waypoint: ET.Element, xmlns: str, geojson_properties: Di
     if elem is not None:
         feature_properties["name"] = getattr(elem, "text", "")
 
+    # Property: desc
+    elem = waypoint.find(".//{n}desc".format(n=xmlns))
+    if elem is not None:
+        feature_properties["desc"] = getattr(elem, "text", "")
+
     # Property: date
     elem = waypoint.find(".//{n}time".format(n=xmlns))
     if elem is not None:
@@ -90,6 +94,12 @@ def build_feature_point(waypoint: ET.Element, xmlns: str, geojson_properties: Di
     elem = waypoint.find(".//{n}sym".format(n=xmlns))
     if elem is not None:
         feature_properties["sym"] = getattr(elem, "text", "")
+    symbol_extension_elements = ['iconSize', 'iconAnchor', 'popupAnchor', 'tooltipAnchor']
+    for item in symbol_extension_elements:
+        elem = waypoint.find(".//{n}extensions/{s}{i}".format(n=xmlns, s="{http://example.com/}", i=item))
+        if elem is not None:
+            item_pascal_case = f'{item[0].title()}{item[1:]}'
+            feature_properties[f'sym{item_pascal_case}'] = [int(i) for i in getattr(elem, "text", "").split(',')]
 
     # Coords: longitude, latitude
     feature_coordinates = [

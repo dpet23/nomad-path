@@ -26,9 +26,8 @@ function createLeafletMap(id, geojson) {
     map.addLayer(baseMaps['NASA Blue Marble']);
 
     // Set up the Layers Control.
-    // TODO: https://gis.stackexchange.com/a/169038
     // TODO: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol
-    const layerControl = L.control.layers(baseMaps).addTo(map);
+    const layerControl = L.control.layers(baseMaps, null, { collapsed: false }).addTo(map);
 
     // Read the GeoJSON file, processing each Feature individually.
     processGeoJsonFile(geojson, map, layerControl);
@@ -123,7 +122,13 @@ var LeafIcon = L.Icon.extend({
  * @param {L.LayerControl} layerControl - The map's Layers Control object.
  */
 function processGeoJsonFile(geojson, map, layerControl) {
-    fetch(geojson)
+    const requestOptions = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/geo+json',
+        },
+    };
+    fetch(geojson, requestOptions)
         .then(httpRes => httpRes.json())
         .then(jsonData => {
             // Define the layer groups to show on top of the base map.
@@ -163,9 +168,18 @@ function processGeoJsonFeature(geoJsonFeature, leafletLayer) {
 
             // Add the GeoJSON Feature properties.
             leafletLayer.bindTooltip(geoJsonFeature.properties.name);
+            if (geoJsonFeature.properties.desc) {
+                leafletLayer.bindPopup(
+                    `<strong>${geoJsonFeature.properties.name}</strong><br/>${geoJsonFeature.properties.desc}`,
+                );
+            }
             leafletLayer.setIcon(
                 new LeafIcon({
                     iconUrl: geoJsonFeature.properties.sym,
+                    iconSize: geoJsonFeature.properties.symIconSize,
+                    iconAnchor: geoJsonFeature.properties.symIconAnchor,
+                    popupAnchor: geoJsonFeature.properties.symPopupAnchor,
+                    tooltipAnchor: geoJsonFeature.properties.symTooltipAnchor,
                 }),
             );
 
@@ -182,14 +196,14 @@ function processGeoJsonFeature(geoJsonFeature, leafletLayer) {
             leafletLayer = styleLineStringLayerAltitude(leafletLayer);
 
             // Add the GeoJSON Feature properties.
+            leafletLayer.bindTooltip(geoJsonFeature.properties.name);
             const featureDateStr = new Date(geoJsonFeature.properties.date).toLocaleDateString('en-GB', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
             });
-            const tooltip = `<strong>${geoJsonFeature.properties.name}</strong><br/>${featureDateStr}`;
-            leafletLayer.bindTooltip(tooltip);
+            leafletLayer.bindPopup(`<strong>${geoJsonFeature.properties.name}</strong><br/>${featureDateStr}`);
 
             break;
     }
