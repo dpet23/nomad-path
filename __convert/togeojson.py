@@ -1,3 +1,10 @@
+"""
+Convert a GPS Exchange Format (GPX) file into GeoJSON.
+
+:see: GPX schema: https://www.topografix.com/GPX/1/1/
+:see: GeoJSON schema: https://datatracker.ietf.org/doc/html/rfc7946#section-3
+"""
+
 import argparse
 import json
 import logging
@@ -12,7 +19,7 @@ def discover_files(search_paths: List[Path]) -> List[Path]:
     """
     Find all GPX files from the given list of paths.
 
-    :param search_paths: A List of file or folder paths to search.
+    :param search_paths: A list of file or folder paths to search.
     :return: A list of file paths.
     """
     files = []
@@ -39,10 +46,23 @@ def discover_files(search_paths: List[Path]) -> List[Path]:
 
 
 def iso_to_date(elem: ET.Element) -> str:
+    """
+    Extract the text from the given XML element and convert it to a date.
+
+    :param elem: The XML element containg an ISO8601-formatted datetime.
+    :return: The date, as an ISO8601-formatted date string.
+    """
     return dt.fromisoformat(getattr(elem, "text", "").replace("Z", "+00:00")).strftime("%Y-%m-%d")
 
 
-def get_gpx_metadata(tree: ET.ElementTree, xmlns: str) -> Dict[str, str]:
+def get_gpx_metadata(tree: ET.ElementTree, xmlns: str) -> Dict[str, str | list[str]]:
+    """
+    Extract the common metadata from a GPX file.
+
+    :param tree: The root XML element of the GPX file.
+    :param xmlns: The main XML namespace.
+    :return: The relevant items from the GPX metadata.
+    """
     geojson_properties = {}
 
     gpx_metadata = tree.find(".//{n}metadata".format(n=xmlns))
@@ -72,7 +92,18 @@ def get_gpx_metadata(tree: ET.ElementTree, xmlns: str) -> Dict[str, str]:
     return geojson_properties
 
 
-def build_feature_point(waypoint: ET.Element, xmlns: str, geojson_properties: Dict[str, str]) -> dict:
+def build_feature_point(waypoint: ET.Element, xmlns: str, geojson_properties: Dict[str, str | list[str]]) -> dict:
+    """
+    Convert a GPX waypoint to a GeoJSON Point.
+
+    :see: https://www.topografix.com/GPX/1/1/#type_wptType
+    :see: https://datatracker.ietf.org/doc/html/rfc7946#appendix-A.1
+
+    :param waypoint: A waypoint element from a GPX file.
+    :param xmlns: The main XML namespace.
+    :param geojson_properties: The comment GPX metadata items.
+    :return: A GeoJSON Point Feature.
+    """
     feature_properties = geojson_properties.copy()
 
     # Property: name
@@ -120,6 +151,17 @@ def build_feature_point(waypoint: ET.Element, xmlns: str, geojson_properties: Di
 
 
 def build_feature_linestring(track: ET.Element, xmlns: str, geojson_properties: Dict[str, str]) -> dict:
+    """
+    Convert a GPX track to a GeoJSON LineString.
+
+    :see: https://www.topografix.com/GPX/1/1/#type_trkType
+    :see: https://datatracker.ietf.org/doc/html/rfc7946#appendix-A.2
+
+    :param track: A track element from a GPX file.
+    :param xmlns: The main XML namespace.
+    :param geojson_properties: The comment GPX metadata items.
+    :return: A GeoJSON LineString or MultiLineString Feature.
+    """
     feature_properties = geojson_properties.copy()
 
     track_segments = track.findall(".//{n}trkseg".format(n=xmlns))
@@ -169,7 +211,7 @@ def gpx_to_features(path: Path, xmlns: str) -> List[dict]:
     :return: A GeoJSON Feature containing the extracted data.
     """
     logging.info("Processing: %s", path)
-    tree = ET.parse(path)
+    tree = ET.parse(path)  # noqa: S314 (XML content is trusted)
 
     geojson_features = []
 
