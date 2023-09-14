@@ -178,20 +178,43 @@ def build_feature_linestring(track: ET.Element, xmlns: str, geojson_properties: 
     if elem is not None:
         feature_properties["stroke"] = "#" + getattr(elem, "text", "")
 
-    # Coords: longitude, latitude, elevation
+    # Extract details from each track point.
+    #   * Coords: longitude, latitude, elevation
+    #   * Properties: datetime, speed
     geometry_coordinates = []
+    feature_properties["coordinateProperties"] = {}
+    properties_time = feature_properties["coordinateProperties"].setdefault('times', [])
+    properties_speed = feature_properties["coordinateProperties"].setdefault('speeds', [])
     for segment in track_segments:
         pts = segment.findall(".//{n}trkpt".format(n=xmlns))
+
         lat = [float(pt.attrib.get("lat", 0)) for pt in pts]
         lon = [float(pt.attrib.get("lon", 0)) for pt in pts]
         ele = [float(getattr(pt.find(".//{n}ele".format(n=xmlns)), "text", 0)) for pt in pts]
         geometry_coordinates.append(list(zip(lon, lat, ele)))
+
+        properties_time.append([getattr(pt.find(".//{n}time".format(n=xmlns)), "text", '') for pt in pts])
+
+        xmlns_osmand = '{https://osmand.net}'
+        properties_speed.append(
+            [
+                round(
+                    float(getattr(pt.find(".//{n}extensions/{o}speed".format(n=xmlns, o=xmlns_osmand)), 'text', 0))
+                    * 3.6,  # m/s -> km/h
+                    # / 1.609,  # km/h -> mph
+                    2,
+                )
+                for pt in pts
+            ]
+        )
 
     # Geometry type
     match len(track_segments):
         case 1:
             geometry_type = "LineString"
             geometry_coordinates = geometry_coordinates[0]
+            feature_properties["coordinateProperties"]['times'] = properties_time[0]
+            feature_properties["coordinateProperties"]['speeds'] = properties_speed[0]
         case _:
             geometry_type = "MultiLineString"
 

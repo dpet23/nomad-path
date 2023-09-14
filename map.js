@@ -27,7 +27,7 @@ function createLeafletMap(id, geojson) {
 
     // Set up the Layers Control.
     // TODO: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol
-    const layerControl = L.control.layers(baseMaps, null, { collapsed: false }).addTo(map);
+    const layerControl = L.control.layers(baseMaps, null, { collapsed: true }).addTo(map);
 
     // Read the GeoJSON file, processing each Feature individually.
     processGeoJsonFile(geojson, map, layerControl);
@@ -193,7 +193,9 @@ function processGeoJsonFeature(geoJsonFeature, leafletLayer) {
             layerGroupName = geoJsonFeature.properties.date;
 
             // styleLineStringLayerTransport(geoJsonFeature, leafletLayer);
-            leafletLayer = styleLineStringLayerAltitude(leafletLayer);
+            // leafletLayer = styleLineStringLayerAltitude(leafletLayer);
+            // leafletLayer = styleLineStringLayerSpeed(geoJsonFeature, leafletLayer);
+            leafletLayer = styleLineStringLayerHourOfDay(geoJsonFeature, leafletLayer);
 
             // Add the GeoJSON Feature properties.
             leafletLayer.bindTooltip(geoJsonFeature.properties.name);
@@ -254,6 +256,133 @@ function styleLineStringLayerAltitude(leafletLayer) {
     };
 
     return L.multiOptionsPolyline(leafletLayer.getLatLngs().flat(), { multiOptions });
+}
+
+/**
+ * Change track colour based on speed (in km/h).
+ *
+ * @param {L.Polyline} leafletLayer - The Leaflet object layer created from the GeoJSON Feature.
+ * @return {L.MultiOptionsPolyline} A new MultiOptionsPolyline with grouped and styled GPS points.
+ */
+function styleLineStringLayerSpeed(geoJsonFeature, leafletLayer) {
+    const speedThresholds = new Map([
+        // Walking
+        // https://huemint.com/gradient-9/#palette=ffea00-d0d201-c9d006-bec72b-84c918-53b42a-1b9c31-23d396-00ff58
+        [1, { color: '#ffea00' }],
+        [2, { color: '#d0d201' }],
+        [3, { color: '#c9d006' }],
+        [4, { color: '#bec72b' }],
+        [5, { color: '#84c918' }],
+        [6, { color: '#53b42a' }],
+        [7, { color: '#1b9c31' }],
+        [8, { color: '#23d396' }],
+        [9, { color: '#00ff59' }],
+
+        // Driving
+        // https://coolors.co/gradient-palette/1900ff-ff0000?number=16
+        [10, { color: '#1900FF' }],
+        [20, { color: '#2800EE' }],
+        [30, { color: '#3800DD' }],
+        [40, { color: '#4700CC' }],
+        [50, { color: '#5600BB' }],
+        [60, { color: '#6600AA' }],
+        [70, { color: '#750099' }],
+        [80, { color: '#840088' }],
+        [90, { color: '#940077' }],
+        [100, { color: '#A30066' }],
+        [110, { color: '#B20055' }],
+        [120, { color: '#C20044' }],
+        [130, { color: '#D10033' }],
+        [140, { color: '#E00022' }],
+        [150, { color: '#F00011' }],
+        [160, { color: '#FF0000' }],
+
+        // Other
+        ['max', { color: '#000000' }],
+    ]);
+
+    const multiOptions = {
+        optionIdxFn: latLng => {
+            const thresholds = [...speedThresholds.keys()];
+            if (typeof latLng.speed === 'undefined') {
+                return { color: '#000000' };
+            }
+            for (var i = 0; i < thresholds.length - 1; ++i) {
+                if (latLng.speed <= thresholds[i]) {
+                    return i;
+                }
+            }
+            return thresholds.length - 1;
+        },
+        options: [...speedThresholds.values()],
+    };
+
+    const speeds = geoJsonFeature.properties.coordinateProperties.speeds.flat();
+    const latLngsWithSpeed = leafletLayer
+        .getLatLngs()
+        .flat()
+        .map((item, index) => {
+            item.speed = speeds[index];
+            return item;
+        });
+
+    return L.multiOptionsPolyline(latLngsWithSpeed, { multiOptions });
+}
+
+/**
+ * Change track colour based on hour of day (in UTC).
+ *
+ * @param {L.Polyline} leafletLayer - The Leaflet object layer created from the GeoJSON Feature.
+ * @return {L.MultiOptionsPolyline} A new MultiOptionsPolyline with grouped and styled GPS points.
+ */
+function styleLineStringLayerHourOfDay(geoJsonFeature, leafletLayer) {
+    const timeThresholds = new Map([
+        // https://coolors.co/palette/03045e-023e8a-0077b6-0096c7-00b4d8-48cae4-90e0ef-ade8f4-caf0f8
+        // https://coolors.co/palette/03071e-370617-6a040f-9d0208-d00000-dc2f02-e85d04-f48c06-faa307-ffba08
+        [6, { color: '#03045E' }],
+        [7, { color: '#0077B6' }],
+        [8, { color: '#00B4D8' }],
+        [9, { color: '#FFBA08' }],
+        [10, { color: '#FAA307' }],
+        [11, { color: '#F48C06' }],
+        [12, { color: '#E85D04' }],
+        [13, { color: '#DC2F02' }],
+        [14, { color: '#D00000' }],
+        [15, { color: '#9D0208' }],
+        [16, { color: '#6A040F' }],
+        [17, { color: '#370617' }],
+        [18, { color: '#03071E' }],
+        [19, { color: '#000000' }],
+    ]);
+
+    const multiOptions = {
+        optionIdxFn: latLng => {
+            const thresholds = [...timeThresholds.keys()];
+            if (typeof latLng.hour === 'undefined') {
+                return { color: '#000000' };
+            }
+            for (var i = 0; i < thresholds.length - 1; ++i) {
+                if (latLng.hour <= thresholds[i]) {
+                    return i;
+                }
+            }
+            return thresholds.length - 1;
+        },
+        options: [...timeThresholds.values()],
+    };
+
+    const hours = geoJsonFeature.properties.coordinateProperties.times.flat().map(item => {
+        return parseInt(item.substring(11, 13));
+    });
+    const latLngsWithHour = leafletLayer
+        .getLatLngs()
+        .flat()
+        .map((item, index) => {
+            item.hour = hours[index];
+            return item;
+        });
+
+    return L.multiOptionsPolyline(latLngsWithHour, { multiOptions });
 }
 
 /**
