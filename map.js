@@ -190,7 +190,11 @@ function processGeoJsonFeature(geoJsonFeature, leafletLayer) {
             // Layer type: L.Polyline
             // https://leafletjs.com/reference.html#polyline
 
-            layerGroupName = geoJsonFeature.properties.date;
+            if (typeof geoJsonFeature.properties.country !== "undefined" && geoJsonFeature.properties.country.length > 1) {
+                layerGroupName = 'International';
+            } else {
+                layerGroupName = geoJsonFeature.properties.date;
+            }
 
             // styleLineStringLayerTransport(geoJsonFeature, leafletLayer);
             // leafletLayer = styleLineStringLayerAltitude(leafletLayer);
@@ -214,7 +218,7 @@ function processGeoJsonFeature(geoJsonFeature, leafletLayer) {
 }
 
 /**
- * Change track colour based on altitude.
+ * Change track colour based on altitude (in metres).
  *
  * @see https://github.com/hgoebl/Leaflet.MultiOptionsPolyline
  * @see https://leafletjs.com/reference.html#featuregroup
@@ -408,6 +412,9 @@ function styleLineStringLayerTransport(geoJsonFeature, leafletLayer) {
             break;
         case 'Public transport':
             leafletLayer.setStyle({ color: '#8AC926' }); // strong green
+            break;
+        case 'Flight':
+            leafletLayer.setStyle({ color: '#80E1E2' }); // fresh mint
             break;
         case 'Walking':
             leafletLayer.setStyle({ color: '#FFCA3A' }); // light orange
