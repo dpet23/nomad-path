@@ -39,10 +39,10 @@ function createLeafletMap(id, geojson) {
  * @return {L.Control} A new Leaflet Control.
  */
 function createResetControl() {
-    var control = new L.Control({ position: 'topleft' });
+    const control = new L.Control({ position: 'topleft' });
 
     control.onAdd = map => {
-        var resetView = L.DomUtil.create('a', 'resetview');
+        const resetView = L.DomUtil.create('a', 'resetview');
         resetView.innerHTML = '[Reset Map]';
         L.DomEvent.disableClickPropagation(resetView).addListener(
             resetView,
@@ -65,21 +65,21 @@ function createResetControl() {
  */
 function defineBaseMapLayers() {
     // OpenStreetMap.
-    layerOsm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const layerOsm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '<a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     });
 
     // Google Maps (hybrid view, static tiles).
     // Docs: https://gis.stackexchange.com/a/341490
-    layerGoogleHybridStatic = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+    const layerGoogleHybridStatic = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
         maxZoom: 20,
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
         attribution: '<a href="https://www.google.com.au/maps">NASA, TerraMetrics, Google</a>',
     });
 
     // NASA Blue Marble.
-    layerBlueMarble = L.tileLayer(
+    const layerBlueMarble = L.tileLayer(
         'https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/{layer}/default/{time}/{tileMatrixSet}/{z}/{y}/{x}.jpg',
         {
             layer: 'BlueMarble_ShadedRelief_Bathymetry',
@@ -105,7 +105,7 @@ function defineBaseMapLayers() {
 }
 
 // Icon class
-var LeafIcon = L.Icon.extend({
+const LeafIcon = L.Icon.extend({
     options: {
         iconSize: [22, 40], // size of icon image (pixels)
         iconAnchor: [11, 40], // coordinates of the tip (pixels, relative to top-left corner)
@@ -132,14 +132,14 @@ function processGeoJsonFile(geojson, map, layerControl) {
         .then(httpRes => httpRes.json())
         .then(jsonData => {
             // Define the layer groups to show on top of the base map.
-            var layerGroups = {};
+            const layerGroups = {};
 
             // Parse the GeoJSON, creating Leaflet Layers and adding them to the map.
             L.geoJSON(jsonData, {
                 style: { color: '#000000' },
                 onEachFeature: (feature, layer) => {
                     // Build a complete Leaflet layer from the Feature.
-                    var { leafletLayer, layerGroupName } = processGeoJsonFeature(feature, layer);
+                    const { leafletLayer, layerGroupName } = processGeoJsonFeature(feature, layer);
 
                     // Add the Layer to all required map objects.
                     addLeafletLayerToMap(leafletLayer, map, layerGroupName, layerGroups, layerControl);
@@ -156,7 +156,7 @@ function processGeoJsonFile(geojson, map, layerControl) {
  * @return {{leafletLayer: L.Layer, layerGroupName: string}} The Leaflet layer to add to the map, and the layer name.
  */
 function processGeoJsonFeature(geoJsonFeature, leafletLayer) {
-    var layerGroupName;
+    let layerGroupName;
 
     // Process each type of Feature.
     switch (geoJsonFeature.geometry.type) {
@@ -190,7 +190,10 @@ function processGeoJsonFeature(geoJsonFeature, leafletLayer) {
             // Layer type: L.Polyline
             // https://leafletjs.com/reference.html#polyline
 
-            if (typeof geoJsonFeature.properties.country !== "undefined" && geoJsonFeature.properties.country.length > 1) {
+            if (
+                typeof geoJsonFeature.properties.country !== 'undefined' &&
+                geoJsonFeature.properties.country.length > 1
+            ) {
                 layerGroupName = 'International';
             } else {
                 layerGroupName = geoJsonFeature.properties.date;
@@ -249,7 +252,7 @@ function styleLineStringLayerAltitude(leafletLayer) {
             if (typeof latLng.alt === 'undefined') {
                 return 0;
             }
-            for (var i = 1; i < thresholds.length - 1; ++i) {
+            for (let i = 1; i < thresholds.length - 1; ++i) {
                 if (latLng.alt <= thresholds[i]) {
                     return i;
                 }
@@ -311,7 +314,7 @@ function styleLineStringLayerSpeed(geoJsonFeature, leafletLayer) {
             if (typeof latLng.speed === 'undefined') {
                 return { color: '#000000' };
             }
-            for (var i = 0; i < thresholds.length - 1; ++i) {
+            for (let i = 0; i < thresholds.length - 1; ++i) {
                 if (latLng.speed <= thresholds[i]) {
                     return i;
                 }
@@ -365,7 +368,7 @@ function styleLineStringLayerHourOfDay(geoJsonFeature, leafletLayer) {
             if (typeof latLng.hour === 'undefined') {
                 return { color: '#000000' };
             }
-            for (var i = 0; i < thresholds.length - 1; ++i) {
+            for (let i = 0; i < thresholds.length - 1; ++i) {
                 if (latLng.hour <= thresholds[i]) {
                     return i;
                 }
@@ -376,7 +379,7 @@ function styleLineStringLayerHourOfDay(geoJsonFeature, leafletLayer) {
     };
 
     const hours = geoJsonFeature.properties.coordinateProperties.times.flat().map(item => {
-        return parseInt(item.substring(11, 13));
+        return parseInt(item.substring(11, 13), 10);
     });
     const latLngsWithHour = leafletLayer
         .getLatLngs()
