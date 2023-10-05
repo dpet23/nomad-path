@@ -23,7 +23,7 @@ function createLeafletMap(id, geojson) {
 
     // Define the available base map layers.
     const baseMaps = defineBaseMapLayers();
-    map.addLayer(baseMaps['NASA Blue Marble']);
+    map.addLayer(baseMaps['NASA Blue Marble 2004']);
 
     // Set up the Layers Control.
     // TODO: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol
@@ -64,27 +64,31 @@ function createResetControl() {
  * @returns {Object.<string, L.TileLayer>} An object with all initial baselayers for the Leaflet map.
  */
 function defineBaseMapLayers() {
-    // OpenStreetMap.
-    const layerOsm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // OpenStreetMap
+    const layerOpenStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        minZoom: 0,
         maxZoom: 19,
         attribution: '<a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     });
 
-    // Google Maps (hybrid view, static tiles).
+    // Google Maps (satellite view, static tiles)
     // Docs: https://gis.stackexchange.com/a/341490
-    const layerGoogleHybridStatic = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+    const layerGoogleSatelliteStatic = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        minZoom: 0,
         maxZoom: 20,
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '<a href="https://www.google.com.au/maps">NASA, TerraMetrics, Google</a>',
+        attribution: '<a href="https://www.google.com/intl/en-US_US/help/terms_maps/">TerraMetrics, Google</a>',
     });
 
-    // NASA Blue Marble.
+    // NASA Blue Marble
+    // Docs: https://nasa-gibs.github.io/gibs-api-docs/available-visualizations/#visualization-product-catalog
     const layerBlueMarble = L.tileLayer(
         'https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/{layer}/default/{time}/{tileMatrixSet}/{z}/{y}/{x}.jpg',
         {
             layer: 'BlueMarble_ShadedRelief_Bathymetry',
             tileMatrixSet: 'EPSG3857_500m',
             time: '',
+            minZoom: 0,
             maxZoom: 8,
             noWrap: true,
             continuousWorld: true,
@@ -98,9 +102,9 @@ function defineBaseMapLayers() {
     );
 
     return {
-        'NASA Blue Marble': layerBlueMarble,
-        OpenStreetMap: layerOsm,
-        'Google Hybrid (static)': layerGoogleHybridStatic,
+        'NASA Blue Marble 2004': layerBlueMarble,
+        OpenStreetMap: layerOpenStreetMap,
+        'Google aerial/satellite': layerGoogleSatelliteStatic,
     };
 }
 
