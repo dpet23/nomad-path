@@ -13,7 +13,7 @@ function createLeafletMap(id, geojson) {
     });
 
     // Set up the Attribution Control.
-    map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+    map.attributionControl.setPrefix('<a target="_blank" href="https://leafletjs.com">Leaflet</a>');
 
     // Set up the Scale Control.
     const scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
@@ -303,7 +303,7 @@ function defineBaseMapLayers() {
     const layerOpenStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         minZoom: 0,
         maxZoom: 19,
-        attribution: '<a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution: '<a target="_blank" href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     });
 
     // Google Maps (satellite view, static tiles)
@@ -312,7 +312,8 @@ function defineBaseMapLayers() {
         minZoom: 0,
         maxZoom: 20,
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '<a href="https://www.google.com/intl/en-US_US/help/terms_maps/">TerraMetrics, Google</a>',
+        attribution:
+            '<a target="_blank" href="https://www.google.com/intl/en-US_US/help/terms_maps/">TerraMetrics, Google</a>',
     });
 
     // NASA Blue Marble
@@ -332,7 +333,7 @@ function defineBaseMapLayers() {
                 [-85.0511287776, -179.999999975],
                 [85.0511287776, 179.999999975],
             ],
-            attribution: '<a href="https://wiki.earthdata.nasa.gov/display/GIBS">NASA EOSDIS GIBS</a>',
+            attribution: '<a target="_blank" href="https://wiki.earthdata.nasa.gov/display/GIBS">NASA EOSDIS GIBS</a>',
         },
     );
 
@@ -671,4 +672,4 @@ function _styleLineStringLayerTransport(leafletLayer, geoJsonFeature) {
 }
 
 // Create the Leaflet map.
-createLeafletMap('map', 'data.geojson');
+createLeafletMap('map', 'data/data.geojson');
