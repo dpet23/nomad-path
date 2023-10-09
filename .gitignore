@@ -1,0 +1,6 @@
+node_modules/
+.sonarlint
+.npm
+.eslintcache
+
+package-lock.json
