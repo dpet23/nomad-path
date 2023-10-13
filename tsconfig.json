@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "umd",
+    "target": "ES6",
+    "module": "AMD",
     "sourceMap": true,
     "outDir": "dist",
     "esModuleInterop": true,

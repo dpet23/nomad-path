@@ -12,15 +12,12 @@ function createLeafletMap() {
         maxZoom: 19,
         attribution: '<a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     });
-    const layerGoogleHybridStatic = L.tileLayer(
-        'http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
-        {
-            // https://gis.stackexchange.com/a/341490
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: '<a href="https://www.google.com.au/maps">NASA, TerraMetrics, Google</a>',
-        }
-    );
+    const layerGoogleHybridStatic = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        // https://gis.stackexchange.com/a/341490
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '<a href="https://www.google.com.au/maps">NASA, TerraMetrics, Google</a>',
+    });
     const layerBlueMarble = L.tileLayer(
         // eslint-disable-next-line  max-len
         'https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default//EPSG3857_500m/{z}/{y}/{x}.jpg',
@@ -32,9 +29,8 @@ function createLeafletMap() {
                 [-85.0511287776, -179.999999975],
                 [85.0511287776, 179.999999975],
             ],
-            attribution:
-                '<a href="https://wiki.earthdata.nasa.gov/display/GIBS">NASA EOSDIS GIBS</a>',
-        }
+            attribution: '<a href="https://wiki.earthdata.nasa.gov/display/GIBS">NASA EOSDIS GIBS</a>',
+        },
     );
 
     // Initialize the map.
@@ -54,11 +50,11 @@ function createLeafletMap() {
     L.control.layers(baseMaps).addTo(map);
 
     // Scale control.
-    L.control.scale({metric: true, imperial: true}).addTo(map);
+    L.control.scale({ metric: true, imperial: true }).addTo(map);
 
     // Reset map control.
     (() => {
-        const control = new L.Control({position: 'topleft'});
+        const control = new L.Control({ position: 'topleft' });
         control.onAdd = mapObj => {
             const resetView = L.DomUtil.create('a', 'resetview');
             resetView.innerHTML = '[Reset Map]';
@@ -68,7 +64,7 @@ function createLeafletMap() {
                 () => {
                     mapObj.setView(mapCenterDefault, mapZoomDefault);
                 },
-                resetView
+                resetView,
             );
             return resetView;
         };

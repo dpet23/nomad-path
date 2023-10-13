@@ -1,8 +1,8 @@
-import createResetControl from "./control-reset.esm.js";
-import getLayerControlOverlays from "./control-layers.esm.js";
-import createLegendControl from "./control-legend.esm.js";
-import defineBaseMapLayers from "./layers-base.esm.js";
-import processGeoJsonFile from "./layers-geojson.esm.js";
+import getLayerControlOverlays from './control-layers.esm.js';
+import createLegendControl from './control-legend.esm.js';
+import createResetControl from './control-reset.esm.js';
+import defineBaseMapLayers from './layers-base.esm.js';
+import processGeoJsonFile from './layers-geojson.esm.js';
 
 /**
  * Create a Leaflet map and display the markers and tracks from a GeoJSON file.
@@ -11,7 +11,7 @@ import processGeoJsonFile from "./layers-geojson.esm.js";
  * @param {string} geojson - Path to the GeoJSON file containing the Features to display.
  * @param {Array<Styles>} lineStringStyles - The available styles for GeoJSON LineStrings.
  */
-export default function createLeafletMap({id, geojson, lineStringStyles}) {
+export default function createLeafletMap({ id, geojson, lineStringStyles }) {
     // Initialize the Leaflet map into a HTML element.
     const map = L.map(id, {
         center: [0, 0], // FUTURE: dynamically calculate after adding the GeoJSON layers
