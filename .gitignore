@@ -1,6 +1,12 @@
-node_modules/
-.sonarlint
-.npm
-.eslintcache
+# Build output
+dist/
 
-package-lock.json
+# Dependency directories
+node_modules/
+
+# TypeScript / NPM / Packages
+*.tsbuildinfo
+.npm
+*.tgz
+.eslintcache
+.sonarlint

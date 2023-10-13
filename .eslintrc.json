@@ -11,7 +11,14 @@
     "ignorePatterns": [
         "node_modules/**/*.ts"
     ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "project": "tsconfig.json",
+        "ecmaVersion": 12,
+        "sourceType": "module"
+    },
     "plugins": [
+        "@typescript-eslint",
         "import",
         "jsdoc",
         "prefer-arrow",
@@ -21,11 +28,40 @@
         "unused-imports"
     ],
     "rules": {
+        "@typescript-eslint/array-type": ["error", {
+            "default": "array"
+        }],
+        "@typescript-eslint/no-explicit-any": "warn",
+        "no-shadow": "off",
+        "@typescript-eslint/no-shadow": ["error", {
+            "hoist": "all",
+            "ignoreTypeValueShadow": true
+        }],
+        "@typescript-eslint/no-unnecessary-type-assertion": "warn",
+        "no-unused-expressions": "off",
+        "@typescript-eslint/no-unused-expressions": "error",
+        "no-use-before-define": "off",
+        "@typescript-eslint/no-use-before-define": "error",
+        "@typescript-eslint/prefer-for-of": "error",
+        "@typescript-eslint/prefer-function-type": "error",
+        "@typescript-eslint/prefer-includes": "warn",
+        "semi": "off",
+        "@typescript-eslint/semi": "error",
+        "@typescript-eslint/triple-slash-reference": "warn",
+        "@typescript-eslint/type-annotation-spacing": "warn",
+        "@typescript-eslint/unbound-method": "warn",
+        "@typescript-eslint/unified-signatures": "error",
         "arrow-parens": ["error", "as-needed"],
         "brace-style": ["error", "1tbs", {
             "allowSingleLine": true
         }],
-        "comma-dangle": ["error", "always-multiline"],
+        "comma-dangle": ["error", {
+            "arrays": "always-multiline",
+            "objects": "always-multiline",
+            "imports": "always-multiline",
+            "exports": "never",
+            "functions": "never"
+        }],
         "eol-last": ["error", "always"],
         "eqeqeq": ["error", "smart"],
         "for-direction": "error",
@@ -55,10 +91,8 @@
         "newline-per-chained-call": ["error", {
             "ignoreChainWithDepth": 3
         }],
-        // "no-alert": "warn",
         "no-caller": "error",
         "no-cond-assign": "error",
-        // "no-debugger": "error",
         "no-empty": "error",
         "no-extra-semi": "error",
         "no-invalid-this": "off",

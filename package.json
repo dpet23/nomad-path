@@ -1,21 +1,37 @@
 {
-    "name": "leaflet",
-    "version": "0.1.0",
-    "private": true,
-    "scripts": {
-        "lint": "eslint . --ext .js"
-    },
-    "devDependencies": {
-        "eslint": "^8.44.0",
-        "eslint-config-google": "^0.14.0",
-        "eslint-config-prettier": "^8.8.0",
-        "eslint-plugin-import": "^2.27.5",
-        "eslint-plugin-jsdoc": "^46.4.3",
-        "eslint-plugin-prefer-arrow": "^1.2.3",
-        "eslint-plugin-prettier": "^4.2.1",
-        "eslint-plugin-simple-import-sort": "^10.0.0",
-        "eslint-plugin-sonarjs": "^0.19.0",
-        "eslint-plugin-unused-imports": "^2.0.0",
-        "prettier": "^2.8.8"
-    }
+  "name": "leaflet-map",
+  "version": "0.1.0",
+  "description": "Simple library for creating a Leaflet map",
+  "author": "dpet23",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dpet23/leaflet-map.git"
+  },
+  "keywords": [
+    "leaflet",
+    "leaflet-map",
+    "maps"
+  ],
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts,.js"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.0",
+    "@typescript-eslint/eslint-plugin": "^5.47.1",
+    "@typescript-eslint/parser": "^5.47.1",
+    "eslint": "^8.31.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-jsdoc": "^39.6.4",
+    "eslint-plugin-prefer-arrow": "^1.2.3",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-simple-import-sort": "^8.0.0",
+    "eslint-plugin-sonarjs": "^0.17.0",
+    "eslint-plugin-unused-imports": "^2.0.0",
+    "prettier": "^2.8.1",
+    "typescript": "^4.9.4"
+  }
 }

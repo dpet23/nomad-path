@@ -1,0 +1,5 @@
+node_modules
+/package.json
+
+# Unignore config files like .prettierrc.js, because they're ignored by default
+!.*rc.js
