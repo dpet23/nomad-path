@@ -1,13 +1,20 @@
 {
   "compilerOptions": {
     "target": "ES6",
-    "module": "AMD",
-    "sourceMap": true,
-    "outDir": "dist",
+    "module": "ES6",
+    "outDir": "build",
+    "sourceMap": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "noImplicitAny": false,
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+  },
+  "include": [
+    "./src/*.ts",
+    "./node_modules/ngxleafletmultioptionspolyline"
+  ],
+  "exclude": [
+    "./src/index.ts"
+  ],
 }

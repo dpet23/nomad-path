@@ -12,10 +12,15 @@
     "leaflet-map",
     "maps"
   ],
-  "main": "index.ts",
+  "main": "map-leaflet.ts",
   "scripts": {
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "npm run lint -- --fix",
     "build": "tsc",
-    "lint": "eslint src --ext .ts,.js"
+    "package:rollup": "rollup -c rollup.config.mjs",
+    "package:cleanup": "replace '^import.*' '' ./dist/leaflet-map.js",
+    "package": "npm run package:rollup && npm run package:cleanup",
+    "dist": "npm run build && npm run package"
   },
   "devDependencies": {
     "@types/geojson": "^7946.0.11",
@@ -33,7 +38,9 @@
     "eslint-plugin-sonarjs": "^0.21.0",
     "eslint-plugin-unused-imports": "^3.0.0",
     "leaflet": "^1.9.4",
+    "ngxleafletmultioptionspolyline": "^1.0.0",
     "prettier": "^3.0.3",
+    "rollup": "^4.1.0",
     "typescript": "^5.2.2"
   }
 }
