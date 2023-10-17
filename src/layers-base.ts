@@ -1,9 +1,21 @@
+import L from 'leaflet';
+
+/**
+ * Expand Leaflet's TileLayerOptions type, adding custom attributes.
+ */
+type TileLayerOptionsBlueMarble = L.TileLayerOptions & {
+    layer: string;
+    tileMatrixSet: string;
+    time: string;
+    continuousWorld: boolean;
+};
+
 /**
  * Define the base map layers.
  *
- * @return {Object.<string, L.TileLayer>} An object with all initial baselayers for the Leaflet map.
+ * @return An object with all initial baselayers for the Leaflet map.
  */
-export default function defineBaseMapLayers() {
+export default function defineBaseMapLayers(): { [menuName: string]: L.TileLayer } {
     // OpenStreetMap
     const layerOpenStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         minZoom: 0,
@@ -39,7 +51,7 @@ export default function defineBaseMapLayers() {
                 [85.0511287776, 179.999999975],
             ],
             attribution: '<a target="_blank" href="https://wiki.earthdata.nasa.gov/display/GIBS">NASA EOSDIS GIBS</a>',
-        },
+        } as TileLayerOptionsBlueMarble,
     );
 
     return {

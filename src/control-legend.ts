@@ -1,12 +1,30 @@
+import L from 'leaflet';
+
+import { LineStringStyle, ProcessGeoJsonFilePartialFunc } from './layers-geojson';
+
+/**
+ * Expand Leaflet's Control type, adding custom attributes.
+ */
+export type ControlLegend = L.Control & {
+    legend?: HTMLDivElement;
+    styleSelector?: HTMLSelectElement;
+    legendText?: HTMLDivElement;
+    addLegendItem?: (colour: string, label: string) => void;
+    resetLegendContent?: () => void;
+};
+
 /**
  * Create a Control for displaying the current style for GeoJSON LineStrings.
  *
- * @param {Array<Styles>} supportedLineStringStyles - The available styles for GeoJSON LineStrings.
- * @param {processGeoJsonFilePartialFunc} onChangePartialCallbackFn - Partial function for calling `processGeoJsonFile`.
- * @return {L.Control} A new Leaflet Control.
+ * @param supportedLineStringStyles - The available styles for GeoJSON LineStrings.
+ * @param onChangePartialCallbackFn - Partial function for calling `processGeoJsonFile`.
+ * @return A new Leaflet Control.
  */
-export default function createLegendControl(supportedLineStringStyles, onChangePartialCallbackFn) {
-    const control = new L.Control({ position: 'bottomleft' });
+export default function createLegendControl(
+    supportedLineStringStyles: LineStringStyle[],
+    onChangePartialCallbackFn: ProcessGeoJsonFilePartialFunc,
+): ControlLegend {
+    const control: ControlLegend = new L.Control({ position: 'bottomleft' });
 
     /**
      * Function to handle adding the Control to a Leaflet Map.
@@ -46,7 +64,7 @@ export default function createLegendControl(supportedLineStringStyles, onChangeP
 
         // Redraw GeoJSON data when the legend style changes.
         L.DomEvent.on(styleSelector, 'change', event => {
-            const lineStyleIndex = parseInt(event.target.value, 10);
+            const lineStyleIndex = parseInt((event.currentTarget as HTMLSelectElement).value, 10);
             const newLineStyle = supportedLineStringStyles[lineStyleIndex];
 
             styleSelector.disabled = true;
@@ -63,7 +81,11 @@ export default function createLegendControl(supportedLineStringStyles, onChangeP
      * Add an item to the legend content.
      * The Control must have been added to the Leaflet Map!
      */
-    control.addLegendItem = (colour, label) => {
+    control.addLegendItem = (colour: string, label: string) => {
+        if (!control.legendText) {
+            return;
+        }
+
         control.legendText.innerHTML +=
             '<div style="line-height: 1.2em;">' +
             `<i style="background: ${colour}; ${legendTextIElementCss}"></i>` +
@@ -76,6 +98,10 @@ export default function createLegendControl(supportedLineStringStyles, onChangeP
      * The Control must have been added to the Leaflet Map!
      */
     control.resetLegendContent = () => {
+        if (!control.legendText) {
+            return;
+        }
+
         control.legendText.innerHTML = '';
     };
 

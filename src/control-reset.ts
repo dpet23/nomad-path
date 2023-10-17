@@ -1,9 +1,11 @@
+import L from 'leaflet';
+
 /**
  * Create a Control for resetting the map view.
  *
- * @return {L.Control} A new Leaflet Control.
+ * @return A new Leaflet Control.
  */
-export default function createResetControl() {
+export default function createResetControl(): L.Control {
     const control = new L.Control({ position: 'topleft' });
 
     /**
@@ -16,7 +18,7 @@ export default function createResetControl() {
             resetView,
             'click',
             () => {
-                map.setView(map.options.center, map.options.zoom);
+                map.setView(map.options.center ?? [0, 0], map.options.zoom);
             },
             resetView,
         );
