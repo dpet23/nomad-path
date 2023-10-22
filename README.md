@@ -11,7 +11,7 @@ It can be initialized like this:
 
 ```html
 <script type="module">
-    import createLeafletMap from './dist/leaflet-map.js';
+    import createLeafletMap from './dist/leaflet-map.esm.js';
 
     createLeafletMap({
         id: 'map',

@@ -1,7 +1,7 @@
 export default {
-    input: 'build/map-leaflet.js',
+    input: 'build/main.js',
     output: {
-        file: 'dist/leaflet-map.js',
+        file: 'dist/leaflet-map.esm.js',
         format: 'esm',
     },
     external: ['leaflet'],
