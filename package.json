@@ -1,6 +1,6 @@
 {
   "name": "leaflet-map",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Simple library for creating a Leaflet map",
   "author": "dpet23",
   "repository": {
@@ -12,26 +12,36 @@
     "leaflet-map",
     "maps"
   ],
-  "main": "index.ts",
+  "main": "map-leaflet.ts",
   "scripts": {
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "npm run lint -- --fix",
     "build": "tsc",
-    "lint": "eslint src --ext .ts,.js"
+    "package:rollup": "rollup -c rollup.config.mjs",
+    "package:cleanup": "npx replace '^import.*' '' ./dist/leaflet-map.esm.js",
+    "package": "npm run package:rollup && npm run package:cleanup",
+    "dist": "npm run build && npm run package"
   },
   "devDependencies": {
-    "@types/leaflet": "^1.9.0",
-    "@typescript-eslint/eslint-plugin": "^5.47.1",
-    "@typescript-eslint/parser": "^5.47.1",
-    "eslint": "^8.31.0",
+    "@types/geojson": "^7946.0.11",
+    "@types/leaflet": "^1.9.6",
+    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/parser": "^6.7.5",
+    "eslint": "^8.51.0",
     "eslint-config-google": "^0.14.0",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-jsdoc": "^39.6.4",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-jsdoc": "^46.8.2",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-prettier": "^4.2.1",
-    "eslint-plugin-simple-import-sort": "^8.0.0",
-    "eslint-plugin-sonarjs": "^0.17.0",
-    "eslint-plugin-unused-imports": "^2.0.0",
-    "prettier": "^2.8.1",
-    "typescript": "^4.9.4"
+    "eslint-plugin-prettier": "^5.0.1",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-sonarjs": "^0.21.0",
+    "eslint-plugin-unused-imports": "^3.0.0",
+    "leaflet": "^1.9.4",
+    "ngxleafletmultioptionspolyline": "^1.0.0",
+    "prettier": "^3.0.3",
+    "replace": "^1.2.2",
+    "rollup": "^4.1.0",
+    "typescript": "^5.2.2"
   }
 }
