@@ -1,17 +1,18 @@
 import L from 'leaflet';
 
 /**
- * Create a Control for resetting the map view.
- *
- * @return A new Leaflet Control.
+ * Leaflet Control for resetting the map view.
  */
-export default function createResetControl(): L.Control {
-    const control = new L.Control({ position: 'topleft' });
-
+export default class ControlReset extends L.Control {
     /**
-     * Function to handle adding the Control to a Leaflet Map.
+     * Callback function to define the Control's container.
+     *
+     * Called by Leaflet when adding the Control to a Map.
+     *
+     * @param map The Leaflet Map.
+     * @return The anchor element that resets the map view.
      */
-    control.onAdd = map => {
+    onAdd = (map: L.Map): HTMLAnchorElement => {
         const resetView = L.DomUtil.create('a', 'resetview');
         resetView.innerHTML = '[Reset Map]';
         L.DomEvent.disableClickPropagation(resetView).addListener(
@@ -24,6 +25,4 @@ export default function createResetControl(): L.Control {
         );
         return resetView;
     };
-
-    return control;
 }

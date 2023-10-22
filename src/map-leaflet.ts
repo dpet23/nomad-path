@@ -1,21 +1,24 @@
 import L from 'leaflet';
 
 import ControlLayers from './control-layers';
-import createLegendControl from './control-legend';
-import createResetControl from './control-reset';
-import defineBaseMapLayers from './layers-base';
-import processGeoJsonFile, { LineStringStyle, ProcessGeoJsonFilePartialFunc } from './layers-geojson';
-import LeafletMap from './leaflet-map';
+import ControlLegend, { OnStyleChangeFunc } from './control-legend';
+import ControlReset from './control-reset';
+import defineBaseMapLayers, { BaseMapLayers, MapID } from './layers-base';
+import processGeoJsonFile from './layers-geojson';
+import { LineStringStyle } from './layers-polyline';
+import { LeafletMap } from './types';
 
 /**
  * Parameters for `createLeafletMap()`.
  *
  * @property id                 DOM ID of a `<div>` element into which to add the map.
+ * @property mapType            The base map initially displayed.
  * @property geojson            Path to the GeoJSON file containing the Features to display.
  * @property lineStringStyles   The available styles for GeoJSON LineStrings.
  */
 interface CreateLeafletMapParams {
     id: string;
+    mapType: MapID;
     geojson: string;
     lineStringStyles: LineStringStyle[];
 }
@@ -25,50 +28,59 @@ interface CreateLeafletMapParams {
  *
  * @param CreateLeafletMapParams User configuration.
  */
-export default function createLeafletMap({ id, geojson, lineStringStyles }: CreateLeafletMapParams) {
-    // Initialize the Leaflet map into a HTML element.
+export default function createLeafletMap({ id, mapType, geojson, lineStringStyles }: CreateLeafletMapParams) {
+    // Initialize the Leaflet map into an HTML element.
     const map: LeafletMap = L.map(id, {
         center: [0, 0], // FUTURE: dynamically calculate after adding the GeoJSON layers
         zoom: 3,
         worldCopyJump: true,
     });
 
-    // Set up the Attribution Control.
+    // Top-left:
+    //  * Scale Control
+    //  * Map view reset
+    map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
+    map.resetControl = new ControlReset({ position: 'topleft' }).addTo(map);
+
+    // Bottom-right:
+    //  * Attribution Control
     map.attributionControl.setPrefix('<a target="_blank" href="https://leafletjs.com">Leaflet</a>');
 
-    // Set up the Scale Control.
-    const scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
-    map.scaleControl = scaleControl;
+    // Define the available base map layers,
+    // and set the default type by adding it to the map.
+    const baseMaps: BaseMapLayers = defineBaseMapLayers();
+    map.addLayer((baseMaps[mapType] ?? baseMaps.BLUEMARBLE).tileLayer);
 
-    // Add a Control for resetting the map view.
-    const resetControl = createResetControl().addTo(map);
-    map.resetControl = resetControl;
-
-    // Define the available base map layers.
-    const baseMaps = defineBaseMapLayers();
-    map.addLayer(baseMaps['NASA Blue Marble 2004']);
-
-    // Set up the Layers Control.
-    // TODO: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol
-    const layerControl = new ControlLayers(baseMaps, undefined, { collapsed: true }).addTo(map);
-    map.layerControl = layerControl;
+    // Top-right:
+    //  * Layers Control (TODO: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol)
+    const baseMapControlDetails: L.Control.LayersObject = {};
+    for (const baseLayerDetail of Object.values(baseMaps)) {
+        baseMapControlDetails[baseLayerDetail.menuName] = baseLayerDetail.tileLayer;
+    }
+    map.layerControl = new ControlLayers(baseMapControlDetails, undefined, { collapsed: true }).addTo(map);
 
     // Partial function for calling `processGeoJsonFile`, with pre-populated params for `geojson` and `map`.
-    const processGeoJsonFilePartialFn: ProcessGeoJsonFilePartialFunc = (newLineStyleFunc, newLineStyleThresholds) => {
-        processGeoJsonFile(geojson, map, newLineStyleFunc, newLineStyleThresholds);
+    const reprocessGeoJsonFile: OnStyleChangeFunc = lineStringStyle => {
+        processGeoJsonFile(geojson, map, lineStringStyle);
     };
 
-    // Set up Legend Control (gv_infobox).
-    const legendControl = createLegendControl(lineStringStyles, processGeoJsonFilePartialFn).addTo(map);
-    map.legendControl = legendControl;
+    // Bottom-left:
+    //  * Legend Control
+    map.legendControl = new ControlLegend({
+        position: 'bottomleft',
+        supportedStyles: lineStringStyles,
+        onStyleChange: reprocessGeoJsonFile,
+    }).addTo(map);
 
-    // Read the GeoJSON file, processing each Feature individually.
+    // Read the GeoJSON file, processing each Feature individually and adding the results to the map.
     const defaultLineStringStyle = lineStringStyles[0];
-    processGeoJsonFile(geojson, map, defaultLineStringStyle.func, defaultLineStringStyle.thresholds);
+    processGeoJsonFile(geojson, map, defaultLineStringStyle);
 }
 
 export {
-    styleLineStringLayerAltitude,
-    styleLineStringLayerHourOfDay,
-    styleLineStringLayerSpeed,
-} from './layers-geojson';
+    getLineStringAltitude,
+    getLineStringConst,
+    getLineStringHourOfDay,
+    getLineStringSpeed,
+    getLineStringTransport,
+} from './layers-polyline';

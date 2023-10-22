@@ -3,9 +3,9 @@ import L from 'leaflet';
 /**
  * The details of each overlay layer.
  *
- * @property name       The name of the layer, displayed in the Control.
- * @property layer      The Leaflet Layer object.
- * @property enabled    Whether the layer is currently displayed on the map.
+ * @property name - The name of the layer, displayed in the Control.
+ * @property layer - The Leaflet Layer object.
+ * @property enabled - Whether the layer is currently displayed on the map.
  */
 type OverlayDetails = {
     name: string;
@@ -15,8 +15,12 @@ type OverlayDetails = {
 
 /**
  * Type definition for the way `L.Control.Layers` internally stores layer data.
+ *
+ * @property layer - The Leaflet Layer object.
+ * @property name - The name of the layer, displayed in the Control.
+ * @property overlay - Whether this is an Overlay Layer (true) or a Base Layer (false).
  */
-type LayersStruct = {
+type LayerStruct = {
     layer: L.Layer;
     name: string;
     overlay: boolean;
@@ -27,7 +31,7 @@ type LayersStruct = {
  */
 export default class ControlLayers extends L.Control.Layers {
     private _map!: L.Map;
-    private _layers!: LayersStruct[];
+    private _layers!: LayerStruct[];
 
     /**
      * Get a list of overlay layers that have been added to the Layers Control.

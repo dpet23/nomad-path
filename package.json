@@ -18,7 +18,7 @@
     "lint:fix": "npm run lint -- --fix",
     "build": "tsc",
     "package:rollup": "rollup -c rollup.config.mjs",
-    "package:cleanup": "replace '^import.*' '' ./dist/leaflet-map.js",
+    "package:cleanup": "npx replace '^import.*' '' ./dist/leaflet-map.js",
     "package": "npm run package:rollup && npm run package:cleanup",
     "dist": "npm run build && npm run package"
   },
@@ -40,6 +40,7 @@
     "leaflet": "^1.9.4",
     "ngxleafletmultioptionspolyline": "^1.0.0",
     "prettier": "^3.0.3",
+    "replace": "^1.2.2",
     "rollup": "^4.1.0",
     "typescript": "^5.2.2"
   }
