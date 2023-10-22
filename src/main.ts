@@ -5,7 +5,7 @@ import ControlLegend, { OnStyleChangeFunc } from './control-legend';
 import ControlReset from './control-reset';
 import defineBaseMapLayers, { BaseMapLayers, MapID } from './layers-base';
 import processGeoJsonFile from './layers-geojson';
-import { LineStringStyle } from './layers-polyline';
+import { defaultLineStringStyleConst, LineStringStyle } from './layers-polyline';
 import { LeafletMap } from './types';
 
 /**
@@ -14,13 +14,13 @@ import { LeafletMap } from './types';
  * @property id                 DOM ID of a `<div>` element into which to add the map.
  * @property mapType            The base map initially displayed.
  * @property geojson            Path to the GeoJSON file containing the Features to display.
- * @property lineStringStyles   The available styles for GeoJSON LineStrings.
+ * @property lineStringStyles   (Optional) The available styles for GeoJSON LineStrings.
  */
 interface CreateLeafletMapParams {
     id: string;
     mapType: MapID;
     geojson: string;
-    lineStringStyles: LineStringStyle[];
+    lineStringStyles?: LineStringStyle[];
 }
 
 /**
@@ -64,6 +64,11 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
         processGeoJsonFile(geojson, map, lineStringStyle);
     };
 
+    // Set a default LineString style if none was provided.
+    if (!lineStringStyles || lineStringStyles.length === 0) {
+        lineStringStyles = [defaultLineStringStyleConst];
+    }
+
     // Bottom-left:
     //  * Legend Control
     map.legendControl = new ControlLegend({
@@ -73,8 +78,8 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
     }).addTo(map);
 
     // Read the GeoJSON file, processing each Feature individually and adding the results to the map.
-    const defaultLineStringStyle = lineStringStyles[0];
-    processGeoJsonFile(geojson, map, defaultLineStringStyle);
+    const initialLineStringStyle = lineStringStyles[0];
+    processGeoJsonFile(geojson, map, initialLineStringStyle);
 }
 
 export {

@@ -5,7 +5,9 @@ import L from 'leaflet';
  * Type alias for the threshold values to check for in a property of a GeoJSON LineString Feature,
  * and the CSS style to apply to each point within a threshold.
  */
-export type ThresholdStyles = Map<number | string | undefined, { [key: string]: string }>;
+export type ThresholdKey = number | string | undefined;
+export type CssStyle = { [key: string]: string };
+export type ThresholdStyles = Map<ThresholdKey, CssStyle>;
 
 /**
  * Type alias for a function that will extract a certain property of a GeoJSON LineString Feature or Leaflet Polyline.
@@ -15,7 +17,7 @@ export type ThresholdStyles = Map<number | string | undefined, { [key: string]: 
  * @return The values of a certain property, as a flattened array.
  *         There **MUST** be one value for each point/LatLng in the LineString/Polyline.
  */
-type GetParameterValuesFunc = (leafletLayer: L.Polyline, geoJsonFeature: Feature) => (number | string | undefined)[];
+type GetParameterValuesFunc = (leafletLayer: L.Polyline, geoJsonFeature: Feature) => ThresholdKey[];
 
 /**
  * Type alias for each available GeoJSON LineString style.
@@ -93,6 +95,14 @@ export const getLineStringTransport: GetParameterValuesFunc = (leafletLayer, geo
         });
 };
 
+export const defaultLineStringStyleConst: LineStringStyle = {
+    name: 'Single colour',
+    func: getLineStringConst, // 'Track' for each track point
+    thresholds: new Map([
+        ['Track', { color: '#E60000' }], // Electric Red
+    ]),
+};
+
 /**
  * Build the "multiOptions" item to apply the chosen style to a MultiOptionsPolyline.
  *
@@ -102,7 +112,7 @@ export const getLineStringTransport: GetParameterValuesFunc = (leafletLayer, geo
  * @property thresholds - The thresholds for the chosen LineString colour scheme.
  * @return The "multiOptions" object to use for building a MultiOptionsPolyline.
  */
-const buildMultiOptions = (values: (number | string | undefined)[], thresholds: ThresholdStyles): L.MultiOptions => ({
+const buildMultiOptions = (values: ThresholdKey[], thresholds: ThresholdStyles): L.MultiOptions => ({
     // A list of the given CSS styles.
     options: [...thresholds.values()],
 
@@ -120,7 +130,7 @@ const buildMultiOptions = (values: (number | string | undefined)[], thresholds: 
             return defaultIndex;
         } else if (typeof latLngAttrVal === 'string') {
             const thresholdKeys = [...thresholds.keys()];
-            for (let i = 0; i < thresholdKeys.length - 1; ++i) {
+            for (let i = 0; i < thresholdKeys.length; i++) {
                 if (latLngAttrVal === thresholdKeys[i]) {
                     return i;
                 }
@@ -128,7 +138,7 @@ const buildMultiOptions = (values: (number | string | undefined)[], thresholds: 
             return defaultIndex;
         } else if (typeof latLngAttrVal === 'number') {
             const thresholdKeys = [...thresholds.keys()];
-            for (let i = 0; i < thresholdKeys.length - 1; ++i) {
+            for (let i = 0; i < thresholdKeys.length; i++) {
                 if (latLngAttrVal <= Number(thresholdKeys[i] ?? defaultIndex)) {
                     return i;
                 }

@@ -1,6 +1,6 @@
 import L from 'leaflet';
 
-import { LineStringStyle } from './layers-polyline';
+import { CssStyle, LineStringStyle, ThresholdKey, ThresholdStyles } from './layers-polyline';
 
 /**
  * Callback function to apply a new LineString style.
@@ -82,6 +82,9 @@ export default class ControlLegend extends L.Control {
             opt.value = index.toString();
             opt.innerHTML = style.name;
         });
+        if (this.supportedStyles.length <= 1) {
+            this.styleSelector.disabled = true;
+        }
 
         // Create a wrapper div to display the legend content.
         this.legendText = L.DomUtil.create('div', 'leaflet-control-legend-content', this.legend);
@@ -107,7 +110,7 @@ export default class ControlLegend extends L.Control {
     /**
      * Add an item to the legend content.
      */
-    addLegendItem = (colour: string, label: string) => {
+    private addLegendItem = (colour: string, label: string) => {
         if (!this.legendText) {
             return;
         }
@@ -117,6 +120,33 @@ export default class ControlLegend extends L.Control {
             `<i style="background: ${colour}; ${this.legendBlockCss}"></i>` +
             `<span>${label}</span>` +
             '</div>';
+    };
+
+    /**
+     * Add all line thresholds to the legend.
+     */
+    addLegendItems = (lineStyleThresholds: ThresholdStyles) => {
+        let lineStyleThresholdsArray: [ThresholdKey, CssStyle][];
+        if ([...lineStyleThresholds.keys()].includes(undefined)) {
+            // Show the "undefined" entries at the end of the list.
+            lineStyleThresholdsArray = [
+                ...[...lineStyleThresholds.entries()].filter(([k, _v]) => typeof k !== 'undefined'),
+                ...[...lineStyleThresholds.entries()].filter(([k, _v]) => typeof k === 'undefined'),
+            ];
+        } else {
+            // Show the original entry order.
+            lineStyleThresholdsArray = [...lineStyleThresholds.entries()];
+        }
+
+        lineStyleThresholdsArray.forEach(([thresholdLabel, cssStyles]) => {
+            if (typeof cssStyles.color !== 'undefined') {
+                this.addLegendItem(cssStyles.color, (thresholdLabel ?? '(undefined)').toString());
+            }
+        });
+
+        if (this.supportedStyles.length > 1 && this.styleSelector) {
+            this.styleSelector.disabled = false;
+        }
     };
 
     /**

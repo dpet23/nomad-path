@@ -169,11 +169,7 @@ function showGeoJsonDataOnMap(
     });
 
     // Add line thresholds to the legend.
-    lineStyleThresholds.forEach((cssStyles, thresholdLabel) => {
-        if (typeof cssStyles.color !== 'undefined' && map.legendControl?.addLegendItem) {
-            map.legendControl.addLegendItem(cssStyles.color, (thresholdLabel ?? 'undefined').toString());
-        }
-    });
+    map.legendControl?.addLegendItems(lineStyleThresholds);
 
     // Add new layers to the Map and Layers Control.
     for (const [layerGroupName, layerGroup] of Object.entries(layerGroups)) {
@@ -221,11 +217,6 @@ export default function processGeoJsonFile(geojson: string, map: LeafletMap, lin
                 alert(`Failed to fetch "${geojson}": ${error.status} ${error.statusText}`);
             } else {
                 console.error(error);
-            }
-        })
-        .finally(() => {
-            if (map.legendControl?.styleSelector) {
-                map.legendControl.styleSelector.disabled = false;
             }
         });
 }
