@@ -11,12 +11,19 @@ It can be initialized like this:
 
 ```html
 <script type="module">
-    import createLeafletMap from './dist/leaflet-map.esm.js';
+    import createLeafletMap, { getLineStringConst } from './dist/leaflet-map.esm.js';
 
     createLeafletMap({
         id: 'map',
         geojson: 'data.geojson',
-        lineStringStyles = [
+        lineStringStyles: [
+            {
+                name: 'Single colour',
+                func: getLineStringConst,
+                thresholds: new Map([
+                    ['Track', '#E60000'],
+                ]),
+            },
             // ...
         ],
     });
@@ -64,11 +71,11 @@ Some callback functions are provided for convenience:
 * `getLineStringAltitude`: Extracts altitude (in metres) from each point
 * `getLineStringConst`: Returns `Track` for each point
 * `getLineStringHourOfDay`: Extracts the hour of day (in UTC) from GeoJSON
-  (`$.features[?(/LineString/.test(@.geometry.type))].properties.coordinateProperties.times`)
+  * JSONPath: `$.features[?(/LineString/.test(@.geometry.type))].properties.coordinateProperties.times`
 * `getLineStringSpeed`: Extracts speed (in km/h) from GeoJSON
-  (`$.features[?(/LineString/.test(@.geometry.type))].properties.coordinateProperties.speeds`)
+  * JSONPath: `$.features[?(/LineString/.test(@.geometry.type))].properties.coordinateProperties.speeds`
 * `getLineStringTransport`: Extracts transport mode from GeoJSON
-  (`$.features[?(/LineString/.test(@.geometry.type))].properties.transport[0]`)
+  * JSONPath: `$.features[?(/LineString/.test(@.geometry.type))].properties.transport[0]`
 
 ## Development
 
