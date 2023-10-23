@@ -3,11 +3,10 @@ import L from 'leaflet';
 
 /**
  * Type alias for the threshold values to check for in a property of a GeoJSON LineString Feature,
- * and the CSS style to apply to each point within a threshold.
+ * and the CSS color to apply to each point within a threshold.
  */
 export type ThresholdKey = number | string | undefined;
-export type CssStyle = { [key: string]: string };
-export type ThresholdStyles = Map<ThresholdKey, CssStyle>;
+export type ThresholdStyles = Map<ThresholdKey, string>;
 
 /**
  * Type alias for a function that will extract a certain property of a GeoJSON LineString Feature or Leaflet Polyline.
@@ -20,7 +19,7 @@ export type ThresholdStyles = Map<ThresholdKey, CssStyle>;
 type GetParameterValuesFunc = (leafletLayer: L.Polyline, geoJsonFeature: Feature) => ThresholdKey[];
 
 /**
- * Type alias for each available GeoJSON LineString style.
+ * A colour scheme for GeoJSON LineStrings.
  *
  * @property name - The style name, displayed in the Legend Control.
  * @property func - Function to extract a certain property from a GeoJSON LineString Feature or Leaflet Polyline.
@@ -99,7 +98,7 @@ export const defaultLineStringStyleConst: LineStringStyle = {
     name: 'Single colour',
     func: getLineStringConst, // 'Track' for each track point
     thresholds: new Map([
-        ['Track', { color: '#E60000' }], // Electric Red
+        ['Track', '#E60000'], // Electric Red
     ]),
 };
 
@@ -114,7 +113,7 @@ export const defaultLineStringStyleConst: LineStringStyle = {
  */
 const buildMultiOptions = (values: ThresholdKey[], thresholds: ThresholdStyles): L.MultiOptions => ({
     // A list of the given CSS styles.
-    options: [...thresholds.values()],
+    options: [...thresholds.values()].map(thresholdColor => ({ color: thresholdColor })),
 
     // Function to determine which CSS style to apply.
     // Called for each Leaflet LatLng in a Polyline.

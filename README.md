@@ -56,9 +56,8 @@ For each style in the array, the expected fields are:
     * Type: `(leafletLayer: L.Polyline, geoJsonFeature: Feature) => (number | string | undefined)[]`
     * Should return a flattened array of a property's value for each point/LatLng.
       There *must* be one value for each point.
-* thresholds - The threshold values to check in the extracted property values, and the CSS style to apply.
-    * This must be a map of the value to check (`number | string | undefined`)
-      to the CSS styles as an object (`{ [key: string]: string }`).
+* thresholds - The threshold values to check in the extracted property values, and the color to apply.
+    * This must be a map of the value to check (`number | string | undefined`), to the CSS hex color.
 
 Some callback functions are provided for convenience:
 

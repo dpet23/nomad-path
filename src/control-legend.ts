@@ -1,6 +1,6 @@
 import L from 'leaflet';
 
-import { CssStyle, LineStringStyle, ThresholdKey, ThresholdStyles } from './layers-polyline';
+import { LineStringStyle, ThresholdKey, ThresholdStyles } from './layers-polyline';
 
 /**
  * Callback function to apply a new LineString style.
@@ -126,7 +126,7 @@ export default class ControlLegend extends L.Control {
      * Add all line thresholds to the legend.
      */
     addLegendItems = (lineStyleThresholds: ThresholdStyles) => {
-        let lineStyleThresholdsArray: [ThresholdKey, CssStyle][];
+        let lineStyleThresholdsArray: [ThresholdKey, string][];
         if ([...lineStyleThresholds.keys()].includes(undefined)) {
             // Show the "undefined" entries at the end of the list.
             lineStyleThresholdsArray = [
@@ -138,10 +138,8 @@ export default class ControlLegend extends L.Control {
             lineStyleThresholdsArray = [...lineStyleThresholds.entries()];
         }
 
-        lineStyleThresholdsArray.forEach(([thresholdLabel, cssStyles]) => {
-            if (typeof cssStyles.color !== 'undefined') {
-                this.addLegendItem(cssStyles.color, (thresholdLabel ?? '(undefined)').toString());
-            }
+        lineStyleThresholdsArray.forEach(([thresholdLabel, cssColor]) => {
+            this.addLegendItem(cssColor, (thresholdLabel ?? '(undefined)').toString());
         });
 
         if (this.supportedStyles.length > 1 && this.styleSelector) {
