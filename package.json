@@ -1,6 +1,6 @@
 {
   "name": "leaflet-map",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Simple library for creating a Leaflet map",
   "author": "dpet23",
   "repository": {
