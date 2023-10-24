@@ -1,5 +1,6 @@
 import L from 'leaflet';
 
+import ControlFullScreen from './control-fullscreen';
 import ControlLayers from './control-layers';
 import ControlLegend, { OnStyleChangeFunc } from './control-legend';
 import ControlReset from './control-reset';
@@ -34,13 +35,16 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
         center: [0, 0], // FUTURE: dynamically calculate after adding the GeoJSON layers
         zoom: 3,
         worldCopyJump: true,
+        attributionControl: true,
+        zoomControl: true,
     });
 
     // Top-left:
-    //  * Scale Control
+    //  * Zoom Control
     //  * Map view reset
-    map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
+    //  * Fullscreen Control
     map.resetControl = new ControlReset({ position: 'topleft' }).addTo(map);
+    map.fullScreenControl = new ControlFullScreen({ position: 'topleft' }).addTo(map);
 
     // Bottom-right:
     //  * Attribution Control
@@ -71,11 +75,13 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
 
     // Bottom-left:
     //  * Legend Control
+    //  * Scale Control
     map.legendControl = new ControlLegend({
         position: 'bottomleft',
         supportedStyles: lineStringStyles,
         onStyleChange: reprocessGeoJsonFile,
     }).addTo(map);
+    map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
 
     // Read the GeoJSON file, processing each Feature individually and adding the results to the map.
     const initialLineStringStyle = lineStringStyles[0];
