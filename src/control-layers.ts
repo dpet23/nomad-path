@@ -38,7 +38,7 @@ export default class ControlLayers extends L.Control.Layers {
      *
      * @return The details of each overlay layer.
      */
-    getLayers({ overlay }: { overlay?: boolean }): MapLayerDetails[] {
+    getLayers = ({ overlay }: { overlay?: boolean }): MapLayerDetails[] => {
         const layers: MapLayerDetails[] = [];
 
         this._layers.forEach(obj => {
@@ -52,5 +52,5 @@ export default class ControlLayers extends L.Control.Layers {
         });
 
         return layers;
-    }
+    };
 }

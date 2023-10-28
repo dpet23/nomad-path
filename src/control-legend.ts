@@ -45,7 +45,7 @@ export default class ControlLegend extends L.Control {
      *
      * Called by Leaflet when adding the Control to a Map.
      *
-     * @param _map (Unused) The Leaflet Map.
+     * @param _map - (Unused) The Leaflet Map.
      * @return A div element containing the legend content.
      */
     onAdd = (_map: L.Map): HTMLDivElement => {
@@ -90,7 +90,7 @@ export default class ControlLegend extends L.Control {
         this.legendText = L.DomUtil.create('div', 'leaflet-control-legend-content', this.legend);
 
         // Redraw the GeoJSON data when the legend style changes.
-        L.DomEvent.on(this.styleSelector, 'change', event => {
+        L.DomEvent.addListener(this.styleSelector, 'change', event => {
             const styleSelector = event.currentTarget as HTMLSelectElement;
 
             const lineStyleIndex = parseInt(styleSelector.value, 10);

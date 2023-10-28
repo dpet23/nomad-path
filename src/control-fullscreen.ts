@@ -11,8 +11,8 @@ export default class ControlFullScreen extends L.Control {
      *
      * Called by Leaflet when adding the Control to a Map.
      *
-     * @param _map (Unused) The Leaflet Map.
-     * @return The div element that toggles fullscreen.
+     * @param _map - (Unused) The Leaflet Map.
+     * @return The wrapper element for toggling fullscreen.
      */
     onAdd = (_map: L.Map): HTMLDivElement => {
         // Create wrapper div to display the button.
@@ -58,7 +58,7 @@ export default class ControlFullScreen extends L.Control {
      * @see https://developer.mozilla.org/en-US/docs/Web/API/Fullscreen_API
      * @note Some browsers use vendor prefixes for the Fullscreen API, need to check which implementation is available.
      *
-     * @param event Button click event to handle.
+     * @param event - Button click event to handle.
      */
     private toggleFullScreen = (event: Event) => {
         // Prevent default action (navigating to a link).
@@ -108,7 +108,7 @@ export default class ControlFullScreen extends L.Control {
         this.fullscreenButton?.classList.toggle('fa-compress');
     };
 
-    /* Icons from Font Awesome v6.4.0 */
+    /* Icons from Font Awesome 6 */
     private faExpandSvg =
         // eslint-disable-next-line max-len
         'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBkPSJNMzIgMzJDMTQuMyAzMiAwIDQ2LjMgMCA2NHY5NmMwIDE3LjcgMTQuMyAzMiAzMiAzMnMzMi0xNC4zIDMyLTMyVjk2aDY0YzE3LjcgMCAzMi0xNC4zIDMyLTMycy0xNC4zLTMyLTMyLTMySDMyek02NCAzNTJjMC0xNy43LTE0LjMtMzItMzItMzJzLTMyIDE0LjMtMzIgMzJ2OTZjMCAxNy43IDE0LjMgMzIgMzIgMzJoOTZjMTcuNyAwIDMyLTE0LjMgMzItMzJzLTE0LjMtMzItMzItMzJINjRWMzUyek0zMjAgMzJjLTE3LjcgMC0zMiAxNC4zLTMyIDMyczE0LjMgMzIgMzIgMzJoNjR2NjRjMCAxNy43IDE0LjMgMzIgMzIgMzJzMzItMTQuMyAzMi0zMlY2NGMwLTE3LjctMTQuMy0zMi0zMi0zMkgzMjB6TTQ0OCAzNTJjMC0xNy43LTE0LjMtMzItMzItMzJzLTMyIDE0LjMtMzIgMzJ2NjRIMzIwYy0xNy43IDAtMzIgMTQuMy0zMiAzMnMxNC4zIDMyIDMyIDMyaDk2YzE3LjcgMCAzMi0xNC4zIDMyLTMyVjM1MnoiLz48L3N2Zz4=';

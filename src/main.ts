@@ -49,7 +49,7 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
     new ControlZoom({ position: 'topleft' }).addTo(map);
     map.fullScreenControl = new ControlFullScreen({ position: 'topleft' }).addTo(map);
 
-    // Bottom-right:
+    // Bottom-right (add in reverse order):
     //  * Attribution Control
     map.attributionControl.setPrefix('<a target="_blank" href="https://leafletjs.com">Leaflet</a>');
 
@@ -78,15 +78,15 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
         lineStringStyles = [defaultLineStringStyleConst];
     }
 
-    // Bottom-left:
+    // Bottom-left (add in reverse order):
     //  * Legend Control
     //  * Scale Control
+    map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
     map.legendControl = new ControlLegend({
         position: 'bottomleft',
         supportedStyles: lineStringStyles,
         onStyleChange: reprocessGeoJsonFile,
     }).addTo(map);
-    map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
 
     // Read the GeoJSON file, processing each Feature individually and adding the results to the map.
     const initialLineStringStyle = lineStringStyles[0];

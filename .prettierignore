@@ -1,5 +1,6 @@
 node_modules
 /package.json
+/.eslintrc.json
 /README.md
 
 # Unignore config files like .prettierrc.js, because they're ignored by default

@@ -11,7 +11,7 @@ export default class ControlReset extends L.Control {
      *
      * Called by Leaflet when adding the Control to a Map.
      *
-     * @param map The Leaflet Map.
+     * @param map - The Leaflet Map.
      * @return The wrapper element for resetting the map view.
      */
     onAdd = (map: L.Map): HTMLDivElement => {
@@ -47,7 +47,7 @@ export default class ControlReset extends L.Control {
     /**
      * Set the view of the map.
      *
-     * @param event Button click event to handle.
+     * @param event - Button click event to handle.
      */
     private resetMapView = (event: Event) => {
         // Prevent default action (navigating to a link).

@@ -24,8 +24,8 @@ export default class ControlZoom extends L.Control.Zoom {
      *
      * Called by Leaflet when adding the Control to a Map.
      *
-     * @param map The Leaflet Map.
-     * @return The wrapper element for resetting the map view.
+     * @param map - The Leaflet Map.
+     * @return The wrapper element for changing the map zoom level.
      */
     onAdd = (map: L.Map): HTMLElement => {
         this.map = map;
@@ -41,7 +41,8 @@ export default class ControlZoom extends L.Control.Zoom {
     };
 
     /**
-     * Add a set of bars to the Zoom Control to indicate the current zoom level,
+     * Add a set of bars to the Zoom Control
+     * to indicate the current and supported zoom levels,
      * and to allow quick zoom changes.
      */
     private createZoomBars = () => {
@@ -66,7 +67,7 @@ export default class ControlZoom extends L.Control.Zoom {
         for (let zoomLevel = this.barMaxZoom; zoomLevel >= this.barMinZoom; zoomLevel--) {
             const zoomBar = L.DomUtil.create('a', this.classZoomBar, this.zoomBarContainer);
             zoomBar.id = `zoom-bar-${zoomLevel}`;
-            zoomBar.title = `zoom level ${zoomLevel}`;
+            zoomBar.title = `Zoom level ${zoomLevel}`;
             zoomBar.href = '#';
             L.DomEvent.addListener(zoomBar, 'click', this.setMapZoom);
 
@@ -117,7 +118,7 @@ export default class ControlZoom extends L.Control.Zoom {
     /**
      * Set the zoom level of the map.
      *
-     * @param event Button click event to handle.
+     * @param event - Button click event to handle.
      */
     private setMapZoom = (event: Event) => {
         // Prevent default action (navigating to a link).
@@ -158,7 +159,7 @@ export default class ControlZoom extends L.Control.Zoom {
     /**
      * Enable or disable the zoom bars on base layer change.
      *
-     * @param event Map baselayerchange event to handle.
+     * @param event - Map baselayerchange event to handle.
      */
     private onMapBaseLayerChange = (event: L.LayersControlEvent) => {
         if (!this.zoomBarContainer) {
@@ -181,7 +182,7 @@ export default class ControlZoom extends L.Control.Zoom {
     /**
      * Enable or disable the zoom bars on a zoom change.
      *
-     * @param event Map zoomend event to handle.
+     * @param event - Map zoomend event to handle.
      */
     private onMapZoomEnd = (event: L.LeafletEvent) => {
         if (!this.zoomBarContainer) {
@@ -196,7 +197,6 @@ export default class ControlZoom extends L.Control.Zoom {
         for (const zoomBar of this.zoomBarContainer.children) {
             const zoomLevel = this.getZoomBarLevel(zoomBar as HTMLAnchorElement);
 
-            // TODO: handle fractional zooms
             if (zoomLevel === currentZoomLevel) {
                 zoomBar.classList.add(this.classZoomBarSelected);
             } else {
