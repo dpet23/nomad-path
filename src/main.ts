@@ -4,6 +4,7 @@ import ControlFullScreen from './control-fullscreen';
 import ControlLayers from './control-layers';
 import ControlLegend, { OnStyleChangeFunc } from './control-legend';
 import ControlReset from './control-reset';
+import ControlZoom from './control-zoom';
 import defineBaseMapLayers, { BaseMapLayers, MapID } from './layers-base';
 import processGeoJsonFile from './layers-geojson';
 import { defaultLineStringStyleConst, LineStringStyle } from './layers-polyline';
@@ -36,24 +37,24 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
         zoom: 3,
         worldCopyJump: true,
         attributionControl: true,
-        zoomControl: true,
+        zoomControl: false,
+        zoomSnap: 0.5,
     });
 
     // Top-left:
-    //  * Zoom Control
     //  * Map view reset
+    //  * Zoom Control
     //  * Fullscreen Control
     map.resetControl = new ControlReset({ position: 'topleft' }).addTo(map);
+    new ControlZoom({ position: 'topleft' }).addTo(map);
     map.fullScreenControl = new ControlFullScreen({ position: 'topleft' }).addTo(map);
 
     // Bottom-right:
     //  * Attribution Control
     map.attributionControl.setPrefix('<a target="_blank" href="https://leafletjs.com">Leaflet</a>');
 
-    // Define the available base map layers,
-    // and set the default type by adding it to the map.
+    // Define the available base map layers.
     const baseMaps: BaseMapLayers = defineBaseMapLayers();
-    map.addLayer((baseMaps[mapType] ?? baseMaps.BLUEMARBLE).tileLayer);
 
     // Top-right:
     //  * Layers Control (TODO: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol)
@@ -62,6 +63,10 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
         baseMapControlDetails[baseLayerDetail.menuName] = baseLayerDetail.tileLayer;
     }
     map.layerControl = new ControlLayers(baseMapControlDetails, undefined, { collapsed: true }).addTo(map);
+
+    // Set the default base map layer by adding it to the map.
+    // Fires a `baselayerchange` event for the map.
+    map.addLayer((baseMaps[mapType] ?? baseMaps.BLUEMARBLE).tileLayer);
 
     // Partial function for calling `processGeoJsonFile`, with pre-populated params for `geojson` and `map`.
     const reprocessGeoJsonFile: OnStyleChangeFunc = lineStringStyle => {

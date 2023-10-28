@@ -1,13 +1,13 @@
 import L from 'leaflet';
 
 /**
- * The details of each overlay layer.
+ * The details of a layer in the ControlLayers.
  *
  * @property name - The name of the layer, displayed in the Control.
  * @property layer - The Leaflet Layer object.
  * @property enabled - Whether the layer is currently displayed on the map.
  */
-type OverlayDetails = {
+type MapLayerDetails = {
     name: string;
     layer: L.Layer;
     enabled: boolean;
@@ -38,11 +38,11 @@ export default class ControlLayers extends L.Control.Layers {
      *
      * @return The details of each overlay layer.
      */
-    getOverlays(): OverlayDetails[] {
-        const layers: OverlayDetails[] = [];
+    getLayers({ overlay }: { overlay?: boolean }): MapLayerDetails[] {
+        const layers: MapLayerDetails[] = [];
 
         this._layers.forEach(obj => {
-            if (obj.overlay) {
+            if (obj.overlay === overlay) {
                 layers.push({
                     name: obj.name,
                     layer: obj.layer,

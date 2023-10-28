@@ -152,7 +152,7 @@ function showGeoJsonDataOnMap(
     if (map.legendControl?.resetLegendContent) {
         map.legendControl.resetLegendContent();
     }
-    map.layerControl?.getOverlays().forEach(overlayDetails => {
+    map.layerControl?.getLayers({ overlay: true }).forEach(overlayDetails => {
         // Save the current enabled state into the new GeoJSON data,
         // for each group with the same name that already exists.
         if (typeof layerGroups[overlayDetails.name] !== 'undefined') {
