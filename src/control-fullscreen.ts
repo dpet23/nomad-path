@@ -6,6 +6,11 @@ import L from 'leaflet';
 export default class ControlFullScreen extends L.Control {
     private fullscreenButton?: HTMLAnchorElement;
 
+    private classFullScreenWrapper = 'leaflet-control-fullscreen';
+    private classFullScreenButton = 'leaflet-control-fullscreen-button';
+    private classFaExpand = 'fa-expand';
+    private classFaCompress = 'fa-compress';
+
     /**
      * Callback function to define the Control's container.
      *
@@ -17,14 +22,14 @@ export default class ControlFullScreen extends L.Control {
     onAdd = (_map: L.Map): HTMLDivElement => {
         // Create wrapper div to display the button.
         // Use Leaflet's button styles.
-        const container = L.DomUtil.create('div', 'leaflet-control-fullscreen leaflet-bar');
+        const container = L.DomUtil.create('div', `${this.classFullScreenWrapper} leaflet-bar`);
 
         // Don't propagate any events on the wrapper.
         L.DomEvent.disableClickPropagation(container);
 
         // Create the button to trigger a fullscreen mode change.
         const title = 'Toggle fullscreen';
-        this.fullscreenButton = L.DomUtil.create('a', 'leaflet-control-fullscreen-button', container);
+        this.fullscreenButton = L.DomUtil.create('a', this.classFullScreenButton, container);
         this.fullscreenButton.href = '#';
         this.fullscreenButton.title = title;
         this.fullscreenButton.setAttribute('role', 'button');
@@ -34,14 +39,37 @@ export default class ControlFullScreen extends L.Control {
         // Add custom CSS for the icons.
         document.head.insertAdjacentHTML(
             'beforeend',
-            // eslint-disable-next-line max-len
-            `<style>.fa-expand{content:url(${this.faExpandSvg})}.fa-compress{content:url(${this.faCompressSvg})}</style>`,
+            '<style>' +
+                `.${this.classFullScreenWrapper}{` +
+                'background-color:white;' +
+                '}' +
+                `.${this.classFullScreenWrapper}:hover,` +
+                `.${this.classFullScreenWrapper}:focus{` +
+                'background-color:#f4f4f4;' +
+                '}' +
+                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaExpand}{` +
+                `-webkit-mask:url(${this.faExpandSvg});` +
+                `mask:url(${this.faExpandSvg});` +
+                '}' +
+                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaCompress}{` +
+                `-webkit-mask:url(${this.faCompressSvg});` +
+                `mask:url(${this.faCompressSvg});` +
+                '}' +
+                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaExpand},` +
+                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaCompress}{` +
+                '-webkit-mask-size:19px;' +
+                'mask-size:19px;' +
+                '-webkit-mask-position:center;' +
+                'mask-position:center;' +
+                '-webkit-mask-repeat:no-repeat;' +
+                'mask-repeat:no-repeat;' +
+                'background-color:black;' +
+                '}' +
+                '</style>',
         );
 
-        // Set the initial icon, and the styles to display the icon.
-        this.fullscreenButton.classList.add('fa-expand');
-        this.fullscreenButton.style.boxSizing = 'border-box';
-        this.fullscreenButton.style.padding = '5px';
+        // Set the initial icon.
+        this.fullscreenButton.classList.add(this.classFaExpand);
 
         // Toggle full-screen mode when pressing the button.
         L.DomEvent.addListener(this.fullscreenButton, 'click', this.toggleFullScreen);
@@ -104,8 +132,8 @@ export default class ControlFullScreen extends L.Control {
      */
     private onFullScreenChange = () => {
         // Change the button's icon.
-        this.fullscreenButton?.classList.toggle('fa-expand');
-        this.fullscreenButton?.classList.toggle('fa-compress');
+        this.fullscreenButton?.classList.toggle(this.classFaExpand);
+        this.fullscreenButton?.classList.toggle(this.classFaCompress);
     };
 
     /* Icons from Font Awesome 6 */
