@@ -1,6 +1,6 @@
 import L from 'leaflet';
 
-import { LineStringStyle, ThresholdKey, ThresholdStyles } from './layers-polyline';
+import { LineStringStyle, ThresholdKey, ThresholdStyles } from '../Layers/MultiOptionsPolyline';
 
 /**
  * Callback function to apply a new LineString style.
