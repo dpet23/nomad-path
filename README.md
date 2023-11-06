@@ -10,24 +10,41 @@ The library has a single JS file that must be imported.
 It can be initialized like this:
 
 ```html
-<script type="module">
-    import createLeafletMap, { getLineStringConst } from './dist/leaflet-map.esm.js';
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+    <!-- A div in which to place the map. Must be empty. -->
+    <div id="map"></div>
 
-    createLeafletMap({
-        id: 'map',
-        geojson: 'data.geojson',
-        lineStringStyles: [
-            {
-                name: 'Single colour',
-                func: getLineStringConst,
-                thresholds: new Map([
-                    ['Track', '#E60000'],
-                ]),
-            },
-            // ...
-        ],
-    });
-</script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/Leaflet.MultiOptionsPolyline@1.0.0/Leaflet.MultiOptionsPolyline.js"></script>
+
+    <script type="module">
+        import createLeafletMap, { getLineStringConst } from './dist/leaflet-map.esm.js';
+
+        // Create the map and draw the data from the GeoJSON file.
+        const leafletMap = createLeafletMap({
+            id: 'map',
+            geojson: 'data.geojson',
+            lineStringStyles: [
+                {
+                    name: 'Single colour',
+                    func: getLineStringConst,
+                    thresholds: new Map([
+                        ['Track', '#E60000'],
+                    ]),
+                },
+                // ...
+            ],
+        });
+
+        // Optionally change map settings.
+        leafletMap.attributionControl.addAttribution(
+            'GPS data recorded with <a target="_blank" href="www.example.com">Example</a>'
+        );
+    </script>
+</body>
 ```
 
 ### Options
