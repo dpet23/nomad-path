@@ -108,9 +108,8 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 | `npm run lint` | Run [ESLint](https://www.npmjs.com/package/eslint) over the `src` files (includes [Prettier](https://www.npmjs.com/package/eslint-plugin-prettier) and [SonarJS](https://www.npmjs.com/package/eslint-plugin-sonarjs)) |
 | `npm run lint:fix` | Run the lint check and automatically fix problems |
 | `npm version [major\|minor\|patch]` | Version bump _(in `package.json`)_ |
-| `npm run build` | Build the library for production to the `build` folder |
-| `npm run package` | Bundle the production packages into a single ES Module, in the `dist` folder |
-| `npm run dist` | Wrapper for `build && package`<br>Build the library for production and bundle into a single ES Module |
+| `npm run build` | Compile the TypeScript code into JavaScript (for development only) |
+| `npm run dist` | Build the library for production as a single ES Module, in the `dist` folder |
 
 `npx` is used to execute npm packages that haven't been installed globally.
 `nvm` can be used to manage the current version of Node.
