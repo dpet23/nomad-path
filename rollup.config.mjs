@@ -5,8 +5,10 @@
 import fs from 'fs';
 
 import typescript from 'rollup-plugin-typescript2';
+import scss from 'rollup-plugin-scss'
 
 const OUTPUT_DIR = 'dist';
+const OUTPUT_BASE_NAME = 'leaflet-map';
 
 /**
  * Rollup plugin to remove external imports from the generated bundle.
@@ -41,6 +43,13 @@ export default {
         typescript({
             abortOnError: true,
         }),
+
+        // Call the Sass compiler.
+        scss({
+            fileName: `${OUTPUT_BASE_NAME}.css`, // in same dir as js output
+            verbose: true,
+            failOnError: true,
+        }),
     ],
 
     // Don't package external dependencies.
@@ -49,7 +58,7 @@ export default {
     ],
 
     output: {
-        file: `${OUTPUT_DIR}/leaflet-map.esm.js`,
+        file: `${OUTPUT_DIR}/${OUTPUT_BASE_NAME}.esm.js`,
         format: 'esm',
         validate: true,
 

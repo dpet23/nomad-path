@@ -12,6 +12,7 @@ It can be initialized like this:
 ```html
 <head>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="./dist/leaflet-map.css" />
 </head>
 <body>
     <!-- A div in which to place the map. Must be empty. -->
@@ -125,7 +126,7 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 | `npm run lint` | Run [ESLint](https://www.npmjs.com/package/eslint) over the `src` files (includes [Prettier](https://www.npmjs.com/package/eslint-plugin-prettier) and [SonarJS](https://www.npmjs.com/package/eslint-plugin-sonarjs)) |
 | `npm run lint:fix` | Run the lint check and automatically fix problems |
 | `npm version [major\|minor\|patch]` | Version bump _(in `package.json`)_ |
-| `npm run build` | Compile the TypeScript code into JavaScript (for development only) |
+| `npm run build` | Compile the TypeScript code into JavaScript and the Sass code into CSS (for development only) |
 | `npm run dist` | Build the library for production as a single ES Module, in the `dist` folder |
 
 `npx` is used to execute npm packages that haven't been installed globally.
