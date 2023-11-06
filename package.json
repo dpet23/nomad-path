@@ -14,8 +14,10 @@
   ],
   "main": "map-leaflet.ts",
   "scripts": {
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "npm run lint -- --fix",
+    "lint:ts": "eslint src --ext .ts",
+    "lint:css": "stylelint '**/*.?(s)css'",
+    "lint": "npm run lint:ts && npm run lint:css",
+    "lint:fix": "npm run lint:ts -- --fix && npm run lint:css -- --fix",
     "build:ts": "tsc",
     "build:css": "sass --verbose --no-source-map --update src:./build/main.css",
     "build": "npm run build:ts && npm run build:css",
@@ -43,6 +45,10 @@
     "rollup-plugin-scss": "^4.0.0",
     "rollup-plugin-typescript2": "^0.36.0",
     "sass": "^1.69.5",
+    "stylelint": "^15.11.0",
+    "stylelint-config-sass-guidelines": "^10.0.0",
+    "stylelint-config-standard": "^34.0.0",
+    "stylelint-prettier": "^4.0.2",
     "typescript": "^5.2.2"
   }
 }
