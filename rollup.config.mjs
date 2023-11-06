@@ -3,9 +3,8 @@
  */
 
 import fs from 'fs';
-
+import scss from 'rollup-plugin-scss';
 import typescript from 'rollup-plugin-typescript2';
-import scss from 'rollup-plugin-scss'
 
 const OUTPUT_DIR = 'dist';
 const OUTPUT_BASE_NAME = 'leaflet-map';
@@ -15,21 +14,17 @@ const OUTPUT_BASE_NAME = 'leaflet-map';
  */
 const removeExternalExports = () => ({
     name: 'Remove external imports',
-    writeBundle(options, bundle) {
+    writeBundle: (options, bundle) => {
         for (const [fileName, chunkOrAsset] of Object.entries(bundle)) {
             if (!options.file.endsWith(fileName)) {
                 continue;
             }
             const content = chunkOrAsset.code || chunkOrAsset.source;
-            fs.writeFile(
-                options.file,
-                content.replace(/import.*/, ''),
-                err => {
-                    if (err) {
-                        throw err
-                    }
+            fs.writeFile(options.file, content.replace(/import.*/, ''), err => {
+                if (err) {
+                    throw err;
                 }
-            );
+            });
         }
     },
 });
@@ -53,9 +48,7 @@ export default {
     ],
 
     // Don't package external dependencies.
-    external: [
-        'leaflet',
-    ],
+    external: ['leaflet'],
 
     output: {
         file: `${OUTPUT_DIR}/${OUTPUT_BASE_NAME}.esm.js`,

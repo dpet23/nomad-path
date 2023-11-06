@@ -18,6 +18,7 @@
     "lint:css": "stylelint '**/*.?(s)css'",
     "lint": "npm run lint:ts && npm run lint:css",
     "lint:fix": "npm run lint:ts -- --fix && npm run lint:css -- --fix",
+    "lint:rollup": "eslint rollup.config.mjs --fix",
     "build:ts": "tsc",
     "build:css": "sass --verbose --no-source-map --update src:./build/main.css",
     "build": "npm run build:ts && npm run build:css",
