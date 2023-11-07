@@ -1,20 +1,15 @@
 import L from 'leaflet';
 
-import ControlLayers from './control-layers';
-import ControlLegend, { OnStyleChangeFunc } from './control-legend';
-import ControlReset from './control-reset';
-import defineBaseMapLayers, { BaseMapLayers, MapID } from './layers-base';
-import processGeoJsonFile from './layers-geojson';
-import { defaultLineStringStyleConst, LineStringStyle } from './layers-polyline';
-import { LeafletMap } from './types';
+import ControlLayers from './ControlLayers/ControlLayers';
+import ControlLegend, { OnStyleChangeFunc } from './ControlLegend/ControlLegend';
+import ControlReset from './ControlReset/ControlReset';
+import defineBaseMapLayers, { BaseMapLayers, MapID } from './Layers/BaseMapLayers';
+import processGeoJsonFile from './Layers/GeoJsonFile';
+import { defaultLineStringStyleConst, LineStringStyle } from './Layers/MultiOptionsPolyline';
+import { LeafletMap } from './Types/LeafletMap';
 
 /**
  * Parameters for `createLeafletMap()`.
- *
- * @property id                 DOM ID of a `<div>` element into which to add the map.
- * @property mapType            The base map initially displayed.
- * @property geojson            Path to the GeoJSON file containing the Features to display.
- * @property lineStringStyles   (Optional) The available styles for GeoJSON LineStrings.
  */
 interface CreateLeafletMapParams {
     id: string;
@@ -26,9 +21,18 @@ interface CreateLeafletMapParams {
 /**
  * Create a Leaflet map and display the markers and tracks from a GeoJSON file.
  *
- * @param CreateLeafletMapParams User configuration.
+ * @param props - User configuration.
+ * @param props.id - DOM ID of a `<div>` element into which to add the map.
+ * @param props.mapType - (Optional) The base map initially displayed.
+ * @param props.geojson - Path to the GeoJSON file containing the Features to display.
+ * @param props.lineStringStyles - (Optional) The available styles for GeoJSON LineStrings.
  */
-export default function createLeafletMap({ id, mapType, geojson, lineStringStyles }: CreateLeafletMapParams) {
+export default function createLeafletMap({
+    id,
+    mapType,
+    geojson,
+    lineStringStyles,
+}: CreateLeafletMapParams): LeafletMap {
     // Initialize the Leaflet map into an HTML element.
     const map: LeafletMap = L.map(id, {
         center: [0, 0], // FUTURE: dynamically calculate after adding the GeoJSON layers
@@ -80,6 +84,8 @@ export default function createLeafletMap({ id, mapType, geojson, lineStringStyle
     // Read the GeoJSON file, processing each Feature individually and adding the results to the map.
     const initialLineStringStyle = lineStringStyles[0];
     processGeoJsonFile(geojson, map, initialLineStringStyle);
+
+    return map;
 }
 
 export {
@@ -88,4 +94,4 @@ export {
     getLineStringHourOfDay,
     getLineStringSpeed,
     getLineStringTransport,
-} from './layers-polyline';
+} from './Layers/MultiOptionsPolyline';

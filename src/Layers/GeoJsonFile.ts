@@ -1,8 +1,8 @@
 import { Feature, GeoJsonObject } from 'geojson';
 import L from 'leaflet';
 
-import convertToMultiOptionsPolyline, { LineStringStyle, ThresholdStyles } from './layers-polyline';
-import { LeafletMap } from './types';
+import { LeafletMap } from '../Types/LeafletMap';
+import convertToMultiOptionsPolyline, { LineStringStyle, ThresholdStyles } from './MultiOptionsPolyline';
 
 /**
  * Process a GeoJSON Point Feature into a Leaflet Marker Layer.

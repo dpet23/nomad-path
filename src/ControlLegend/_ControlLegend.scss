@@ -1,0 +1,26 @@
+.leaflet-control-legend {
+    border: solid #666666 1px;
+    background-color: white;
+    opacity: 0.9;
+    padding: 4px;
+
+    .leaflet-control-legend-header {
+        font-weight: bold;
+    }
+
+    .leaflet-control-legend-select {
+        margin: 0.5em 0;
+    }
+
+    .leaflet-control-legend-content-item {
+        line-height: 1.2em;
+    }
+
+    .leaflet-control-legend-content-item-sample {
+        display: inline-block;
+        width: 0.75em;
+        height: 0.75em;
+        border: solid 1px black;
+        margin: 0 0.75em 0 0;
+    }
+}

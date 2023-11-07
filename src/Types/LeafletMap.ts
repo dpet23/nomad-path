@@ -4,9 +4,9 @@
 
 import L from 'leaflet';
 
-import ControlLayers from './control-layers';
-import ControlLegend from './control-legend';
-import ControlReset from './control-reset';
+import ControlLayers from '../ControlLayers/ControlLayers';
+import ControlLegend from '../ControlLegend/ControlLegend';
+import ControlReset from '../ControlReset/ControlReset';
 
 /**
  * Expand Leaflet's Map type, adding custom attributes.
