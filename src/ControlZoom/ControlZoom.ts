@@ -1,6 +1,6 @@
 import L from 'leaflet';
 
-import { LeafletMap } from './types';
+import { LeafletMap } from '../Types/LeafletMap';
 
 /**
  * Leaflet Control for changing the map zoom.

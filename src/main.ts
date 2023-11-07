@@ -1,14 +1,14 @@
 import L from 'leaflet';
 
-import ControlFullScreen from './control-fullscreen';
-import ControlLayers from './control-layers';
-import ControlLegend, { OnStyleChangeFunc } from './control-legend';
-import ControlReset from './control-reset';
-import ControlZoom from './control-zoom';
-import defineBaseMapLayers, { BaseMapLayers, MapID } from './layers-base';
-import processGeoJsonFile from './layers-geojson';
-import { defaultLineStringStyleConst, LineStringStyle } from './layers-polyline';
-import { LeafletMap } from './types';
+import ControlFullScreen from './ControlFullscreen/ControlFullscreen';
+import ControlLayers from './ControlLayers/ControlLayers';
+import ControlLegend, { OnStyleChangeFunc } from './ControlLegend/ControlLegend';
+import ControlReset from './ControlReset/ControlReset';
+import ControlZoom from './ControlZoom/ControlZoom';
+import defineBaseMapLayers, { BaseMapLayers, MapID } from './Layers/BaseMapLayers';
+import processGeoJsonFile from './Layers/GeoJsonFile';
+import { defaultLineStringStyleConst, LineStringStyle } from './Layers/MultiOptionsPolyline';
+import { LeafletMap } from './Types/LeafletMap';
 
 /**
  * Parameters for `createLeafletMap()`.
@@ -105,4 +105,4 @@ export {
     getLineStringHourOfDay,
     getLineStringSpeed,
     getLineStringTransport,
-} from './layers-polyline';
+} from './Layers/MultiOptionsPolyline';

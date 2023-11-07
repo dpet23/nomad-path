@@ -12,6 +12,7 @@ It can be initialized like this:
 ```html
 <head>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="./dist/leaflet-map.min.css" />
 </head>
 <body>
     <!-- A div in which to place the map. Must be empty. -->
@@ -21,7 +22,7 @@ It can be initialized like this:
     <script src="https://unpkg.com/Leaflet.MultiOptionsPolyline@1.0.0/Leaflet.MultiOptionsPolyline.js"></script>
 
     <script type="module">
-        import createLeafletMap, { getLineStringConst } from './dist/leaflet-map.esm.js';
+        import createLeafletMap, { getLineStringConst } from './dist/leaflet-map.min.esm.js';
 
         // Create the map and draw the data from the GeoJSON file.
         const leafletMap = createLeafletMap({
@@ -110,7 +111,7 @@ The main config files are:
 | `package.json` | Main config and list of dependencies |
 | `tsconfig.json` | TypeScript compiler configuration |
 | `rollup.config.mjs` | Rollup configuration for bundling production packages |
-| `.editorconfig`, `.eslint.json`, `.prettierrc` | Code style settings |
+| `.editorconfig`, `.eslint.json`, `.stylelintrc.json`, `.prettierrc` | Code style settings |
 
 ### Common commands
 
@@ -122,12 +123,15 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 | `npm install <package> [--save-dev]` | Install a package & add it to the runtime or development dependencies |
 | `npm uninstall <package>` | Uninstall a package & remove it from the dependencies list |
 | `npm ci` | Install all dependencies from `package-lock.json` (for automated environments) |
-| `npm run lint` | Run [ESLint](https://www.npmjs.com/package/eslint) over the `src` files (includes [Prettier](https://www.npmjs.com/package/eslint-plugin-prettier) and [SonarJS](https://www.npmjs.com/package/eslint-plugin-sonarjs)) |
-| `npm run lint:fix` | Run the lint check and automatically fix problems |
+| `npm run lint` | Run all code linting (ESLint and Stylelint) |
+| `npm run lint:fix` | Run all code linting and automatically fix problems |
+| `npm run lint:ts` | Run [ESLint](https://www.npmjs.com/package/eslint) over the TypeScript files (includes [Prettier](https://www.npmjs.com/package/eslint-plugin-prettier) and [SonarJS](https://www.npmjs.com/package/eslint-plugin-sonarjs)) |
+| `npm run lint:css` | Run [StyleLint](https://www.npmjs.com/package/stylelint) over the SCSS files (includes [Prettier](https://www.npmjs.com/package/stylelint-prettier)) |
 | `npm version [major\|minor\|patch]` | Version bump _(in `package.json`)_ |
-| `npm run build` | Build the library for production to the `build` folder |
-| `npm run package` | Bundle the production packages into a single ES Module, in the `dist` folder |
-| `npm run dist` | Wrapper for `build && package`<br>Build the library for production and bundle into a single ES Module |
+| `npm run build` | Compile the TypeScript code into JavaScript and the Sass code into CSS (for development only) |
+| `npm run dist:expand` | Build the library for production (expanded style), in the `dist` folder |
+| `npm run dist:minify` | Build the library for production (minified style), in the `dist` folder |
+| `npm run dist` | Build the library for production as an ES Module and CSS file, in the `dist` folder |
 
 `npx` is used to execute npm packages that haven't been installed globally.
 `nvm` can be used to manage the current version of Node.
