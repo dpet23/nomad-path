@@ -12,7 +12,7 @@ It can be initialized like this:
 ```html
 <head>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./dist/leaflet-map.css" />
+    <link rel="stylesheet" href="./dist/leaflet-map.min.css" />
 </head>
 <body>
     <!-- A div in which to place the map. Must be empty. -->
@@ -22,7 +22,7 @@ It can be initialized like this:
     <script src="https://unpkg.com/Leaflet.MultiOptionsPolyline@1.0.0/Leaflet.MultiOptionsPolyline.js"></script>
 
     <script type="module">
-        import createLeafletMap, { getLineStringConst } from './dist/leaflet-map.esm.js';
+        import createLeafletMap, { getLineStringConst } from './dist/leaflet-map.min.esm.js';
 
         // Create the map and draw the data from the GeoJSON file.
         const leafletMap = createLeafletMap({
@@ -129,7 +129,9 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 | `npm run lint:css` | Run [StyleLint](https://www.npmjs.com/package/stylelint) over the SCSS files (includes [Prettier](https://www.npmjs.com/package/stylelint-prettier)) |
 | `npm version [major\|minor\|patch]` | Version bump _(in `package.json`)_ |
 | `npm run build` | Compile the TypeScript code into JavaScript and the Sass code into CSS (for development only) |
-| `npm run dist` | Build the library for production as a single ES Module, in the `dist` folder |
+| `npm run dist:expand` | Build the library for production (expanded style), in the `dist` folder |
+| `npm run dist:minify` | Build the library for production (minified style), in the `dist` folder |
+| `npm run dist` | Build the library for production as an ES Module and CSS file, in the `dist` folder |
 
 `npx` is used to execute npm packages that haven't been installed globally.
 `nvm` can be used to manage the current version of Node.
