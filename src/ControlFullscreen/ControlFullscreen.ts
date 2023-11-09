@@ -1,3 +1,5 @@
+import './_ControlFullscreen.scss';
+
 import L from 'leaflet';
 
 /**
@@ -22,7 +24,7 @@ export default class ControlFullScreen extends L.Control {
     onAdd = (_map: L.Map): HTMLDivElement => {
         // Create wrapper div to display the button.
         // Use Leaflet's button styles.
-        const container = L.DomUtil.create('div', `${this.classFullScreenWrapper} leaflet-bar`);
+        const container = L.DomUtil.create('div', `leaflet-bar ${this.classFullScreenWrapper}`);
 
         // Don't propagate any events on the wrapper.
         L.DomEvent.disableClickPropagation(container);
@@ -35,38 +37,6 @@ export default class ControlFullScreen extends L.Control {
         this.fullscreenButton.setAttribute('role', 'button');
         this.fullscreenButton.setAttribute('aria-label', title);
         this.fullscreenButton.setAttribute('aria-disabled', 'false');
-
-        // Add custom CSS for the icons.
-        document.head.insertAdjacentHTML(
-            'beforeend',
-            '<style>' +
-                `.${this.classFullScreenWrapper}{` +
-                'background-color:white;' +
-                '}' +
-                `.${this.classFullScreenWrapper}:hover,` +
-                `.${this.classFullScreenWrapper}:focus{` +
-                'background-color:#f4f4f4;' +
-                '}' +
-                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaExpand}{` +
-                `-webkit-mask:url(${this.faExpandSvg});` +
-                `mask:url(${this.faExpandSvg});` +
-                '}' +
-                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaCompress}{` +
-                `-webkit-mask:url(${this.faCompressSvg});` +
-                `mask:url(${this.faCompressSvg});` +
-                '}' +
-                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaExpand},` +
-                `.${this.classFullScreenWrapper} .${this.classFullScreenButton}.${this.classFaCompress}{` +
-                '-webkit-mask-size:19px;' +
-                'mask-size:19px;' +
-                '-webkit-mask-position:center;' +
-                'mask-position:center;' +
-                '-webkit-mask-repeat:no-repeat;' +
-                'mask-repeat:no-repeat;' +
-                'background-color:black;' +
-                '}' +
-                '</style>',
-        );
 
         // Set the initial icon.
         this.fullscreenButton.classList.add(this.classFaExpand);
@@ -135,12 +105,4 @@ export default class ControlFullScreen extends L.Control {
         this.fullscreenButton?.classList.toggle(this.classFaExpand);
         this.fullscreenButton?.classList.toggle(this.classFaCompress);
     };
-
-    /* Icons from Font Awesome 6 */
-    private faExpandSvg =
-        // eslint-disable-next-line max-len
-        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBkPSJNMzIgMzJDMTQuMyAzMiAwIDQ2LjMgMCA2NHY5NmMwIDE3LjcgMTQuMyAzMiAzMiAzMnMzMi0xNC4zIDMyLTMyVjk2aDY0YzE3LjcgMCAzMi0xNC4zIDMyLTMycy0xNC4zLTMyLTMyLTMySDMyek02NCAzNTJjMC0xNy43LTE0LjMtMzItMzItMzJzLTMyIDE0LjMtMzIgMzJ2OTZjMCAxNy43IDE0LjMgMzIgMzIgMzJoOTZjMTcuNyAwIDMyLTE0LjMgMzItMzJzLTE0LjMtMzItMzItMzJINjRWMzUyek0zMjAgMzJjLTE3LjcgMC0zMiAxNC4zLTMyIDMyczE0LjMgMzIgMzIgMzJoNjR2NjRjMCAxNy43IDE0LjMgMzIgMzIgMzJzMzItMTQuMyAzMi0zMlY2NGMwLTE3LjctMTQuMy0zMi0zMi0zMkgzMjB6TTQ0OCAzNTJjMC0xNy43LTE0LjMtMzItMzItMzJzLTMyIDE0LjMtMzIgMzJ2NjRIMzIwYy0xNy43IDAtMzIgMTQuMy0zMiAzMnMxNC4zIDMyIDMyIDMyaDk2YzE3LjcgMCAzMi0xNC4zIDMyLTMyVjM1MnoiLz48L3N2Zz4=';
-    private faCompressSvg =
-        // eslint-disable-next-line max-len
-        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBkPSJNMTYwIDY0YzAtMTcuNy0xNC4zLTMyLTMyLTMycy0zMiAxNC4zLTMyIDMydjY0SDMyYy0xNy43IDAtMzIgMTQuMy0zMiAzMnMxNC4zIDMyIDMyIDMyaDk2YzE3LjcgMCAzMi0xNC4zIDMyLTMyVjY0ek0zMiAzMjBjLTE3LjcgMC0zMiAxNC4zLTMyIDMyczE0LjMgMzIgMzIgMzJIOTZ2NjRjMCAxNy43IDE0LjMgMzIgMzIgMzJzMzItMTQuMyAzMi0zMlYzNTJjMC0xNy43LTE0LjMtMzItMzItMzJIMzJ6TTM1MiA2NGMwLTE3LjctMTQuMy0zMi0zMi0zMnMtMzIgMTQuMy0zMiAzMnY5NmMwIDE3LjcgMTQuMyAzMiAzMiAzMmg5NmMxNy43IDAgMzItMTQuMyAzMi0zMnMtMTQuMy0zMi0zMi0zMkgzNTJWNjR6TTMyMCAzMjBjLTE3LjcgMC0zMiAxNC4zLTMyIDMydjk2YzAgMTcuNyAxNC4zIDMyIDMyIDMyczMyLTE0LjMgMzItMzJWMzg0aDY0YzE3LjcgMCAzMi0xNC4zIDMyLTMycy0xNC4zLTMyLTMyLTMySDMyMHoiLz48L3N2Zz4=';
 }

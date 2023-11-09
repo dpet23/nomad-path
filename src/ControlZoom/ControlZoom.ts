@@ -1,3 +1,5 @@
+import './_ControlZoom.scss';
+
 import L from 'leaflet';
 
 import { LeafletMap } from '../Types/LeafletMap';
@@ -48,11 +50,7 @@ export default class ControlZoom extends L.Control.Zoom {
     private createZoomBars = () => {
         // Create wrapper div to display the zoom bars.
         // Use Leaflet's button styles as a base.
-        this.zoomBarContainer = L.DomUtil.create('div', `${this.classZoomBarContainer} leaflet-bar`);
-        this.zoomBarContainer.style.backgroundColor = '#fff';
-        this.zoomBarContainer.style.padding = '1px 0px';
-        this.zoomBarContainer.style.border = '0';
-        this.zoomBarContainer.style.borderRadius = '0';
+        this.zoomBarContainer = L.DomUtil.create('div', `leaflet-bar ${this.classZoomBarContainer}`);
 
         // Add the wrapper div between the zoom in and zoom out buttons.
         this._zoomInButton!.after(this.zoomBarContainer);
@@ -77,31 +75,6 @@ export default class ControlZoom extends L.Control.Zoom {
                 zoomBar.classList.add(this.classZoomBarDisabled);
             }
         }
-
-        // Add custom CSS for the zoom bars.
-        document.head.insertAdjacentHTML(
-            'beforeend',
-            '<style>' +
-                `.${this.classZoomBarContainer} a.${this.classZoomBar}{` +
-                'height:4px;' +
-                'width:auto;' +
-                'margin:2px 4px;' +
-                'border-radius:2px;' +
-                'background-color:#778877;' +
-                '}' +
-                `.${this.classZoomBarContainer} a.${this.classZoomBar}:hover{` +
-                'background-color:#bbddbb;' +
-                '}' +
-                `.${this.classZoomBarContainer} a.${this.classZoomBarSelected}{` +
-                'margin:2px 2px;' +
-                'background-color:#335533;' +
-                '}' +
-                `.${this.classZoomBarContainer} a.${this.classZoomBarDisabled}{` +
-                'background-color:#bbbbbb;' +
-                'pointer-events:none;' +
-                '}' +
-                '</style>',
-        );
 
         // Update the zoom bar styles on certain map events.
         if (this.map) {

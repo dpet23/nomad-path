@@ -1,0 +1,28 @@
+.leaflet-bar.leaflet-control-zoom-bar-container {
+    background-color: white;
+    padding: 1px 0;
+    border: 0;
+    border-radius: 0;
+
+    .leaflet-control-zoom-bar {
+        height: 4px;
+        width: auto;
+        margin: 2px 4px;
+        border-radius: 2px;
+        background-color: #778877;
+
+        &:hover {
+            background-color: #bbddbb;
+        }
+    }
+
+    .zoom-bar-selected {
+        margin: 2px;
+        background-color: #335533;
+    }
+
+    .zoom-bar-overzoom {
+        background-color: #bbbbbb;
+        pointer-events: none;
+    }
+}
