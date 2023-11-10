@@ -4,10 +4,10 @@
 
 import L from 'leaflet';
 
-import ControlFullScreen from '../ControlFullscreen/ControlFullscreen';
+import ControlFullScreen from '../ControlButton/ControlFullscreen/ControlFullscreen';
+import ControlReset from '../ControlButton/ControlReset/ControlReset';
 import ControlLayers from '../ControlLayers/ControlLayers';
 import ControlLegend from '../ControlLegend/ControlLegend';
-import ControlReset from '../ControlReset/ControlReset';
 
 /**
  * Expand Leaflet's Map type, adding custom attributes.

@@ -1,9 +1,9 @@
 import L from 'leaflet';
 
-import ControlFullScreen from './ControlFullscreen/ControlFullscreen';
+import ControlFullScreen from './ControlButton/ControlFullscreen/ControlFullscreen';
+import ControlReset from './ControlButton/ControlReset/ControlReset';
 import ControlLayers from './ControlLayers/ControlLayers';
 import ControlLegend, { OnStyleChangeFunc } from './ControlLegend/ControlLegend';
-import ControlReset from './ControlReset/ControlReset';
 import ControlZoom from './ControlZoom/ControlZoom';
 import defineBaseMapLayers, { BaseMapLayers, MapID } from './Layers/BaseMapLayers';
 import processGeoJsonFile from './Layers/GeoJsonFile';
@@ -46,12 +46,12 @@ export default function createLeafletMap({
     });
 
     // Top-left:
-    //  * Map view reset
-    //  * Zoom Control
     //  * Fullscreen Control
-    map.resetControl = new ControlReset({ position: 'topleft' }).addTo(map);
-    new ControlZoom({ position: 'topleft' }).addTo(map);
+    //  * Zoom Control
+    //  * Map View Reset Control
     map.fullScreenControl = new ControlFullScreen({ position: 'topleft' }).addTo(map);
+    new ControlZoom({ position: 'topleft' }).addTo(map);
+    map.resetControl = new ControlReset({ position: 'topleft' }).addTo(map);
 
     // Bottom-right (add in reverse order):
     //  * Attribution Control

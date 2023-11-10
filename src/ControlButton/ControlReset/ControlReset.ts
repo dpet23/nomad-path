@@ -2,13 +2,15 @@ import './_ControlReset.scss';
 
 import L from 'leaflet';
 
+import ControlAbstractButton from '../ControlAbstractButton';
+
 /**
  * Leaflet Control for resetting the map view.
  */
-export default class ControlReset extends L.Control {
+export default class ControlReset extends ControlAbstractButton {
     private map?: L.Map;
 
-    private classReset = 'leaflet-control-reset';
+    private classResetWrapper = 'leaflet-control-reset';
     private classResetButton = 'leaflet-control-reset-button';
 
     /**
@@ -21,26 +23,15 @@ export default class ControlReset extends L.Control {
      */
     onAdd = (map: L.Map): HTMLDivElement => {
         this.map = map;
-
-        // Create wrapper div to display the button.
-        // Use Leaflet's button styles.
-        const container = L.DomUtil.create('div', `leaflet-bar ${this.classReset}`);
-
-        // Don't propagate any events on the wrapper.
-        L.DomEvent.disableClickPropagation(container);
-
-        // Create the button to reset the view.
-        const title = 'Re-center the map';
-        const resetViewButton = L.DomUtil.create('a', this.classResetButton, container);
-        resetViewButton.href = '#';
-        resetViewButton.title = title;
-        resetViewButton.setAttribute('role', 'button');
-        resetViewButton.setAttribute('aria-label', title);
-        resetViewButton.setAttribute('aria-disabled', 'false');
-
-        // Reset the map view when pressing the button.
-        L.DomEvent.addListener(resetViewButton, 'click', this.resetMapView);
-
+        const [container] = this.createButton(
+            // Element: wrapper div to display the button, using Leaflet's button styles.
+            this.classResetWrapper,
+            // Element: button to reset the view.
+            this.classResetButton,
+            'Re-center the map',
+            // When pressing the button: reset the map view.
+            this.resetMapView,
+        );
         return container;
     };
 

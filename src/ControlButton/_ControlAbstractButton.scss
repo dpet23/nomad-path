@@ -1,0 +1,87 @@
+/// Common styles for a Leaflet Control that will be displayed as a simple button.
+
+@use 'sass:list';
+@use 'sass:map';
+
+/// Display part of an element, using a selected image as a mask.
+/// Apply both the vendor-prefixed and unprefixed style.
+@mixin mask($svg) {
+    -webkit-mask: url('data:image/svg+xml;base64,#{$svg}');
+    mask: url('data:image/svg+xml;base64,#{$svg}');
+}
+
+/// Specify the size of the mask image.
+@mixin mask-size($val) {
+    -webkit-mask-size: $val;
+    mask-size: $val;
+}
+
+/// Set the initial position for a mask image.
+@mixin mask-position($val) {
+    -webkit-mask-position: $val;
+    mask-position: $val;
+}
+
+/// Set how mask images are repeated.
+@mixin mask-repeat($val) {
+    -webkit-mask-repeat: $val;
+    mask-repeat: $val;
+}
+
+/// Convert an array into a string.
+///
+/// @see https: //kittygiraudel.com/2013/08/08/advanced-sass-list-functions/
+///
+/// @param {array} list             The list of elements, may be nested.
+/// @param {string} item-prefix     String to add before each list element.
+/// @param {string} item-suffix     String to add after each list element.
+/// @param {string} glue            String to place between each list element.
+/// @return {string} The list items as a single string.
+@function to-string($list, $item-prefix: '', $item-suffix: '', $glue: ', ', $_is-nested: false) {
+    $result: null;
+
+    @for $i from 1 through list.length($list) {
+        $e: list.nth($list, $i);
+
+        @if type-of($e) == list {
+            $result: $result#{to-string($e, $item-prefix, $item-suffix, $glue, true)};
+        } @else {
+            $val: #{$item-prefix}#{$e}#{$item-suffix};
+            $result: if($i != list.length($list) or $_is-nested, $result#{$val}#{$glue}, $result#{$val});
+        }
+    }
+
+    @return $result;
+}
+
+/// Style the clickable Leaflet Control button.
+///
+/// @param {string} class-wrapper       CSS class for the div wrapper element.
+/// @param {string} class-button        CSS class for the anchor button element.
+/// @param {map(string, string)} icons  Icon to apply for specific classes.
+@mixin leaflet-control-button($class-wrapper, $class-button, $icons) {
+    .leaflet-bar#{$class-wrapper} {
+        background-color: white;
+
+        &:hover,
+        &:focus {
+            background-color: #f4f4f4;
+        }
+
+        #{$class-button} {
+            @each $name, $glyph in $icons {
+                &#{$name} {
+                    @include mask($glyph);
+                }
+            }
+
+            #{to-string($list: map.keys($icons), $item-prefix: '&')} {
+                @include mask-size(24px);
+                @include mask-position(center);
+                @include mask-repeat(no-repeat);
+
+                background-color: black;
+            }
+        }
+    }
+}

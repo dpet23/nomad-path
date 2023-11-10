@@ -1,0 +1,17 @@
+@import '../ControlAbstractButton';
+
+/// https://fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Azoom_out_map%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4024
+$zoom-out-map-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Ik0xMjAtMTIwdi0yNDBoODB2MTA0bDEyNC0xMjQgNTYgNTYtMTI0IDEyNGgxMDR2ODBIMTIwWm00ODAgMHYtODBoMTA0TDU4MC0zMjRsNTYtNTYgMTI0IDEyNHYtMTA0aDgwdjI0MEg2MDBaTTMyNC01ODAgMjAwLTcwNHYxMDRoLTgwdi0yNDBoMjQwdjgwSDI1NmwxMjQgMTI0LTU2IDU2Wm0zMTIgMC01Ni01NiAxMjQtMTI0SDYwMHYtODBoMjQwdjI0MGgtODB2LTEwNEw2MzYtNTgwWiIvPjwvc3ZnPg==';
+
+/// https://fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Azoom_in_map%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4024
+$zoom-in-map-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Im0xNTYtMTAwLTU2LTU2IDEyNC0xMjRIMTIwdi04MGgyNDB2MjQwaC04MHYtMTA0TDE1Ni0xMDBabTY0OCAwTDY4MC0yMjR2MTA0aC04MHYtMjQwaDI0MHY4MEg3MzZsMTI0IDEyNC01NiA1NlpNMTIwLTYwMHYtODBoMTA0TDEwMC04MDRsNTYtNTYgMTI0IDEyNHYtMTA0aDgwdjI0MEgxMjBabTQ4MCAwdi0yNDBoODB2MTA0bDEyNC0xMjQgNTYgNTYtMTI0IDEyNGgxMDR2ODBINjAwWiIvPjwvc3ZnPg==';
+
+/// Style the clickable button Control.
+@include leaflet-control-button(
+    $class-wrapper: '.leaflet-control-fullscreen',
+    $class-button: '.leaflet-control-fullscreen-button',
+    $icons: (
+        '.fa-expand': $zoom-out-map-svg,
+        '.fa-compress': $zoom-in-map-svg,
+    )
+);

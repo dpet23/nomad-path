@@ -2,10 +2,12 @@ import './_ControlFullscreen.scss';
 
 import L from 'leaflet';
 
+import ControlAbstractButton from '../ControlAbstractButton';
+
 /**
  * Leaflet Control for togging fullscreen mode for the map.
  */
-export default class ControlFullScreen extends L.Control {
+export default class ControlFullScreen extends ControlAbstractButton {
     private fullscreenButton?: HTMLAnchorElement;
 
     private classFullScreenWrapper = 'leaflet-control-fullscreen';
@@ -22,27 +24,19 @@ export default class ControlFullScreen extends L.Control {
      * @return The wrapper element for toggling fullscreen.
      */
     onAdd = (_map: L.Map): HTMLDivElement => {
-        // Create wrapper div to display the button.
-        // Use Leaflet's button styles.
-        const container = L.DomUtil.create('div', `leaflet-bar ${this.classFullScreenWrapper}`);
-
-        // Don't propagate any events on the wrapper.
-        L.DomEvent.disableClickPropagation(container);
-
-        // Create the button to trigger a fullscreen mode change.
-        const title = 'Toggle fullscreen';
-        this.fullscreenButton = L.DomUtil.create('a', this.classFullScreenButton, container);
-        this.fullscreenButton.href = '#';
-        this.fullscreenButton.title = title;
-        this.fullscreenButton.setAttribute('role', 'button');
-        this.fullscreenButton.setAttribute('aria-label', title);
-        this.fullscreenButton.setAttribute('aria-disabled', 'false');
+        let container: HTMLDivElement;
+        [container, this.fullscreenButton] = this.createButton(
+            // Element: wrapper div to display the button, using Leaflet's button styles.
+            this.classFullScreenWrapper,
+            // Element: button to trigger a fullscreen mode change.
+            this.classFullScreenButton,
+            'Toggle fullscreen',
+            // When pressing the button: toggle full-screen mode.
+            this.toggleFullScreen,
+        );
 
         // Set the initial icon.
         this.fullscreenButton.classList.add(this.classFaExpand);
-
-        // Toggle full-screen mode when pressing the button.
-        L.DomEvent.addListener(this.fullscreenButton, 'click', this.toggleFullScreen);
 
         // Handle all changes to fullscreen mode (even if not initiated by the button).
         document.addEventListener('fullscreenchange', this.onFullScreenChange);

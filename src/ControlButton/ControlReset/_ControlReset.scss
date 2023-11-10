@@ -1,0 +1,13 @@
+@import '../ControlAbstractButton';
+
+/// https://fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Arestart_alt%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4024
+$restart-alt-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Ik00NDAtMTIycS0xMjEtMTUtMjAwLjUtMTA1LjVUMTYwLTQ0MHEwLTY2IDI2LTEyNi41VDI2MC02NzJsNTcgNTdxLTM4IDM0LTU3LjUgNzlUMjQwLTQ0MHEwIDg4IDU2IDE1NS41VDQ0MC0yMDJ2ODBabTgwIDB2LTgwcTg3LTE2IDE0My41LTgzVDcyMC00NDBxMC0xMDAtNzAtMTcwdC0xNzAtNzBoLTNsNDQgNDQtNTYgNTYtMTQwLTE0MCAxNDAtMTQwIDU2IDU2LTQ0IDQ0aDNxMTM0IDAgMjI3IDkzdDkzIDIyN3EwIDEyMS03OS41IDIxMS41VDUyMC0xMjJaIi8+PC9zdmc+';
+
+/// Style the clickable button Control.
+@include leaflet-control-button(
+    $class-wrapper: '.leaflet-control-reset',
+    $class-button: '.leaflet-control-reset-button',
+    $icons: (
+        '': $restart-alt-svg,
+    )
+);
