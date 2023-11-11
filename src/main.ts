@@ -1,6 +1,7 @@
 import L from 'leaflet';
 
 import ControlFullScreen from './ControlButton/ControlFullscreen/ControlFullscreen';
+import ControlOpenInNewTab from './ControlButton/ControlOpenInNewTab/ControlOpenInNewTab';
 import ControlReset from './ControlButton/ControlReset/ControlReset';
 import ControlLayers from './ControlLayers/ControlLayers';
 import ControlLegend, { OnStyleChangeFunc } from './ControlLegend/ControlLegend';
@@ -45,10 +46,15 @@ export default function createLeafletMap({
         zoomSnap: 0.5,
     });
 
+    // Check if the map is being embedded into another page.
+    map.embedded = window.location !== window.parent.location;
+
     // Top-left:
+    //  * Open In New Tab Control
     //  * Fullscreen Control
     //  * Zoom Control
     //  * Map View Reset Control
+    map.openInNewTabControl = new ControlOpenInNewTab({ position: 'topleft' }).addTo(map);
     map.fullScreenControl = new ControlFullScreen({ position: 'topleft' }).addTo(map);
     new ControlZoom({ position: 'topleft' }).addTo(map);
     map.resetControl = new ControlReset({ position: 'topleft' }).addTo(map);

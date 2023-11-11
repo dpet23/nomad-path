@@ -95,6 +95,19 @@ Some callback functions are provided for convenience:
 * `getLineStringTransport`: Extracts transport mode from GeoJSON
   * JSONPath: `$.features[?(/LineString/.test(@.geometry.type))].properties.transport[0]`
 
+## Embedding
+
+A page containing the Leaflet map can be embedded into another page:
+
+```html
+<div id="map" class="ratio shadow border border-light" style="height: 50vh;">
+    <iframe src="leaflet.html" title="Leaflet Map" allowfullscreen />
+</div>
+```
+
+A wrapper `div` can be used for styling (the example uses [Bootstrap](https://getbootstrap.com/)).
+
+
 ## Development
 
 ### Prerequisites
@@ -111,7 +124,7 @@ The main config files are:
 | `package.json` | Main config and list of dependencies |
 | `tsconfig.json` | TypeScript compiler configuration |
 | `rollup.config.mjs` | Rollup configuration for bundling production packages |
-| `.editorconfig`, `.eslint.json`, `.stylelintrc.json`, `.prettierrc` | Code style settings |
+| `.editorconfig`<br>`.eslint.json`<br>`.stylelintrc.json`<br>`.prettierrc` | Code style settings |
 
 ### Common commands
 
@@ -129,9 +142,9 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 | `npm run lint:css` | Run [StyleLint](https://www.npmjs.com/package/stylelint) over the SCSS files (includes [Prettier](https://www.npmjs.com/package/stylelint-prettier)) |
 | `npm version [major\|minor\|patch]` | Version bump _(in `package.json`)_ |
 | `npm run build` | Compile the TypeScript code into JavaScript and the Sass code into CSS (for development only) |
+| `npm run dist` | Build the library for production as an ES Module and CSS file, in the `dist` folder |
 | `npm run dist:expand` | Build the library for production (expanded style), in the `dist` folder |
 | `npm run dist:minify` | Build the library for production (minified style), in the `dist` folder |
-| `npm run dist` | Build the library for production as an ES Module and CSS file, in the `dist` folder |
 
 `npx` is used to execute npm packages that haven't been installed globally.
 `nvm` can be used to manage the current version of Node.

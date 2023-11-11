@@ -1,0 +1,13 @@
+@import '../ControlAbstractButton';
+
+/// https: //fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Aopen_in_new%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4024
+$open-in-new-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Ik0yMDAtMTIwcS0zMyAwLTU2LjUtMjMuNVQxMjAtMjAwdi01NjBxMC0zMyAyMy41LTU2LjVUMjAwLTg0MGgyODB2ODBIMjAwdjU2MGg1NjB2LTI4MGg4MHYyODBxMCAzMy0yMy41IDU2LjVUNzYwLTEyMEgyMDBabTE4OC0yMTItNTYtNTYgMzcyLTM3Mkg1NjB2LTgwaDI4MHYyODBoLTgwdi0xNDRMMzg4LTMzMloiLz48L3N2Zz4=';
+
+/// Style the clickable button Control.
+@include leaflet-control-button(
+    $class-wrapper: '.leaflet-control-open-in-new-tab',
+    $class-button: '.leaflet-control-open-in-new-tab-button',
+    $icons: (
+        '': $open-in-new-svg,
+    )
+);
