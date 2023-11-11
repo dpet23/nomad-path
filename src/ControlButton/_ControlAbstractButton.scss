@@ -56,11 +56,11 @@
 
 /// Style the clickable Leaflet Control button.
 ///
-/// @param {string} class-wrapper       CSS class for the div wrapper element.
-/// @param {string} class-button        CSS class for the anchor button element.
+/// @param {string} container-class       CSS class for the div container element.
+/// @param {string} button-class        CSS class for the anchor button element.
 /// @param {map(string, string)} icons  Icon to apply for specific classes.
-@mixin leaflet-control-button($class-wrapper, $class-button, $icons) {
-    .leaflet-bar#{$class-wrapper} {
+@mixin leaflet-control-button($container-class, $button-class, $icons) {
+    .leaflet-bar#{$container-class} {
         background-color: white;
 
         &:hover,
@@ -68,7 +68,7 @@
             background-color: #f4f4f4;
         }
 
-        #{$class-button} {
+        #{$button-class} {
             @each $name, $glyph in $icons {
                 &#{$name} {
                     @include mask($glyph);

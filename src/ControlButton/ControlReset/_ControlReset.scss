@@ -5,8 +5,8 @@ $restart-alt-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdod
 
 /// Style the clickable button Control.
 @include leaflet-control-button(
-    $class-wrapper: '.leaflet-control-reset',
-    $class-button: '.leaflet-control-reset-button',
+    $container-class: '.leaflet-control-reset',
+    $button-class: '.leaflet-control-reset-button',
     $icons: (
         '': $restart-alt-svg,
     )

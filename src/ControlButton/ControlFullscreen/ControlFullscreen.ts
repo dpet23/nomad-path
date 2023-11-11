@@ -10,30 +10,25 @@ import ControlAbstractButton from '../ControlAbstractButton';
 export default class ControlFullScreen extends ControlAbstractButton {
     private fullscreenButton?: HTMLAnchorElement;
 
-    private classFullScreenWrapper = 'leaflet-control-fullscreen';
-    private classFullScreenButton = 'leaflet-control-fullscreen-button';
+    private classButtonContainer = 'leaflet-control-fullscreen';
     private classFaExpand = 'fa-expand';
     private classFaCompress = 'fa-compress';
 
     /**
-     * Callback function to define the Control's container.
+     * Callback function to define the Control's elements and their behaviour.
      *
      * Called by Leaflet when adding the Control to a Map.
      *
      * @param _map - (Unused) The Leaflet Map.
-     * @return The wrapper element for toggling fullscreen.
+     * @return The Control's container element.
      */
     onAdd = (_map: L.Map): HTMLDivElement => {
         let container: HTMLDivElement;
-        [container, this.fullscreenButton] = this.createButton(
-            // Element: wrapper div to display the button, using Leaflet's button styles.
-            this.classFullScreenWrapper,
-            // Element: button to trigger a fullscreen mode change.
-            this.classFullScreenButton,
-            'Toggle fullscreen',
-            // When pressing the button: toggle full-screen mode.
-            this.toggleFullScreen,
-        );
+        [container, this.fullscreenButton] = this.createButton({
+            containerClass: this.classButtonContainer,
+            title: 'Toggle fullscreen',
+            onClick: this.toggleFullScreen,
+        });
 
         // Set the initial icon.
         this.fullscreenButton.classList.add(this.classFaExpand);
@@ -53,8 +48,7 @@ export default class ControlFullScreen extends ControlAbstractButton {
      * @param event - Button click event to handle.
      */
     private toggleFullScreen = (event: Event) => {
-        // Prevent default action (navigating to a link).
-        L.DomEvent.preventDefault(event);
+        L.DomEvent.preventDefault(event); // Prevent default action (navigating to a link).
 
         // In fullscreen mode, `document.fullscreenElement` will point to the element that is in fullscreen.
         const fullscreenElement =

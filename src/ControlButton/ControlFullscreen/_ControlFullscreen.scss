@@ -8,8 +8,8 @@ $zoom-in-map-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdod
 
 /// Style the clickable button Control.
 @include leaflet-control-button(
-    $class-wrapper: '.leaflet-control-fullscreen',
-    $class-button: '.leaflet-control-fullscreen-button',
+    $container-class: '.leaflet-control-fullscreen',
+    $button-class: '.leaflet-control-fullscreen-button',
     $icons: (
         '.fa-expand': $zoom-out-map-svg,
         '.fa-compress': $zoom-in-map-svg,

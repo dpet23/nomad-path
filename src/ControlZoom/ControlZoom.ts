@@ -9,9 +9,9 @@ import { LeafletMap } from '../Types/LeafletMap';
  * Based on the GPS Visualizer implementation.
  */
 export default class ControlZoom extends L.Control.Zoom {
+    private _map?: LeafletMap;
     private _zoomInButton?: HTMLAnchorElement;
 
-    private map?: LeafletMap;
     private zoomBarContainer?: HTMLDivElement;
 
     private classZoomBarContainer = 'leaflet-control-zoom-bar-container';
@@ -22,16 +22,14 @@ export default class ControlZoom extends L.Control.Zoom {
     private barMaxZoom = 20;
 
     /**
-     * Callback function to define the Control's container.
+     * Callback function to define the Control's elements and their behaviour.
      *
      * Called by Leaflet when adding the Control to a Map.
      *
      * @param map - The Leaflet Map.
-     * @return The wrapper element for changing the map zoom level.
+     * @return The Control's container element.
      */
     onAdd = (map: L.Map): HTMLElement => {
-        this.map = map;
-
         // Create Leaflet's native Zoom Control.
         const container = super.onAdd!(map);
 
@@ -48,11 +46,11 @@ export default class ControlZoom extends L.Control.Zoom {
      * and to allow quick zoom changes.
      */
     private createZoomBars = () => {
-        // Create wrapper div to display the zoom bars.
+        // Create a container div to display the zoom bars.
         // Use Leaflet's button styles as a base.
         this.zoomBarContainer = L.DomUtil.create('div', `leaflet-bar ${this.classZoomBarContainer}`);
 
-        // Add the wrapper div between the zoom in and zoom out buttons.
+        // Add the container div between the zoom in and zoom out buttons.
         this._zoomInButton!.after(this.zoomBarContainer);
 
         // Get the current zoom level of the map, to highlight the appropriate zoom bar.
@@ -77,9 +75,9 @@ export default class ControlZoom extends L.Control.Zoom {
         }
 
         // Update the zoom bar styles on certain map events.
-        if (this.map) {
-            this.map.addEventListener('baselayerchange', this.onMapBaseLayerChange);
-            this.map.addEventListener('zoomend', this.onMapZoomEnd);
+        if (this._map) {
+            this._map.addEventListener('baselayerchange', this.onMapBaseLayerChange);
+            this._map.addEventListener('zoomend', this.onMapZoomEnd);
         }
     };
 
@@ -99,7 +97,7 @@ export default class ControlZoom extends L.Control.Zoom {
 
         // Set the map zoom.
         const zoomLevel = this.getZoomBarLevel(event.currentTarget as HTMLAnchorElement);
-        this.map?.setZoom(zoomLevel, { animate: true });
+        this._map?.setZoom(zoomLevel, { animate: true });
     };
 
     /**
@@ -109,7 +107,7 @@ export default class ControlZoom extends L.Control.Zoom {
      * @return The zoom level, if a map is defined.
      */
     private getMapZoom = (map?: LeafletMap): number | undefined => {
-        return (map ?? this.map)?.getZoom();
+        return (map ?? this._map)?.getZoom();
     };
 
     /**
@@ -119,7 +117,7 @@ export default class ControlZoom extends L.Control.Zoom {
      * @return The base map zoom levels, or the Control's default zoom levels.
      */
     private getEnabledBaseLayerZoom = (map?: LeafletMap): { minZoom: number; maxZoom: number } => {
-        const enabledBaseLayer = (map ?? this.map)?.layerControl
+        const enabledBaseLayer = (map ?? this._map)?.layerControl
             ?.getLayers({ overlay: undefined })
             .find(overlayDetails => overlayDetails.enabled)?.layer as L.TileLayer | undefined;
 

@@ -9,8 +9,7 @@ import ControlAbstractButton from '../ControlAbstractButton';
  * Leaflet Control for opening the map in a new tab.
  */
 export default class ControlOpenInNewTab extends ControlAbstractButton {
-    private classWrapper = 'leaflet-control-open-in-new-tab';
-    private classButton = `${this.classWrapper}-button`;
+    private classButtonContainer = 'leaflet-control-open-in-new-tab';
 
     /**
      * Only add the Control if the Map is being embedded into another page.
@@ -31,18 +30,14 @@ export default class ControlOpenInNewTab extends ControlAbstractButton {
      * Called by Leaflet when adding the Control to a Map.
      *
      * @param _map - (Unused) The Leaflet Map.
-     * @return The wrapper element for resetting the map view.
+     * @return The Control's container element.
      */
     onAdd = (_map: L.Map) => {
-        const [container] = this.createButton(
-            // Element: wrapper div to display the button, using Leaflet's button styles.
-            this.classWrapper,
-            // Element: main button to display.
-            this.classButton,
-            'Open map in a new tab',
-            // Action to perform when pressing the button.
-            this.openInNewTab,
-        );
+        const [container] = this.createButton({
+            containerClass: this.classButtonContainer,
+            title: 'Open map in a new tab',
+            onClick: this.openInNewTab,
+        });
         return container;
     };
 

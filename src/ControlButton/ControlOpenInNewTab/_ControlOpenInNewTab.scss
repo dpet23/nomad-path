@@ -5,8 +5,8 @@ $open-in-new-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdod
 
 /// Style the clickable button Control.
 @include leaflet-control-button(
-    $class-wrapper: '.leaflet-control-open-in-new-tab',
-    $class-button: '.leaflet-control-open-in-new-tab-button',
+    $container-class: '.leaflet-control-open-in-new-tab',
+    $button-class: '.leaflet-control-open-in-new-tab-button',
     $icons: (
         '': $open-in-new-svg,
     )

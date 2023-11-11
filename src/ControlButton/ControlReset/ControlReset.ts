@@ -8,30 +8,24 @@ import ControlAbstractButton from '../ControlAbstractButton';
  * Leaflet Control for resetting the map view.
  */
 export default class ControlReset extends ControlAbstractButton {
-    private map?: L.Map;
+    private _map?: L.Map;
 
-    private classResetWrapper = 'leaflet-control-reset';
-    private classResetButton = 'leaflet-control-reset-button';
+    private classButtonContainer = 'leaflet-control-reset';
 
     /**
-     * Callback function to define the Control's container.
+     * Callback function to define the Control's elements and their behaviour.
      *
      * Called by Leaflet when adding the Control to a Map.
      *
-     * @param map - The Leaflet Map.
-     * @return The wrapper element for resetting the map view.
+     * @param _map - (Unused) The Leaflet Map.
+     * @return The Control's container element.
      */
-    onAdd = (map: L.Map): HTMLDivElement => {
-        this.map = map;
-        const [container] = this.createButton(
-            // Element: wrapper div to display the button, using Leaflet's button styles.
-            this.classResetWrapper,
-            // Element: button to reset the view.
-            this.classResetButton,
-            'Re-center the map',
-            // When pressing the button: reset the map view.
-            this.resetMapView,
-        );
+    onAdd = (_map: L.Map): HTMLDivElement => {
+        const [container] = this.createButton({
+            containerClass: this.classButtonContainer,
+            title: 'Re-center the map',
+            onClick: this.resetMapView,
+        });
         return container;
     };
 
@@ -45,6 +39,6 @@ export default class ControlReset extends ControlAbstractButton {
         L.DomEvent.preventDefault(event);
 
         // Set the view of the map.
-        this.map?.flyTo(this.map.options.center ?? [0, 0], this.map.options.zoom, { animate: true, duration: 0.5 });
+        this._map?.flyTo(this._map.options.center ?? [0, 0], this._map.options.zoom, { animate: true, duration: 0.5 });
     };
 }

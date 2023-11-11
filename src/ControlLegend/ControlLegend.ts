@@ -52,15 +52,15 @@ export default class ControlLegend extends L.Control {
     }
 
     /**
-     * Callback function to define the Control's container.
+     * Callback function to define the Control's elements and their behaviour.
      *
      * Called by Leaflet when adding the Control to a Map.
      *
      * @param _map - (Unused) The Leaflet Map.
-     * @return A div element containing the legend content.
+     * @return The Control's container element.
      */
     onAdd = (_map: L.Map): HTMLDivElement => {
-        // Create wrapper div to display the legend.
+        // Create a container div to display the legend.
         this.legend = L.DomUtil.create('div', this.classLegend);
         if (!this.legend) {
             console.error('[LeafletMap.ControlLegend.onAdd] Failed to create the "legend" div element');
