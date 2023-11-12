@@ -7,8 +7,8 @@ import L from 'leaflet';
 import ControlFullScreen from '../ControlButton/ControlFullscreen/ControlFullscreen';
 import ControlOpenInNewTab from '../ControlButton/ControlOpenInNewTab/ControlOpenInNewTab';
 import ControlReset from '../ControlButton/ControlReset/ControlReset';
+import ControlLegend from '../ControlCollapsible/ControlLegend/ControlLegend';
 import ControlLayers from '../ControlLayers/ControlLayers';
-import ControlLegend from '../ControlLegend/ControlLegend';
 
 /**
  * Expand Leaflet's Map type, adding custom attributes.

@@ -3,30 +3,7 @@
 @use 'sass:list';
 @use 'sass:map';
 
-/// Display part of an element, using a selected image as a mask.
-/// Apply both the vendor-prefixed and unprefixed style.
-@mixin mask($svg) {
-    -webkit-mask: url('data:image/svg+xml;base64,#{$svg}');
-    mask: url('data:image/svg+xml;base64,#{$svg}');
-}
-
-/// Specify the size of the mask image.
-@mixin mask-size($val) {
-    -webkit-mask-size: $val;
-    mask-size: $val;
-}
-
-/// Set the initial position for a mask image.
-@mixin mask-position($val) {
-    -webkit-mask-position: $val;
-    mask-position: $val;
-}
-
-/// Set how mask images are repeated.
-@mixin mask-repeat($val) {
-    -webkit-mask-repeat: $val;
-    mask-repeat: $val;
-}
+@import '../mask'; /* stylelint-disable no-invalid-position-at-import-rule */
 
 /// Convert an array into a string.
 ///
@@ -56,7 +33,7 @@
 
 /// Style the clickable Leaflet Control button.
 ///
-/// @param {string} container-class       CSS class for the div container element.
+/// @param {string} container-class     CSS class for the div container element.
 /// @param {string} button-class        CSS class for the anchor button element.
 /// @param {map(string, string)} icons  Icon to apply for specific classes.
 @mixin leaflet-control-button($container-class, $button-class, $icons) {

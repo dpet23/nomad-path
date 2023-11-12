@@ -76,8 +76,10 @@ export default class ControlZoom extends L.Control.Zoom {
 
         // Update the zoom bar styles on certain map events.
         if (this._map) {
-            this._map.addEventListener('baselayerchange', this.onMapBaseLayerChange);
-            this._map.addEventListener('zoomend', this.onMapZoomEnd);
+            this._map.addEventListener({
+                baselayerchange: this.onMapBaseLayerChange,
+                zoomend: this.onMapZoomEnd,
+            });
         }
     };
 

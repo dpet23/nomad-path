@@ -1,0 +1,50 @@
+@import '../../mask';
+
+.leaflet-control-collapsible {
+    .leaflet-control-layers-toggle {
+        background: unset;
+    }
+
+    & &-toggle {
+        display: block;
+    }
+
+    & &-content {
+        padding: 6px;
+        display: none;
+    }
+
+    &-expanded {
+        color: #333333;
+
+        .leaflet-control-collapsible {
+            &-toggle {
+                display: none;
+            }
+
+            &-content {
+                display: block;
+            }
+        }
+    }
+
+    &-scrollbar {
+        overflow: hidden scroll;
+        padding-right: 0.75em;
+    }
+}
+
+/// Add an icon to the collapsed button link.
+///
+/// @param {string} class   CSS class to style.
+/// @param {string} icon    Icon to apply to the given class.
+@mixin icon($class, $icon) {
+    #{$class} {
+        @include mask($icon);
+        @include mask-size(26px);
+        @include mask-position(center);
+        @include mask-repeat(no-repeat);
+
+        background-color: black;
+    }
+}

@@ -2,7 +2,8 @@ import './_ControlLegend.scss';
 
 import L from 'leaflet';
 
-import { LineStringStyle, ThresholdKey, ThresholdStyles } from '../Layers/MultiOptionsPolyline';
+import { LineStringStyle, ThresholdKey, ThresholdStyles } from '../../Layers/MultiOptionsPolyline';
+import ControlAbstractCollapsible, { ControlCollapsibleOptions } from '../ControlAbstractCollapsible';
 
 /**
  * Callback function to apply a new LineString style.
@@ -12,12 +13,19 @@ import { LineStringStyle, ThresholdKey, ThresholdStyles } from '../Layers/MultiO
 export type OnStyleChangeFunc = (lineStringStyle: LineStringStyle) => void;
 
 /**
+ * Parameters for the ControlLegend.
+ */
+type ControlLegendOptions = ControlCollapsibleOptions & {
+    supportedStyles: LineStringStyle[];
+    onStyleChange: OnStyleChangeFunc;
+};
+
+/**
  * Leaflet Control for displaying a legend of GeoJSON LineString colours.
  */
-export default class ControlLegend extends L.Control {
-    private readonly supportedStyles: LineStringStyle[];
-    private readonly onStyleChange: OnStyleChangeFunc;
-    public legend?: HTMLDivElement;
+export default class ControlLegend extends ControlAbstractCollapsible {
+    public readonly options: ControlLegendOptions;
+
     public styleSelector?: HTMLSelectElement;
     public legendText?: HTMLDivElement;
 
@@ -35,20 +43,14 @@ export default class ControlLegend extends L.Control {
      *
      * @param options - Control options.
      * @param options.position - The position of the Control (one of the map corners).
+     * @param options.collapsed - Whether the Control will be initially collapsed into an icon.
+     * @param options.title - Title to show when hovering over the collapsed icon.
      * @param options.supportedStyles - The available styles for GeoJSON LineStrings.
      * @param options.onStyleChange - Partial function for calling `processGeoJsonFile`.
-     * @return A new Leaflet Control.
      */
-    constructor(
-        options: L.ControlOptions & {
-            supportedStyles: LineStringStyle[];
-            onStyleChange: OnStyleChangeFunc;
-        },
-    ) {
-        const { supportedStyles, onStyleChange, ...controlOptions } = options;
-        super(controlOptions);
-        this.supportedStyles = supportedStyles;
-        this.onStyleChange = onStyleChange;
+    constructor(options: ControlLegendOptions) {
+        super(options);
+        this.options = options;
     }
 
     /**
@@ -56,54 +58,64 @@ export default class ControlLegend extends L.Control {
      *
      * Called by Leaflet when adding the Control to a Map.
      *
-     * @param _map - (Unused) The Leaflet Map.
+     * @param map - The Leaflet Map.
      * @return The Control's container element.
      */
-    onAdd = (_map: L.Map): HTMLDivElement => {
-        // Create a container div to display the legend.
-        this.legend = L.DomUtil.create('div', this.classLegend);
-        if (!this.legend) {
-            console.error('[LeafletMap.ControlLegend.onAdd] Failed to create the "legend" div element');
-            return this.legend; // Type narrowing only, this should never fail.
+    onAdd = (map: L.Map): HTMLDivElement => {
+        super.onAdd(map);
+
+        // Type narrowing only, this should never fail.
+        if (!this.container || !this.content) {
+            console.error('[LeafletMap.ControlLegend.onAdd] Failed to create the required HTML elements');
+            return L.DomUtil.create('div');
         }
+
+        this.createLegendElements();
+
+        return this.container;
+    };
+
+    /**
+     * Populate the Control's collapsible content.
+     */
+    private createLegendElements = () => {
+        if (!this.container) {
+            return;
+        }
+
+        L.DomUtil.addClass(this.container, this.classLegend);
 
         // Set header in the legend element.
-        const legendHeading = L.DomUtil.create('div', this.classLegendHeader, this.legend);
-        legendHeading.innerHTML = 'Legend';
+        const legendHeading = L.DomUtil.create('p', this.classLegendHeader, this.content);
+        legendHeading.textContent = 'Legend';
 
         // Create a select box for the various styles.
-        this.styleSelector = L.DomUtil.create('select', this.classLegendSelect, this.legend);
-        if (!this.styleSelector) {
-            console.error('[LeafletMap.ControlLegend.onAdd] Failed to create the "styleSelector" select element');
-            return this.legend; // Type narrowing only, this should never fail.
-        }
+        this.styleSelector = L.DomUtil.create('select', this.classLegendSelect, this.content);
 
         // Populate the select box with the name of each option.
         let opt: HTMLOptionElement;
-        this.supportedStyles.forEach((style, index) => {
+        this.options.supportedStyles.forEach((style, index) => {
             opt = L.DomUtil.create('option', this.classLegendSelectOption, this.styleSelector);
             opt.value = index.toString();
             opt.innerHTML = style.name;
         });
-        if (this.supportedStyles.length <= 1) {
+        if (this.options.supportedStyles.length <= 1) {
             this.styleSelector.disabled = true;
         }
 
         // Create a wrapper div to display the legend content.
-        this.legendText = L.DomUtil.create('div', this.classLegendContent, this.legend);
+        this.legendText = L.DomUtil.create('div', this.classLegendContent, this.content);
 
         // Redraw the GeoJSON data when the legend style changes.
         L.DomEvent.addListener(this.styleSelector, 'change', event => {
             const styleSelector = event.currentTarget as HTMLSelectElement;
 
             const lineStyleIndex = parseInt(styleSelector.value, 10);
-            const newLineStyle = this.supportedStyles[lineStyleIndex];
+            const newLineStyle = this.options.supportedStyles[lineStyleIndex];
 
             styleSelector.disabled = true;
-            this.onStyleChange(newLineStyle);
+            this.options.onStyleChange(newLineStyle);
         });
-
-        return this.legend;
     };
 
     /**
@@ -139,9 +151,12 @@ export default class ControlLegend extends L.Control {
             this.addLegendItem(cssColor, (thresholdLabel ?? '(undefined)').toString());
         });
 
-        if (this.supportedStyles.length > 1 && this.styleSelector) {
+        if (this.options.supportedStyles.length > 1 && this.styleSelector) {
             this.styleSelector.disabled = false;
         }
+
+        // Check if the updated content is too tall for the current display, and make it scrollable.
+        this.makeContentScrollableIfNeeded();
     };
 
     /**

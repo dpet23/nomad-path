@@ -33,7 +33,7 @@ export default class ControlAbstractButton extends L.Control {
         // Use Leaflet's button styles as a base.
         const container = L.DomUtil.create('div', `leaflet-bar ${containerClass}`);
 
-        // Don't propagate any events on the container.
+        // Don't propagate any of the container's click events to the map.
         L.DomEvent.disableClickPropagation(container);
 
         // Create the button as an Anchor element.

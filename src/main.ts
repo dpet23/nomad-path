@@ -3,8 +3,8 @@ import L from 'leaflet';
 import ControlFullScreen from './ControlButton/ControlFullscreen/ControlFullscreen';
 import ControlOpenInNewTab from './ControlButton/ControlOpenInNewTab/ControlOpenInNewTab';
 import ControlReset from './ControlButton/ControlReset/ControlReset';
+import ControlLegend, { OnStyleChangeFunc } from './ControlCollapsible/ControlLegend/ControlLegend';
 import ControlLayers from './ControlLayers/ControlLayers';
-import ControlLegend, { OnStyleChangeFunc } from './ControlLegend/ControlLegend';
 import ControlZoom from './ControlZoom/ControlZoom';
 import defineBaseMapLayers, { BaseMapLayers, MapID } from './Layers/BaseMapLayers';
 import processGeoJsonFile from './Layers/GeoJsonFile';
@@ -94,6 +94,8 @@ export default function createLeafletMap({
     map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
     map.legendControl = new ControlLegend({
         position: 'bottomleft',
+        collapsed: true,
+        title: 'Track Legend',
         supportedStyles: lineStringStyles,
         onStyleChange: reprocessGeoJsonFile,
     }).addTo(map);
