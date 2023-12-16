@@ -148,3 +148,43 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 
 `npx` is used to execute npm packages that haven't been installed globally.
 `nvm` can be used to manage the current version of Node.
+
+### JavaScript events
+
+The map reacts to the following events:
+
+* [`click`](https://developer.mozilla.org/en-US/docs/Web/API/Element/click_event)
+  * Fired by the browser: after `mousedown` and `mouseup` on an element
+  * Handled by:
+    * `LeafletMap`: close any open Collapsible Controls
+    * `ControlZoom` (zoom bars): set the zoom level of the map
+    * `ControlAbstractButton`: call custom handler when the Button Control is clicked
+    * `ControlAbstractCollapsible`: expand a Collapsible Control
+
+* [`mouseenter`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseenter_event)
+  * Fired by the browser: when a pointing device is moved over an element
+  * Handled by `ControlAbstractCollapsible`: expand a Collapsible Control
+
+* [`mouseleave`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseleave_event)
+  * Fired by the browser: when a pointing device is moved out of an element
+  * Handled by `ControlAbstractCollapsible`: close a Collapsible Control
+
+* [`keydown`](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event)
+  * Fired by the browser: when a key is pressed
+  * Handled by `ControlAbstractCollapsible` (`Enter`): expand a Collapsible Control
+
+* [`fullscreenchange`](https://developer.mozilla.org/en-US/docs/Web/API/Document/fullscreenchange_event)
+  * Fired by the browser: when switching into or out of fullscreen mode
+  * Handled by `ControlFullScreen`: handle changes to fullscreen mode
+
+* [`change`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event)
+  * Fired by the browser: when value of an `input`/`select`/`textarea` element is changed
+  * Handled by `ControlTrackLegend` (select): apply a new LineString style
+
+* [`baselayerchange`](https://leafletjs.com/reference.html#map-baselayerchange)
+  * Fired by Leaflet: when the base layer is changed through the L.Layers Control
+  * Handled by `ControlZoom`: enable or disable the zoom bars
+
+* [`zoomend`](https://leafletjs.com/reference.html#map-zoomend)
+  * Fired by Leaflet: when the map zoom changed, after animations
+  * Handled by `ControlZoom`: enable or disable the zoom bars
