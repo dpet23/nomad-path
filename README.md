@@ -159,16 +159,21 @@ The map reacts to the following events:
     * `LeafletMap`: close any open Collapsible Controls
     * `ControlZoom` (zoom bars): set the zoom level of the map
     * `ControlTrackLayers` (checkbox): show or hide a track on the map
+    * `ControlTrackLayers` (label): .
     * `ControlAbstractButton`: call custom handler when the Button Control is clicked
     * `ControlAbstractCollapsible`: expand a Collapsible Control
 
 * [`mouseenter`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseenter_event)
   * Fired by the browser: when a pointing device is moved over an element
-  * Handled by `ControlAbstractCollapsible`: expand a Collapsible Control
+  * Handled by:
+    * `ControlAbstractCollapsible`: expand a Collapsible Control
+    * `ControlTrackLayers` (label): .
 
 * [`mouseleave`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseleave_event)
   * Fired by the browser: when a pointing device is moved out of an element
-  * Handled by `ControlAbstractCollapsible`: close a Collapsible Control
+  * Handled by:
+    * `ControlAbstractCollapsible`: close a Collapsible Control
+    * `ControlTrackLayers` (label): .
 
 * [`keydown`](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event)
   * Fired by the browser: when a key is pressed

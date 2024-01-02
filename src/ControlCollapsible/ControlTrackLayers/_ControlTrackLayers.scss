@@ -16,10 +16,16 @@ $route-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQ
             &-selector {
                 // Remove left checkbox margin to make spacing look equal to label.
                 margin-left: 1px;
+
+                // Double right checkbox margine to add spacing between label.
+                margin-right: 6px;
             }
 
             &-label {
-                display: inline;
+                &:hover {
+                    text-decoration: underline;
+                    cursor: pointer;
+                }
             }
         }
     }

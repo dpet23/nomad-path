@@ -129,6 +129,11 @@ function processGeoJsonData(jsonData: GeoJsonObject, lineStringStyle: LineString
                 // Add Leaflet layer to a group.
                 layerGroups[layerGroupName] = layerGroups[layerGroupName] || new L.LayerGroup();
                 leafletLayer.addTo(layerGroups[layerGroupName]);
+
+                // Combine the group's tooltips.
+                const groupTooltip = layerGroups[layerGroupName].getTooltip()?.getContent()?.toString() || '';
+                const layerTooltip = leafletLayer.getTooltip()?.getContent()?.toString() || '';
+                layerGroups[layerGroupName].bindTooltip(`${groupTooltip}\n${layerTooltip}`);
             }
         },
     });

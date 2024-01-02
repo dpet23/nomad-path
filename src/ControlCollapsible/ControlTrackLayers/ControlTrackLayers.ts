@@ -132,21 +132,23 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
 
         // Checkbox element for hiding/showing the Layer on the Map.
         layerObject.input = this.createCheckboxElement(wrapperElement);
-        layerObject.input.id = layerObject.name;
         layerObject.input.checked = Boolean(this._map?.hasLayer(layerObject.layer));
         L.DomEvent.addListener(layerObject.input, 'click', this.onLayerCheckUncheck);
         L.DomEvent.disableClickPropagation(layerObject.input); // Don't propagate the box's click events to the map.
 
         // Label to show in the Control.
-        const nameElement = L.DomUtil.create('label', this.classLayerListItemLabel, wrapperElement);
-        nameElement.htmlFor = layerObject.input.id;
-        nameElement.innerHTML = ` ${layerObject.name}`;
+        const nameElement = L.DomUtil.create('span', this.classLayerListItemLabel, wrapperElement);
+        nameElement.innerHTML = layerObject.name;
+        nameElement.title = layerObject.layer.getTooltip()?.getContent()?.toString() || ''; // hover popup
+        L.DomEvent.addListener(nameElement, 'mouseenter', this.onLabelMouseEnter);
+        L.DomEvent.addListener(nameElement, 'mouseleave', this.onLabelMouseLeave);
+        L.DomEvent.addListener(nameElement, 'click', this.onLabelClick);
 
         // TODO (GPS Visualizer):
         // Label behaviour:
         //  * Label has same colour as track
         //  * Mouseover: shows label underline, highlights track, brings up track mouseover
-        //  * Hover: brings up track description next to label
+        //  * (/) Hover: brings up track description next to label
         //  * Click: brings up track detailed popover
 
         // TODO (GPS Visualizer):
@@ -195,6 +197,33 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
                 this._map?.removeLayer(layer);
             }
         }
+    };
+
+    /**
+     * .
+     *
+     * @param event - Span label mouseenter event to handle.
+     */
+    private onLabelMouseEnter = (event: Event) => {
+        console.log(`Mouse enter: ${event.target}`);
+    };
+
+    /**
+     * .
+     *
+     * @param event - Span label mouseleave event to handle.
+     */
+    private onLabelMouseLeave = (event: Event) => {
+        console.log(`Mouse leave: ${event.target}`);
+    };
+
+    /**
+     * .
+     *
+     * @param event - Span label click event to handle.
+     */
+    private onLabelClick = (event: Event) => {
+        console.log(`Click on: ${event.target}`);
     };
 
     /**

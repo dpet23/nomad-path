@@ -76,7 +76,7 @@ export default function createLeafletMap({
         baseMapControlDetails[baseLayerDetail.menuName] = baseLayerDetail.tileLayer;
     }
     map.baseLayerControl = new ControlBaseLayers(baseMapControlDetails, undefined, { collapsed: true }).addTo(map);
-    map.trackLayerControl = new ControlTrackLayers({ position: 'topright', collapsed: true, title: 'Tracks' }).addTo(
+    map.trackLayerControl = new ControlTrackLayers({ position: 'topright', collapsed: false, title: 'Tracks' }).addTo(
         map,
     );
 
@@ -100,7 +100,7 @@ export default function createLeafletMap({
     map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
     map.trackLegendControl = new ControlTrackLegend({
         position: 'bottomleft',
-        collapsed: true,
+        collapsed: false,
         title: 'Track Legend',
         supportedStyles: lineStringStyles,
         onStyleChange: reprocessGeoJsonFile,
