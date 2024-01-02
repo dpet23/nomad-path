@@ -141,6 +141,23 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         const nameElement = L.DomUtil.create('label', this.classLayerListItemLabel, wrapperElement);
         nameElement.htmlFor = layerObject.input.id;
         nameElement.innerHTML = ` ${layerObject.name}`;
+
+        // TODO (GPS Visualizer):
+        // Label behaviour:
+        //  * Label has same colour as track
+        //  * Mouseover: shows label underline, highlights track, brings up track mouseover
+        //  * Hover: brings up track description next to label
+        //  * Click: brings up track detailed popover
+
+        // TODO (GPS Visualizer):
+        // Next to each label is a zoom icon
+        //  * Icon: base-64 PNG
+        //  * Mouseover: cursor becomes magnifying glass
+        //  * Hover: "zoom to this track" help text
+        //  * Click: zooms map to track (which then updates zoom bar)
+
+        // TODO (usability):
+        //  * Find a way of making the track checkbox/zoom icon easier to press on mobile
     };
 
     /**
