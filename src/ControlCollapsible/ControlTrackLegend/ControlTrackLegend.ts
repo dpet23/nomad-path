@@ -1,9 +1,12 @@
-import './_ControlLegend.scss';
+import './_ControlTrackLegend.scss';
 
 import L from 'leaflet';
 
 import { LineStringStyle, ThresholdKey, ThresholdStyles } from '../../Layers/MultiOptionsPolyline';
-import ControlAbstractCollapsible, { ControlCollapsibleOptions } from '../ControlAbstractCollapsible';
+import ControlAbstractCollapsible, {
+    ControlCollapsibleOptions,
+    CreateContentElementsFunc,
+} from '../ControlAbstractCollapsible';
 
 /**
  * Callback function to apply a new LineString style.
@@ -23,14 +26,13 @@ type ControlLegendOptions = ControlCollapsibleOptions & {
 /**
  * Leaflet Control for displaying a legend of GeoJSON LineString colours.
  */
-export default class ControlLegend extends ControlAbstractCollapsible {
+export default class ControlTrackLegend extends ControlAbstractCollapsible {
     public readonly options: ControlLegendOptions;
 
     public styleSelector?: HTMLSelectElement;
     public legendText?: HTMLDivElement;
 
-    private classLegend = 'leaflet-control-legend';
-    private classLegendHeader = `${this.classLegend}-header`;
+    private classLegend = 'leaflet-control-legend-tracks';
     private classLegendSelect = `${this.classLegend}-select`;
     private classLegendSelectOption = `${this.classLegend}-option`;
     private classLegendContent = `${this.classLegend}-content`;
@@ -54,40 +56,16 @@ export default class ControlLegend extends ControlAbstractCollapsible {
     }
 
     /**
-     * Callback function to define the Control's elements and their behaviour.
-     *
-     * Called by Leaflet when adding the Control to a Map.
-     *
-     * @param map - The Leaflet Map.
-     * @return The Control's container element.
-     */
-    onAdd = (map: L.Map): HTMLDivElement => {
-        super.onAdd(map);
-
-        // Type narrowing only, this should never fail.
-        if (!this.container || !this.content) {
-            console.error('[LeafletMap.ControlLegend.onAdd] Failed to create the required HTML elements');
-            return L.DomUtil.create('div');
-        }
-
-        this.createLegendElements();
-
-        return this.container;
-    };
-
-    /**
      * Populate the Control's collapsible content.
+     *
+     * @implements {createContentElements} in ControlAbstractCollapsible
      */
-    private createLegendElements = () => {
-        if (!this.container) {
+    protected createContentElements: CreateContentElementsFunc = () => {
+        if (!this.container || !this.content) {
             return;
         }
 
         L.DomUtil.addClass(this.container, this.classLegend);
-
-        // Set header in the legend element.
-        const legendHeading = L.DomUtil.create('p', this.classLegendHeader, this.content);
-        legendHeading.textContent = 'Legend';
 
         // Create a select box for the various styles.
         this.styleSelector = L.DomUtil.create('select', this.classLegendSelect, this.content);

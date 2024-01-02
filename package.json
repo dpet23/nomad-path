@@ -15,7 +15,7 @@
   "main": "map-leaflet.ts",
   "scripts": {
     "lint:ts": "eslint src --ext .ts",
-    "lint:css": "stylelint src/**/*.?(s)css",
+    "lint:css": "stylelint \"src/**/*.?(s)css\"",
     "lint": "npm run lint:ts && npm run lint:css",
     "lint:fix": "npm run lint:ts -- --fix && npm run lint:css -- --fix",
     "lint:rollup": "eslint rollup.config.mjs --fix",

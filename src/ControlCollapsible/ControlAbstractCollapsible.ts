@@ -11,11 +11,26 @@ export type ControlCollapsibleOptions = L.ControlOptions & {
 };
 
 /**
+ * Function signature for populating the Control's collapsible content.
+ */
+export type CreateContentElementsFunc = () => void;
+
+/**
+ * Function signature for adding a layer to the Control.
+ */
+export type AddLayerFunc = ({ layer, name, updateUI }: { layer: L.Layer; name: string; updateUI?: boolean }) => void;
+
+/**
+ * Function signature for remove a layer from the Control.
+ */
+export type RemoveLayerFunc = ({ layer, updateUI }: { layer: L.Layer; updateUI?: boolean }) => void;
+
+/**
  * Base class for a Leaflet Control that can be collapsed into an icon and expanded with mouse/touch/keyboard.
  *
  * @see `L.Control.Layers`
  */
-export default class ControlAbstractCollapsible extends L.Control {
+export default abstract class ControlAbstractCollapsible extends L.Control {
     protected _map?: LeafletMap;
     public readonly options: ControlCollapsibleOptions;
 
@@ -25,7 +40,8 @@ export default class ControlAbstractCollapsible extends L.Control {
     private classContainer = 'leaflet-control-collapsible';
     private containerInitialClasses?: string[];
     private classToggleSuffix = 'toggle';
-    private classContentSuffix = 'content';
+    private classContent = `${this.classContainer}-content`;
+    private classContentHeader = `${this.classContent}-header`;
     private classExpanded = `${this.classContainer}-expanded`;
     private classScrollbar = `${this.classContainer}-scrollbar`;
 
@@ -72,12 +88,15 @@ export default class ControlAbstractCollapsible extends L.Control {
         L.DomEvent.disableClickPropagation(this.container).disableScrollPropagation(this.container);
 
         // Create a HTML Section to hold the collapsible content of this Control.
-        this.content = L.DomUtil.create(
-            'section',
-            this.classContainerWithSuffix(this.classContentSuffix),
-            this.container,
-        );
+        this.content = L.DomUtil.create('section', this.classContent, this.container);
 
+        // Create a header in the content of this Control.
+        L.DomUtil.create('p', this.classContentHeader, this.content).textContent = this.options.title;
+
+        // Create any other elements in the content of this Control.
+        this.createContentElements();
+
+        // Create the collapsed icon, or expand the control.
         if (this.options.collapsed) {
             this.createCollapsedIconElements();
         } else {
@@ -86,6 +105,14 @@ export default class ControlAbstractCollapsible extends L.Control {
 
         return this.container;
     }
+
+    /**
+     * Abstract function to populate the collapsible content.
+     *
+     * @interface
+     * Must be implemented by child classes.
+     */
+    protected abstract createContentElements: CreateContentElementsFunc;
 
     /**
      * Set up the Control's ability to be collapsed by adding HTML elements and event handlers.

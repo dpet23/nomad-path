@@ -119,7 +119,7 @@ export default class ControlZoom extends L.Control.Zoom {
      * @return The base map zoom levels, or the Control's default zoom levels.
      */
     private getEnabledBaseLayerZoom = (map?: LeafletMap): { minZoom: number; maxZoom: number } => {
-        const enabledBaseLayer = (map ?? this._map)?.layerControl
+        const enabledBaseLayer = (map ?? this._map)?.baseLayerControl
             ?.getLayers({ overlay: undefined })
             .find(overlayDetails => overlayDetails.enabled)?.layer as L.TileLayer | undefined;
 
@@ -134,7 +134,7 @@ export default class ControlZoom extends L.Control.Zoom {
      *
      * @param event - Map baselayerchange event to handle.
      */
-    private onMapBaseLayerChange = (event: L.LayersControlEvent) => {
+    private onMapBaseLayerChange: L.LayersControlEventHandlerFn = event => {
         if (!this.zoomBarContainer) {
             return;
         }
@@ -157,7 +157,7 @@ export default class ControlZoom extends L.Control.Zoom {
      *
      * @param event - Map zoomend event to handle.
      */
-    private onMapZoomEnd = (event: L.LeafletEvent) => {
+    private onMapZoomEnd: L.LeafletEventHandlerFn = event => {
         if (!this.zoomBarContainer) {
             return;
         }

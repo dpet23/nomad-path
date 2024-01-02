@@ -149,10 +149,8 @@ function showGeoJsonDataOnMap(
     map: LeafletMap,
 ) {
     // Clear existing GeoJSON data from the map.
-    if (map.legendControl?.resetLegendContent) {
-        map.legendControl.resetLegendContent();
-    }
-    map.layerControl?.getLayers({ overlay: true }).forEach(overlayDetails => {
+    map.trackLegendControl?.resetLegendContent();
+    map.trackLayerControl?.getLayers().forEach(overlayDetails => {
         // Save the current enabled state into the new GeoJSON data,
         // for each group with the same name that already exists.
         if (typeof layerGroups[overlayDetails.name] !== 'undefined') {
@@ -165,22 +163,23 @@ function showGeoJsonDataOnMap(
         }
 
         // Delete layer from Control.
-        map.layerControl?.removeLayer(overlayDetails.layer);
+        map.trackLayerControl?.removeLayer({ layer: overlayDetails.layer, updateUI: false });
     });
 
     // Add line thresholds to the legend.
-    map.legendControl?.addLegendItems(lineStyleThresholds);
+    map.trackLegendControl?.addLegendItems(lineStyleThresholds);
 
     // Add new layers to the Map and Layers Control.
     for (const [layerGroupName, layerGroup] of Object.entries(layerGroups)) {
+        // Add to Map first so that the LayerControl item will already be enabled.
         if (typeof layerGroup.options.enabled === 'undefined' || layerGroup.options.enabled) {
             map.addLayer(layerGroup);
         }
 
-        if (map.layerControl?.addOverlay) {
-            map.layerControl.addOverlay(layerGroup, layerGroupName);
-        }
+        map.trackLayerControl?.addLayer({ layer: layerGroup, name: layerGroupName, updateUI: false });
     }
+
+    map.trackLayerControl?.updateUI();
 }
 
 /**

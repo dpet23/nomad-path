@@ -158,6 +158,7 @@ The map reacts to the following events:
   * Handled by:
     * `LeafletMap`: close any open Collapsible Controls
     * `ControlZoom` (zoom bars): set the zoom level of the map
+    * `ControlTrackLayers` (checkbox): show or hide a track on the map
     * `ControlAbstractButton`: call custom handler when the Button Control is clicked
     * `ControlAbstractCollapsible`: expand a Collapsible Control
 
@@ -182,8 +183,16 @@ The map reacts to the following events:
   * Handled by `ControlTrackLegend` (select): apply a new LineString style
 
 * [`baselayerchange`](https://leafletjs.com/reference.html#map-baselayerchange)
-  * Fired by Leaflet: when the base layer is changed through the L.Layers Control
+  * Fired by Leaflet (`L.Control.Layers`): when the base layer is changed
   * Handled by `ControlZoom`: enable or disable the zoom bars
+
+* [`add`](https://leafletjs.com/reference.html#layer-add)
+  * Fired by Leaflet: after a layer is added to the map
+  * Handled by `ControlTrackLayers`: update the Control's UI and fire an `overlayadd` event
+
+* [`remove`](https://leafletjs.com/reference.html#layer-remove)
+  * Fired by Leaflet: after a layer is removed from the map
+  * Handled by `ControlTrackLayers`: update the Control's UI and fire an `overlayremove` event
 
 * [`zoomend`](https://leafletjs.com/reference.html#map-zoomend)
   * Fired by Leaflet: when the map zoom changed, after animations

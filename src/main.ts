@@ -1,10 +1,11 @@
 import L from 'leaflet';
 
+import ControlBaseLayers from './ControlBaseLayers/ControlBaseLayers';
 import ControlFullScreen from './ControlButton/ControlFullscreen/ControlFullscreen';
 import ControlOpenInNewTab from './ControlButton/ControlOpenInNewTab/ControlOpenInNewTab';
 import ControlReset from './ControlButton/ControlReset/ControlReset';
-import ControlLegend, { OnStyleChangeFunc } from './ControlCollapsible/ControlLegend/ControlLegend';
-import ControlLayers from './ControlLayers/ControlLayers';
+import ControlTrackLayers from './ControlCollapsible/ControlTrackLayers/ControlTrackLayers';
+import ControlTrackLegend, { OnStyleChangeFunc } from './ControlCollapsible/ControlTrackLegend/ControlTrackLegend';
 import ControlZoom from './ControlZoom/ControlZoom';
 import defineBaseMapLayers, { BaseMapLayers, MapID } from './Layers/BaseMapLayers';
 import processGeoJsonFile from './Layers/GeoJsonFile';
@@ -67,12 +68,17 @@ export default function createLeafletMap({
     const baseMaps: BaseMapLayers = defineBaseMapLayers();
 
     // Top-right:
-    //  * Layers Control (TODO: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol)
+    //  * Base Layers Control
+    //  * Track Layers Control
+    //  * (TODO: Stops Layers Control: https://github.com/AHAAAAAAA/leaflet-groupedlayercontrol)
     const baseMapControlDetails: L.Control.LayersObject = {};
     for (const baseLayerDetail of Object.values(baseMaps)) {
         baseMapControlDetails[baseLayerDetail.menuName] = baseLayerDetail.tileLayer;
     }
-    map.layerControl = new ControlLayers(baseMapControlDetails, undefined, { collapsed: true }).addTo(map);
+    map.baseLayerControl = new ControlBaseLayers(baseMapControlDetails, undefined, { collapsed: true }).addTo(map);
+    map.trackLayerControl = new ControlTrackLayers({ position: 'topright', collapsed: true, title: 'Tracks' }).addTo(
+        map,
+    );
 
     // Set the default base map layer by adding it to the map.
     // Fires a `baselayerchange` event for the map.
@@ -92,7 +98,7 @@ export default function createLeafletMap({
     //  * Legend Control
     //  * Scale Control
     map.scaleControl = L.control.scale({ metric: true, imperial: true }).addTo(map);
-    map.legendControl = new ControlLegend({
+    map.trackLegendControl = new ControlTrackLegend({
         position: 'bottomleft',
         collapsed: true,
         title: 'Track Legend',

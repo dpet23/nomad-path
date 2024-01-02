@@ -1,0 +1,26 @@
+@import '../ControlAbstractCollapsible';
+
+/// https://fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Aroute%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4024
+$route-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Ik0zNjAtMTIwcS02NiAwLTExMy00N3QtNDctMTEzdi0zMjdxLTM1LTEzLTU3LjUtNDMuNVQxMjAtNzIwcTAtNTAgMzUtODV0ODUtMzVxNTAgMCA4NSAzNXQzNSA4NXEwIDM5LTIyLjUgNjkuNVQyODAtNjA3djMyN3EwIDMzIDIzLjUgNTYuNVQzNjAtMjAwcTMzIDAgNTYuNS0yMy41VDQ0MC0yODB2LTQwMHEwLTY2IDQ3LTExM3QxMTMtNDdxNjYgMCAxMTMgNDd0NDcgMTEzdjMyN3EzNSAxMyA1Ny41IDQzLjVUODQwLTI0MHEwIDUwLTM1IDg1dC04NSAzNXEtNTAgMC04NS0zNXQtMzUtODVxMC0zOSAyMi41LTcwdDU3LjUtNDN2LTMyN3EwLTMzLTIzLjUtNTYuNVQ2MDAtNzYwcS0zMyAwLTU2LjUgMjMuNVQ1MjAtNjgwdjQwMHEwIDY2LTQ3IDExM3QtMTEzIDQ3Wk0yNDAtNjgwcTE3IDAgMjguNS0xMS41VDI4MC03MjBxMC0xNy0xMS41LTI4LjVUMjQwLTc2MHEtMTcgMC0yOC41IDExLjVUMjAwLTcyMHEwIDE3IDExLjUgMjguNVQyNDAtNjgwWm00ODAgNDgwcTE3IDAgMjguNS0xMS41VDc2MC0yNDBxMC0xNy0xMS41LTI4LjVUNzIwLTI4MHEtMTcgMC0yOC41IDExLjVUNjgwLTI0MHEwIDE3IDExLjUgMjguNVQ3MjAtMjAwWk0yNDAtNzIwWm00ODAgNDgwWiIvPjwvc3ZnPg==';
+
+.leaflet-control-collapsible.leaflet-control-layers-tracks {
+    @include icon($class: '.leaflet-control-collapsible-toggle', $icon: $route-svg);
+}
+
+/// Style the Legend Control.
+.leaflet-control-layers-tracks {
+    & &-list {
+        &-item {
+            display: block;
+
+            &-selector {
+                // Remove left checkbox margin to make spacing look equal to label.
+                margin-left: 1px;
+            }
+
+            &-label {
+                display: inline;
+            }
+        }
+    }
+}
