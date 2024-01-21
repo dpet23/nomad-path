@@ -1,5 +1,6 @@
 import L from 'leaflet';
 
+import { ProcessedLayerGroup } from '../Types/Layers';
 import { LeafletMap } from '../Types/LeafletMap';
 
 /**
@@ -18,12 +19,20 @@ export type CreateContentElementsFunc = () => void;
 /**
  * Function signature for adding a layer to the Control.
  */
-export type AddLayerFunc = ({ layer, name, updateUI }: { layer: L.Layer; name: string; updateUI?: boolean }) => void;
+export type AddLayerFunc = ({
+    layer,
+    name,
+    updateUI,
+}: {
+    layer: ProcessedLayerGroup;
+    name: string;
+    updateUI?: boolean;
+}) => void;
 
 /**
  * Function signature for remove a layer from the Control.
  */
-export type RemoveLayerFunc = ({ layer, updateUI }: { layer: L.Layer; updateUI?: boolean }) => void;
+export type RemoveLayerFunc = ({ layer, updateUI }: { layer: ProcessedLayerGroup; updateUI?: boolean }) => void;
 
 /**
  * Base class for a Leaflet Control that can be collapsed into an icon and expanded with mouse/touch/keyboard.

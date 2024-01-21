@@ -2,7 +2,8 @@ import './_ControlTrackLayers.scss';
 
 import L from 'leaflet';
 
-import { MapLayerDetails } from '../../Types/Layers';
+import { lineWeightDefaultPx, lineWeightHighlightChangePx } from '../../Layers/MultiOptionsPolyline';
+import { MapLayerDetails, ProcessedLayerGroup } from '../../Types/Layers';
 import ControlAbstractCollapsible, {
     AddLayerFunc,
     CreateContentElementsFunc,
@@ -16,7 +17,7 @@ import ControlAbstractCollapsible, {
  * @param layer - The Layer object.
  * @param input - Checkbox element to show or hide the layer from the Control.
  */
-type LayerObject = { name: string; layer: L.Layer; input?: HTMLInputElement };
+type LayerObject = { name: string; layer: ProcessedLayerGroup; input?: HTMLInputElement };
 
 /**
  * Leaflet Control for listing the displayed tracks.
@@ -147,9 +148,9 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         // TODO (GPS Visualizer):
         // Label behaviour:
         //  * Label has same colour as track
-        //  * Mouseover: shows label underline, highlights track, brings up track mouseover
+        //  * (/) Mouseover: shows label underline, highlights track, brings up track mouseover
         //  * (/) Hover: brings up track description next to label
-        //  * Click: brings up track detailed popover
+        //  * Click: brings up track detailed popover (ideally also keeps highlighting?)
 
         // TODO (GPS Visualizer):
         // Next to each label is a zoom icon
@@ -157,6 +158,9 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         //  * Mouseover: cursor becomes magnifying glass
         //  * Hover: "zoom to this track" help text
         //  * Click: zooms map to track (which then updates zoom bar)
+
+        // TODO (GPS Visualizer):
+        //  * Track hover highlights track
 
         // TODO (usability):
         //  * Find a way of making the track checkbox/zoom icon easier to press on mobile
@@ -200,21 +204,65 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
     };
 
     /**
-     * .
+     * Style a Layer when the mouse pointer hovers over a label.
+     *
+     * @see `trk[X].overlays[0].openTooltip()` and `GV_Highlight_Track()` in GPS Visualizer.
      *
      * @param event - Span label mouseenter event to handle.
      */
     private onLabelMouseEnter = (event: Event) => {
-        console.log(`Mouse enter: ${event.target}`);
+        // Get the Layer group to modify.
+        const labelInput = Array.from(
+            (event.target as HTMLSpanElement).parentElement?.children || new HTMLCollection(),
+        ).find(e => e.className === this.classLayerListItemSelector);
+        const layerGroup = this.controlLayers.find(layerObject => layerObject.input === labelInput)?.layer;
+        if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
+            return;
+        }
+
+        // Show the Layer group's tooltip.
+        const layerGroupTooltip = layerGroup.getTooltip();
+        if (layerGroupTooltip) {
+            layerGroup.openTooltip(layerGroupTooltip.getLatLng());
+        }
+
+        // Highlight tracks by making them bolder (increase width).
+        layerGroup.eachLayer(leafletLayer => {
+            if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
+                (leafletLayer as L.MultiOptionsPolyline).setStyle({
+                    weight: lineWeightDefaultPx + lineWeightHighlightChangePx,
+                });
+            }
+        });
     };
 
     /**
-     * .
+     * Reset Layer styles when the mouse pointer stops hovering over a label.
+     * This is the opposite of `this.onLabelMouseEnter()`.
+     *
+     * @see `trk[X].overlays[0].closeTooltip()` and `GV_Highlight_Track()` in GPS Visualizer.
      *
      * @param event - Span label mouseleave event to handle.
      */
     private onLabelMouseLeave = (event: Event) => {
-        console.log(`Mouse leave: ${event.target}`);
+        // Get the Layer group to modify.
+        const labelInput = Array.from(
+            (event.target as HTMLSpanElement).parentElement?.children || new HTMLCollection(),
+        ).find(e => e.className === this.classLayerListItemSelector);
+        const layerGroup = this.controlLayers.find(layerObject => layerObject.input === labelInput)?.layer;
+        if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
+            return;
+        }
+
+        // Hide the Layer group's tooltip.
+        layerGroup.closeTooltip();
+
+        // Un-highlight tracks (reset width to default).
+        layerGroup.eachLayer(leafletLayer => {
+            if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
+                (leafletLayer as L.MultiOptionsPolyline).setStyle({ weight: lineWeightDefaultPx });
+            }
+        });
     };
 
     /**

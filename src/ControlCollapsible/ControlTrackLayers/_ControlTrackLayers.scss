@@ -11,21 +11,20 @@ $route-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQ
 .leaflet-control-layers-tracks {
     & &-list {
         &-item {
-            display: block;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
 
             &-selector {
+                // Remove top/bottom margins.
                 // Remove left checkbox margin to make spacing look equal to label.
-                margin-left: 1px;
-
                 // Double right checkbox margine to add spacing between label.
-                margin-right: 6px;
+                margin: 0 6px 0 1px;
             }
 
-            &-label {
-                &:hover {
-                    text-decoration: underline;
-                    cursor: pointer;
-                }
+            &-label:hover {
+                text-decoration: underline;
+                cursor: pointer;
             }
         }
     }

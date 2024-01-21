@@ -32,6 +32,20 @@ export type LineStringStyle = {
 };
 
 /**
+ * Default MultiOptionsPolyline stroke width in pixels.
+ *
+ * @see https://leafletjs.com/reference.html#polyline-weight
+ */
+export const lineWeightDefaultPx = 3;
+
+/**
+ * Amount to increase the MultiOptionsPolyline stroke width on mouse hover.
+ *
+ * @see `GV_Highlight_Track()` in GPS Visualizer.
+ */
+export const lineWeightHighlightChangePx = 3;
+
+/**
  * Return a constant value for each LineString point.
  */
 export const getLineStringConst: GetParameterValuesFunc = (leafletLayer, _geoJsonFeature) => {
@@ -187,6 +201,7 @@ export default function convertToMultiOptionsPolyline(
     // Build a MultiOptionsPolyline and apply the given style.
     return L.multiOptionsPolyline(polylineLatLngFlat, {
         multiOptions: buildMultiOptions(parameterValues, lineStringStyle.thresholds),
+        weight: lineWeightDefaultPx,
         ...options,
     });
 }

@@ -1,6 +1,7 @@
 import { Feature, GeoJsonObject } from 'geojson';
 import L from 'leaflet';
 
+import { ProcessedLayerGroup } from '../Types/Layers';
 import { LeafletMap } from '../Types/LeafletMap';
 import convertToMultiOptionsPolyline, { LineStringStyle, ThresholdStyles } from './MultiOptionsPolyline';
 
@@ -92,7 +93,7 @@ function processGeoJsonLine(
  *  * key: The name of the group, displayed in the Layers Control.
  *  * value: A group of Leaflet Layers to show on the map.
  */
-type ProcessedLayerGroups = { [key: string]: L.LayerGroup & { options: L.LayerOptions & { enabled: boolean } } };
+type ProcessedLayerGroups = { [key: string]: ProcessedLayerGroup };
 
 /**
  * Read the GeoJSON data, processing each Feature individually.
@@ -129,16 +130,48 @@ function processGeoJsonData(jsonData: GeoJsonObject, lineStringStyle: LineString
                 // Add Leaflet layer to a group.
                 layerGroups[layerGroupName] = layerGroups[layerGroupName] || new L.LayerGroup();
                 leafletLayer.addTo(layerGroups[layerGroupName]);
-
-                // Combine the group's tooltips.
-                const groupTooltip = layerGroups[layerGroupName].getTooltip()?.getContent()?.toString() || '';
-                const layerTooltip = leafletLayer.getTooltip()?.getContent()?.toString() || '';
-                layerGroups[layerGroupName].bindTooltip(`${groupTooltip}\n${layerTooltip}`);
             }
         },
     });
 
     return layerGroups;
+}
+
+/**
+ * Add details to each Layer group.
+ *
+ * @param layerGroups - The layer groups to show on top of the base map.
+ */
+function postProcessLayerGroups(layerGroups: ProcessedLayerGroups) {
+    for (const [_layerGroupName, layerGroup] of Object.entries(layerGroups)) {
+        let groupTooltip = layerGroup.getTooltip()?.getContent()?.toString() || '';
+        const groupLatLngs: L.LatLng[] = [];
+
+        layerGroup.eachLayer(leafletLayer => {
+            // Combine the group's tooltips.
+            const layerTooltip = leafletLayer.getTooltip()?.getContent()?.toString() || '';
+            groupTooltip += `\n${layerTooltip}`;
+
+            // Get the inner layer's LatLngs.
+            if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
+                const layerLatLngs = (leafletLayer.getLatLngs() as L.LatLng[]).flat(2);
+                groupLatLngs.push(...layerLatLngs);
+            }
+        });
+
+        // Determine the "middle" GPS point for this group.
+        const numLatLngs = groupLatLngs.length;
+        let middleLatLng: L.LatLng;
+        if (numLatLngs === 0) {
+            middleLatLng = (layerGroup.getLayers()[0] as L.Marker).getLatLng();
+        } else {
+            middleLatLng = groupLatLngs[Math.floor((numLatLngs - 1) / 2)];
+        }
+
+        // Add a tooltip to this group.
+        // FUTURE: GPS Visualizer showed the `layerGroupName` as a tooltip.
+        layerGroup.bindTooltip(L.tooltip({ content: groupTooltip.trim() }).setLatLng(middleLatLng));
+    }
 }
 
 /**
@@ -176,11 +209,12 @@ function showGeoJsonDataOnMap(
 
     // Add new layers to the Map and Layers Control.
     for (const [layerGroupName, layerGroup] of Object.entries(layerGroups)) {
-        // Add to Map first so that the LayerControl item will already be enabled.
+        // Add Layer to Map first so that the LayerControl item will already be enabled.
         if (typeof layerGroup.options.enabled === 'undefined' || layerGroup.options.enabled) {
             map.addLayer(layerGroup);
         }
 
+        // Add Layer to the Track Control.
         map.trackLayerControl?.addLayer({ layer: layerGroup, name: layerGroupName, updateUI: false });
     }
 
@@ -213,6 +247,7 @@ export default function processGeoJsonFile(geojson: string, map: LeafletMap, lin
         .then(jsonData => {
             // GeoJSON data was successfully fetched, ready for processing.
             const layerGroups = processGeoJsonData(jsonData, lineStringStyle);
+            postProcessLayerGroups(layerGroups);
             showGeoJsonDataOnMap(layerGroups, lineStringStyle.thresholds, map);
         })
         .catch(error => {

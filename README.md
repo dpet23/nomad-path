@@ -167,13 +167,13 @@ The map reacts to the following events:
   * Fired by the browser: when a pointing device is moved over an element
   * Handled by:
     * `ControlAbstractCollapsible`: expand a Collapsible Control
-    * `ControlTrackLayers` (label): .
+    * `ControlTrackLayers` (label): style a Layer
 
 * [`mouseleave`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseleave_event)
   * Fired by the browser: when a pointing device is moved out of an element
   * Handled by:
     * `ControlAbstractCollapsible`: close a Collapsible Control
-    * `ControlTrackLayers` (label): .
+    * `ControlTrackLayers` (label): reset Layer styles
 
 * [`keydown`](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event)
   * Fired by the browser: when a key is pressed
