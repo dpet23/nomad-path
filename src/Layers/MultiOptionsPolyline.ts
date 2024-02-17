@@ -1,6 +1,8 @@
 import { Feature } from 'geojson';
 import L from 'leaflet';
 
+import { ProcessedLayerGroup } from '../Types/Layers';
+
 /**
  * Type alias for the threshold values to check for in a property of a GeoJSON LineString Feature,
  * and the CSS color to apply to each point within a threshold.
@@ -44,6 +46,20 @@ export const lineWeightDefaultPx = 3;
  * @see `GV_Highlight_Track()` in GPS Visualizer.
  */
 export const lineWeightHighlightChangePx = 3;
+
+/**
+ * Set the width of all track Layers in a group, to highlight or reset.
+ *
+ * @param layerGroup - The group of Layers for which to change the style.
+ * @param newWeightPx - The stroke width (in pixels) to set.
+ */
+export const setLayerWidth = (layerGroup: ProcessedLayerGroup, newWeightPx: number) => {
+    layerGroup.eachLayer(leafletLayer => {
+        if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
+            (leafletLayer as L.MultiOptionsPolyline).setStyle({ weight: newWeightPx });
+        }
+    });
+};
 
 /**
  * Return a constant value for each LineString point.

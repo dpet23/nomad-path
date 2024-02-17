@@ -3,7 +3,13 @@ import L from 'leaflet';
 
 import { ProcessedLayerGroup } from '../Types/Layers';
 import { LeafletMap } from '../Types/LeafletMap';
-import convertToMultiOptionsPolyline, { LineStringStyle, ThresholdStyles } from './MultiOptionsPolyline';
+import convertToMultiOptionsPolyline, {
+    LineStringStyle,
+    lineWeightDefaultPx,
+    lineWeightHighlightChangePx,
+    setLayerWidth,
+    ThresholdStyles,
+} from './MultiOptionsPolyline';
 
 /**
  * Process a GeoJSON Point Feature into a Leaflet Marker Layer.
@@ -153,11 +159,25 @@ function postProcessLayerGroups(layerGroups: ProcessedLayerGroups) {
             groupTooltip += `\n${leafletLayer.getTooltip()?.getContent()?.toString() || ''}`;
             groupPopup += `\n\n${leafletLayer.getPopup()?.getContent()?.toString() || ''}`;
 
+            leafletLayer.unbindTooltip();
+
             // Get the inner layer's LatLngs.
             if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
                 const layerLatLngs = (leafletLayer.getLatLngs() as L.LatLng[]).flat(2);
                 groupLatLngs.push(...layerLatLngs);
             }
+
+            // Highlight tracks by making them bolder (increase width).
+            leafletLayer.addEventListener('mouseover', (event: L.LeafletMouseEvent) => {
+                layerGroup.openTooltip(event.latlng);
+                setLayerWidth(layerGroup, lineWeightDefaultPx + lineWeightHighlightChangePx);
+            });
+
+            // Un-highlight tracks (reset width to default).
+            leafletLayer.addEventListener('mouseout', (_event: L.LeafletMouseEvent) => {
+                layerGroup.closeTooltip();
+                setLayerWidth(layerGroup, lineWeightDefaultPx);
+            });
         });
 
         // Determine the "middle" GPS point for this group.

@@ -2,7 +2,7 @@ import './_ControlTrackLayers.scss';
 
 import L from 'leaflet';
 
-import { lineWeightDefaultPx, lineWeightHighlightChangePx } from '../../Layers/MultiOptionsPolyline';
+import { lineWeightDefaultPx, lineWeightHighlightChangePx, setLayerWidth } from '../../Layers/MultiOptionsPolyline';
 import { MapLayerDetails, ProcessedLayerGroup } from '../../Types/Layers';
 import ControlAbstractCollapsible, {
     AddLayerFunc,
@@ -146,13 +146,6 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         L.DomEvent.addListener(nameElement, 'click', this.onLabelClick);
 
         // TODO (GPS Visualizer):
-        // Label behaviour:
-        //  * (x) Label has same colour as track
-        //  * (/) Mouseover: shows label underline, highlights track, brings up track mouseover
-        //  * (/) Hover: brings up track description next to label
-        //  * (/) Click: brings up track detailed popover (ideally also keeps highlighting?)
-
-        // TODO (GPS Visualizer):
         // Next to each label is a zoom icon
         //  * Icon: base-64 PNG
         //  * Mouseover: cursor becomes magnifying glass
@@ -160,7 +153,7 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         //  * Click: zooms map to track (which then updates zoom bar)
 
         // TODO (GPS Visualizer):
-        //  * Track hover highlights track
+        //  * (/) Track hover highlights track
 
         // TODO (usability):
         //  * Find a way of making the track checkbox/zoom icon easier to press on mobile
@@ -206,7 +199,7 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
     /**
      * When the mouse pointer hovers over a label, style the Layer group and show its tooltip.
      *
-     * @see `trk[X].overlays[0].openTooltip()` and `GV_Highlight_Track()` in GPS Visualizer.
+     * @see `GV_Highlight_Track()` in GPS Visualizer.
      *
      * @param event - Span label mouseenter event to handle.
      */
@@ -226,7 +219,7 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         }
 
         // Highlight tracks by making them bolder (increase width).
-        this.setLayerWidth(layerGroup, lineWeightDefaultPx + lineWeightHighlightChangePx);
+        setLayerWidth(layerGroup, lineWeightDefaultPx + lineWeightHighlightChangePx);
     };
 
     /**
@@ -253,27 +246,12 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         if (layerGroup.isPopupOpen()) {
             // Reset width when closing the popup.
             layerGroup.addEventListener('popupclose', (popupEvent: L.PopupEvent) => {
-                this.setLayerWidth(popupEvent.target as ProcessedLayerGroup, lineWeightDefaultPx);
+                setLayerWidth(popupEvent.target as ProcessedLayerGroup, lineWeightDefaultPx);
             });
         } else {
             // Reset width now.
-            this.setLayerWidth(layerGroup, lineWeightDefaultPx);
+            setLayerWidth(layerGroup, lineWeightDefaultPx);
         }
-    };
-
-    /**
-     * Set the width of all track Layers in a group, to highlight or reset.
-     * FUTURE: move the functionality to the Layer object itself.
-     *
-     * @param layerGroup - The group of Layers for which to change the style.
-     * @param newWeightPx - The stroke width (in pixels) to set.
-     */
-    private setLayerWidth = (layerGroup: ProcessedLayerGroup, newWeightPx: number) => {
-        layerGroup.eachLayer(leafletLayer => {
-            if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
-                (leafletLayer as L.MultiOptionsPolyline).setStyle({ weight: newWeightPx });
-            }
-        });
     };
 
     /**
