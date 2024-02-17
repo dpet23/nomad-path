@@ -2,7 +2,8 @@ import './_ControlTrackLayers.scss';
 
 import L from 'leaflet';
 
-import { MapLayerDetails } from '../../Types/Layers';
+import { lineWeightDefaultPx, lineWeightHighlightChangePx, setLayerWidth } from '../../Layers/MultiOptionsPolyline';
+import { MapLayerDetails, ProcessedLayerGroup } from '../../Types/Layers';
 import ControlAbstractCollapsible, {
     AddLayerFunc,
     CreateContentElementsFunc,
@@ -16,7 +17,7 @@ import ControlAbstractCollapsible, {
  * @param layer - The Layer object.
  * @param input - Checkbox element to show or hide the layer from the Control.
  */
-type LayerObject = { name: string; layer: L.Layer; input?: HTMLInputElement };
+type LayerObject = { name: string; layer: ProcessedLayerGroup; uiElement?: HTMLSpanElement };
 
 /**
  * Leaflet Control for listing the displayed tracks.
@@ -128,19 +129,31 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         }
 
         // Create a wrapper element to hold the various UI elements for this item.
-        const wrapperElement = L.DomUtil.create('span', this.classLayerListItem, this.layersFormElement);
+        layerObject.uiElement = L.DomUtil.create('span', this.classLayerListItem, this.layersFormElement);
 
         // Checkbox element for hiding/showing the Layer on the Map.
-        layerObject.input = this.createCheckboxElement(wrapperElement);
-        layerObject.input.id = layerObject.name;
-        layerObject.input.checked = Boolean(this._map?.hasLayer(layerObject.layer));
-        L.DomEvent.addListener(layerObject.input, 'click', this.onLayerCheckUncheck);
-        L.DomEvent.disableClickPropagation(layerObject.input); // Don't propagate the box's click events to the map.
+        const input = this.createCheckboxElement(layerObject.uiElement);
+        input.checked = Boolean(this._map?.hasLayer(layerObject.layer));
+        L.DomEvent.addListener(input, 'click', this.onLayerCheckUncheck);
+        L.DomEvent.disableClickPropagation(input); // Don't propagate the box's click events to the map.
 
         // Label to show in the Control.
-        const nameElement = L.DomUtil.create('label', this.classLayerListItemLabel, wrapperElement);
-        nameElement.htmlFor = layerObject.input.id;
-        nameElement.innerHTML = ` ${layerObject.name}`;
+        const nameElement = L.DomUtil.create('span', this.classLayerListItemLabel, layerObject.uiElement);
+        nameElement.innerHTML = layerObject.name;
+        nameElement.title = (layerObject.layer.getTooltip()?.getContent()?.toString() || '').replace(/\<br\/\>/g, '\n');
+        L.DomEvent.addListener(nameElement, 'mouseenter', this.onLabelMouseEnter);
+        L.DomEvent.addListener(nameElement, 'mouseleave', this.onLabelMouseLeave);
+        L.DomEvent.addListener(nameElement, 'click', this.onLabelClick);
+
+        // TODO (GPS Visualizer):
+        // Next to each label is a zoom icon
+        //  * Icon: base-64 PNG
+        //  * Mouseover: cursor becomes magnifying glass
+        //  * Hover: "zoom to this track" help text
+        //  * Click: zooms map to track (which then updates zoom bar)
+
+        // TODO (usability):
+        //  * Find a way of making the track checkbox/zoom icon easier to press on mobile
     };
 
     /**
@@ -162,7 +175,7 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
      */
     private onLayerCheckUncheck = (event: Event) => {
         const inputElement = event.target as HTMLInputElement;
-        const layer = this.controlLayers.find(layerObject => layerObject.input === inputElement)?.layer;
+        const layer = this.controlLayers.find(layerObj => layerObj.uiElement === inputElement.parentElement)?.layer;
         if (!layer) {
             return;
         }
@@ -177,6 +190,89 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
             if (this._map?.hasLayer(layer)) {
                 this._map?.removeLayer(layer);
             }
+        }
+    };
+
+    /**
+     * When the mouse pointer hovers over a label, style the Layer group and show its tooltip.
+     *
+     * @see `GV_Highlight_Track()` in GPS Visualizer.
+     *
+     * @param event - Span label mouseenter event to handle.
+     */
+    private onLabelMouseEnter = (event: Event) => {
+        // Get the Layer group to modify.
+        const layerGroup = this.controlLayers.find(
+            layerObj => layerObj.uiElement === (event.target as HTMLSpanElement).parentElement,
+        )?.layer;
+        if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
+            return;
+        }
+
+        // Show the Layer group's tooltip.
+        const layerGroupTooltip = layerGroup.getTooltip();
+        if (layerGroupTooltip) {
+            layerGroup.openTooltip(layerGroupTooltip.getLatLng());
+        }
+
+        // Highlight tracks by making them bolder (increase width).
+        setLayerWidth(layerGroup, lineWeightDefaultPx + lineWeightHighlightChangePx);
+    };
+
+    /**
+     * Reset Layer styles when the mouse pointer stops hovering over a label.
+     * This is the opposite of `this.onLabelMouseEnter()`.
+     *
+     * @see `GV_Highlight_Track()` in GPS Visualizer.
+     *
+     * @param event - Span label mouseleave event to handle.
+     */
+    private onLabelMouseLeave = (event: Event) => {
+        // Get the Layer group to modify.
+        const layerGroup = this.controlLayers.find(
+            layerObj => layerObj.uiElement === (event.target as HTMLSpanElement).parentElement,
+        )?.layer;
+        if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
+            return;
+        }
+
+        // Hide the Layer group's tooltip.
+        layerGroup.closeTooltip();
+
+        // Un-highlight tracks (reset width to default).
+        if (layerGroup.isPopupOpen()) {
+            // Reset width when closing the popup.
+            layerGroup.addEventListener('popupclose', (popupEvent: L.PopupEvent) => {
+                setLayerWidth(popupEvent.target as ProcessedLayerGroup, lineWeightDefaultPx);
+            });
+        } else {
+            // Reset width now.
+            setLayerWidth(layerGroup, lineWeightDefaultPx);
+        }
+    };
+
+    /**
+     * When clicking on a label, show the Layer group's popup.
+     *
+     * @see `GV_Open_Track_Window()` in GPS Visualizer.
+     *
+     * @param event - Span label click event to handle.
+     */
+    private onLabelClick = (event: Event) => {
+        // Get the Layer group to modify.
+        const layerGroup = this.controlLayers.find(
+            layerObj => layerObj.uiElement === (event.target as HTMLSpanElement).parentElement,
+        )?.layer;
+        if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
+            return;
+        }
+
+        // Show or hide the Layer group's popup.
+        const layerGroupPopup = layerGroup.getPopup();
+        if (layerGroupPopup && !layerGroup.isPopupOpen()) {
+            layerGroup.openPopup(layerGroupPopup.getLatLng());
+        } else {
+            layerGroup.closePopup();
         }
     };
 

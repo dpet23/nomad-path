@@ -5,6 +5,11 @@
 import L from 'leaflet';
 
 /**
+ * A group of several layers. Same as `L.LayerGroup`, but with an extra options.
+ */
+export type ProcessedLayerGroup = L.LayerGroup & { options: L.LayerOptions & { enabled: boolean } };
+
+/**
  * The details of a layer in the ControlLayers.
  *
  * @property name - The name of the layer, displayed in the Control.
@@ -13,7 +18,7 @@ import L from 'leaflet';
  */
 export type MapLayerDetails = {
     name: string;
-    layer: L.Layer;
+    layer: ProcessedLayerGroup;
     enabled: boolean;
 };
 

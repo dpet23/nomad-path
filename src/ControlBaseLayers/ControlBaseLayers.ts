@@ -1,6 +1,6 @@
 import L from 'leaflet';
 
-import { LayerStruct, MapLayerDetails } from '../Types/Layers';
+import { LayerStruct, MapLayerDetails, ProcessedLayerGroup } from '../Types/Layers';
 
 /**
  * Leaflet Control for changing the map's base layer.
@@ -21,7 +21,7 @@ export default class ControlBaseLayers extends L.Control.Layers {
             if (obj.overlay === overlay) {
                 layers.push({
                     name: obj.name,
-                    layer: obj.layer,
+                    layer: obj.layer as ProcessedLayerGroup,
                     enabled: this._map.hasLayer(obj.layer),
                 });
             }

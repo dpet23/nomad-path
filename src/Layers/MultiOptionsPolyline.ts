@@ -1,6 +1,8 @@
 import { Feature } from 'geojson';
 import L from 'leaflet';
 
+import { ProcessedLayerGroup } from '../Types/Layers';
+
 /**
  * Type alias for the threshold values to check for in a property of a GeoJSON LineString Feature,
  * and the CSS color to apply to each point within a threshold.
@@ -29,6 +31,34 @@ export type LineStringStyle = {
     name: string;
     func: GetParameterValuesFunc;
     thresholds: ThresholdStyles;
+};
+
+/**
+ * Default MultiOptionsPolyline stroke width in pixels.
+ *
+ * @see https://leafletjs.com/reference.html#polyline-weight
+ */
+export const lineWeightDefaultPx = 3;
+
+/**
+ * Amount to increase the MultiOptionsPolyline stroke width on mouse hover.
+ *
+ * @see `GV_Highlight_Track()` in GPS Visualizer.
+ */
+export const lineWeightHighlightChangePx = 3;
+
+/**
+ * Set the width of all track Layers in a group, to highlight or reset.
+ *
+ * @param layerGroup - The group of Layers for which to change the style.
+ * @param newWeightPx - The stroke width (in pixels) to set.
+ */
+export const setLayerWidth = (layerGroup: ProcessedLayerGroup, newWeightPx: number) => {
+    layerGroup.eachLayer(leafletLayer => {
+        if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
+            (leafletLayer as L.MultiOptionsPolyline).setStyle({ weight: newWeightPx });
+        }
+    });
 };
 
 /**
@@ -187,6 +217,7 @@ export default function convertToMultiOptionsPolyline(
     // Build a MultiOptionsPolyline and apply the given style.
     return L.multiOptionsPolyline(polylineLatLngFlat, {
         multiOptions: buildMultiOptions(parameterValues, lineStringStyle.thresholds),
+        weight: lineWeightDefaultPx,
         ...options,
     });
 }
