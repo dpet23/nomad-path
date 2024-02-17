@@ -145,12 +145,13 @@ function processGeoJsonData(jsonData: GeoJsonObject, lineStringStyle: LineString
 function postProcessLayerGroups(layerGroups: ProcessedLayerGroups) {
     for (const [_layerGroupName, layerGroup] of Object.entries(layerGroups)) {
         let groupTooltip = layerGroup.getTooltip()?.getContent()?.toString() || '';
+        let groupPopup = layerGroup.getPopup()?.getContent()?.toString() || '';
         const groupLatLngs: L.LatLng[] = [];
 
         layerGroup.eachLayer(leafletLayer => {
-            // Combine the group's tooltips.
-            const layerTooltip = leafletLayer.getTooltip()?.getContent()?.toString() || '';
-            groupTooltip += `\n${layerTooltip}`;
+            // Combine the group's tooltips and popups.
+            groupTooltip += `\n${leafletLayer.getTooltip()?.getContent()?.toString() || ''}`;
+            groupPopup += `\n\n${leafletLayer.getPopup()?.getContent()?.toString() || ''}`;
 
             // Get the inner layer's LatLngs.
             if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
@@ -168,9 +169,12 @@ function postProcessLayerGroups(layerGroups: ProcessedLayerGroups) {
             middleLatLng = groupLatLngs[Math.floor((numLatLngs - 1) / 2)];
         }
 
-        // Add a tooltip to this group.
+        // Add a tooltip and popup to this group.
         // FUTURE: GPS Visualizer showed the `layerGroupName` as a tooltip.
-        layerGroup.bindTooltip(L.tooltip({ content: groupTooltip.trim() }).setLatLng(middleLatLng));
+        layerGroup.bindTooltip(
+            L.tooltip({ content: groupTooltip.trim().replace(/\n/g, '<br/>') }).setLatLng(middleLatLng),
+        );
+        layerGroup.bindPopup(L.popup({ content: groupPopup.trim().replace(/\n/g, '<br/>') }).setLatLng(middleLatLng));
     }
 }
 

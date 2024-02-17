@@ -17,7 +17,7 @@ import ControlAbstractCollapsible, {
  * @param layer - The Layer object.
  * @param input - Checkbox element to show or hide the layer from the Control.
  */
-type LayerObject = { name: string; layer: ProcessedLayerGroup; input?: HTMLInputElement };
+type LayerObject = { name: string; layer: ProcessedLayerGroup; uiElement?: HTMLSpanElement };
 
 /**
  * Leaflet Control for listing the displayed tracks.
@@ -129,28 +129,28 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         }
 
         // Create a wrapper element to hold the various UI elements for this item.
-        const wrapperElement = L.DomUtil.create('span', this.classLayerListItem, this.layersFormElement);
+        layerObject.uiElement = L.DomUtil.create('span', this.classLayerListItem, this.layersFormElement);
 
         // Checkbox element for hiding/showing the Layer on the Map.
-        layerObject.input = this.createCheckboxElement(wrapperElement);
-        layerObject.input.checked = Boolean(this._map?.hasLayer(layerObject.layer));
-        L.DomEvent.addListener(layerObject.input, 'click', this.onLayerCheckUncheck);
-        L.DomEvent.disableClickPropagation(layerObject.input); // Don't propagate the box's click events to the map.
+        const input = this.createCheckboxElement(layerObject.uiElement);
+        input.checked = Boolean(this._map?.hasLayer(layerObject.layer));
+        L.DomEvent.addListener(input, 'click', this.onLayerCheckUncheck);
+        L.DomEvent.disableClickPropagation(input); // Don't propagate the box's click events to the map.
 
         // Label to show in the Control.
-        const nameElement = L.DomUtil.create('span', this.classLayerListItemLabel, wrapperElement);
+        const nameElement = L.DomUtil.create('span', this.classLayerListItemLabel, layerObject.uiElement);
         nameElement.innerHTML = layerObject.name;
-        nameElement.title = layerObject.layer.getTooltip()?.getContent()?.toString() || ''; // hover popup
+        nameElement.title = (layerObject.layer.getTooltip()?.getContent()?.toString() || '').replace(/\<br\/\>/g, '\n');
         L.DomEvent.addListener(nameElement, 'mouseenter', this.onLabelMouseEnter);
         L.DomEvent.addListener(nameElement, 'mouseleave', this.onLabelMouseLeave);
         L.DomEvent.addListener(nameElement, 'click', this.onLabelClick);
 
         // TODO (GPS Visualizer):
         // Label behaviour:
-        //  * Label has same colour as track
+        //  * (x) Label has same colour as track
         //  * (/) Mouseover: shows label underline, highlights track, brings up track mouseover
         //  * (/) Hover: brings up track description next to label
-        //  * Click: brings up track detailed popover (ideally also keeps highlighting?)
+        //  * (/) Click: brings up track detailed popover (ideally also keeps highlighting?)
 
         // TODO (GPS Visualizer):
         // Next to each label is a zoom icon
@@ -185,7 +185,7 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
      */
     private onLayerCheckUncheck = (event: Event) => {
         const inputElement = event.target as HTMLInputElement;
-        const layer = this.controlLayers.find(layerObject => layerObject.input === inputElement)?.layer;
+        const layer = this.controlLayers.find(layerObj => layerObj.uiElement === inputElement.parentElement)?.layer;
         if (!layer) {
             return;
         }
@@ -204,7 +204,7 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
     };
 
     /**
-     * Style a Layer when the mouse pointer hovers over a label.
+     * When the mouse pointer hovers over a label, style the Layer group and show its tooltip.
      *
      * @see `trk[X].overlays[0].openTooltip()` and `GV_Highlight_Track()` in GPS Visualizer.
      *
@@ -212,10 +212,9 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
      */
     private onLabelMouseEnter = (event: Event) => {
         // Get the Layer group to modify.
-        const labelInput = Array.from(
-            (event.target as HTMLSpanElement).parentElement?.children || new HTMLCollection(),
-        ).find(e => e.className === this.classLayerListItemSelector);
-        const layerGroup = this.controlLayers.find(layerObject => layerObject.input === labelInput)?.layer;
+        const layerGroup = this.controlLayers.find(
+            layerObj => layerObj.uiElement === (event.target as HTMLSpanElement).parentElement,
+        )?.layer;
         if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
             return;
         }
@@ -227,29 +226,22 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         }
 
         // Highlight tracks by making them bolder (increase width).
-        layerGroup.eachLayer(leafletLayer => {
-            if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
-                (leafletLayer as L.MultiOptionsPolyline).setStyle({
-                    weight: lineWeightDefaultPx + lineWeightHighlightChangePx,
-                });
-            }
-        });
+        this.setLayerWidth(layerGroup, lineWeightDefaultPx + lineWeightHighlightChangePx);
     };
 
     /**
      * Reset Layer styles when the mouse pointer stops hovering over a label.
      * This is the opposite of `this.onLabelMouseEnter()`.
      *
-     * @see `trk[X].overlays[0].closeTooltip()` and `GV_Highlight_Track()` in GPS Visualizer.
+     * @see `GV_Highlight_Track()` in GPS Visualizer.
      *
      * @param event - Span label mouseleave event to handle.
      */
     private onLabelMouseLeave = (event: Event) => {
         // Get the Layer group to modify.
-        const labelInput = Array.from(
-            (event.target as HTMLSpanElement).parentElement?.children || new HTMLCollection(),
-        ).find(e => e.className === this.classLayerListItemSelector);
-        const layerGroup = this.controlLayers.find(layerObject => layerObject.input === labelInput)?.layer;
+        const layerGroup = this.controlLayers.find(
+            layerObj => layerObj.uiElement === (event.target as HTMLSpanElement).parentElement,
+        )?.layer;
         if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
             return;
         }
@@ -258,20 +250,55 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         layerGroup.closeTooltip();
 
         // Un-highlight tracks (reset width to default).
+        if (layerGroup.isPopupOpen()) {
+            // Reset width when closing the popup.
+            layerGroup.addEventListener('popupclose', (popupEvent: L.PopupEvent) => {
+                this.setLayerWidth(popupEvent.target as ProcessedLayerGroup, lineWeightDefaultPx);
+            });
+        } else {
+            // Reset width now.
+            this.setLayerWidth(layerGroup, lineWeightDefaultPx);
+        }
+    };
+
+    /**
+     * Set the width of all track Layers in a group, to highlight or reset.
+     * FUTURE: move the functionality to the Layer object itself.
+     *
+     * @param layerGroup - The group of Layers for which to change the style.
+     * @param newWeightPx - The stroke width (in pixels) to set.
+     */
+    private setLayerWidth = (layerGroup: ProcessedLayerGroup, newWeightPx: number) => {
         layerGroup.eachLayer(leafletLayer => {
             if ('getLatLngs' in leafletLayer && typeof leafletLayer.getLatLngs === 'function') {
-                (leafletLayer as L.MultiOptionsPolyline).setStyle({ weight: lineWeightDefaultPx });
+                (leafletLayer as L.MultiOptionsPolyline).setStyle({ weight: newWeightPx });
             }
         });
     };
 
     /**
-     * .
+     * When clicking on a label, show the Layer group's popup.
+     *
+     * @see `GV_Open_Track_Window()` in GPS Visualizer.
      *
      * @param event - Span label click event to handle.
      */
     private onLabelClick = (event: Event) => {
-        console.log(`Click on: ${event.target}`);
+        // Get the Layer group to modify.
+        const layerGroup = this.controlLayers.find(
+            layerObj => layerObj.uiElement === (event.target as HTMLSpanElement).parentElement,
+        )?.layer;
+        if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
+            return;
+        }
+
+        // Show or hide the Layer group's popup.
+        const layerGroupPopup = layerGroup.getPopup();
+        if (layerGroupPopup && !layerGroup.isPopupOpen()) {
+            layerGroup.openPopup(layerGroupPopup.getLatLng());
+        } else {
+            layerGroup.closePopup();
+        }
     };
 
     /**
