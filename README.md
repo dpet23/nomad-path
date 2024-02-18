@@ -125,7 +125,7 @@ The main config files are:
 | `tsconfig.json` | TypeScript compiler configuration |
 | `rollup.config.mjs` | Rollup configuration for bundling production packages |
 | `.editorconfig`<br>`.eslint.json`<br>`.stylelintrc.json`<br>`.prettierrc` | Code style settings |
-| `jest.config.js` | Jest test framework configuration |
+| `jest.config.system.js` | Jest framework configuration for system testing |
 
 ### Common commands
 
