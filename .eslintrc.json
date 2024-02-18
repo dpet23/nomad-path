@@ -10,7 +10,7 @@
     ],
     "ignorePatterns": [
         "node_modules/**/*.ts",
-        "jest.config.js"
+        "jest.config.*.js"
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
