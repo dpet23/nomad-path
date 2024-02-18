@@ -125,6 +125,7 @@ The main config files are:
 | `tsconfig.json` | TypeScript compiler configuration |
 | `rollup.config.mjs` | Rollup configuration for bundling production packages |
 | `.editorconfig`<br>`.eslint.json`<br>`.stylelintrc.json`<br>`.prettierrc` | Code style settings |
+| `jest.config.js` | Jest test framework configuration |
 
 ### Common commands
 
@@ -140,6 +141,7 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 | `npm run lint:fix` | Run all code linting and automatically fix problems |
 | `npm run lint:ts` | Run [ESLint](https://www.npmjs.com/package/eslint) over the TypeScript files (includes [Prettier](https://www.npmjs.com/package/eslint-plugin-prettier) and [SonarJS](https://www.npmjs.com/package/eslint-plugin-sonarjs)) |
 | `npm run lint:css` | Run [StyleLint](https://www.npmjs.com/package/stylelint) over the SCSS files (includes [Prettier](https://www.npmjs.com/package/stylelint-prettier)) |
+| `npm run test:system` | Run system testing using the [Jest](https://jestjs.io/) framework |
 | `npm version [major\|minor\|patch]` | Version bump _(in `package.json`)_ |
 | `npm run build` | Compile the TypeScript code into JavaScript and the Sass code into CSS (for development only) |
 | `npm run dist` | Build the library for production as an ES Module and CSS file, in the `dist` folder |

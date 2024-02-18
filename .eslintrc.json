@@ -9,7 +9,8 @@
         "prettier"
     ],
     "ignorePatterns": [
-        "node_modules/**/*.ts"
+        "node_modules/**/*.ts",
+        "jest.config.js"
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
