@@ -7,6 +7,8 @@ import Firefox from 'selenium-webdriver/firefox';
 
 export let browser: ThenableWebDriver;
 
+const BROWSER_DEFAULT_PAGE_TIMEOUT_MS = 60 * 1000;
+
 /**
  * Configure and start a new WebDriver instance for testing with a locally-installed browser.
  */
@@ -29,6 +31,10 @@ export const startBrowser = async () => {
         .setFirefoxOptions(firefoxOptions)
         .build();
     expect(browser).toBeDefined();
+
+    await browser.manage().setTimeouts({
+        pageLoad: BROWSER_DEFAULT_PAGE_TIMEOUT_MS,
+    });
 };
 
 /**

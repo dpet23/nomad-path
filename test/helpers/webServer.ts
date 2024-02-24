@@ -2,8 +2,11 @@
 
 import { setup as setupDevServer, teardown as teardownDevServer } from 'jest-dev-server';
 
-export const SERVER_HOST = '127.0.0.1';
-export const SERVER_PORT = 1337;
+const SERVER_HOST = '127.0.0.1';
+const SERVER_PORT = 1337;
+
+const URL_ROOT = `http://${SERVER_HOST}:${SERVER_PORT}`;
+export const URL_LEAFLET = `${URL_ROOT}/test/resources/system_website/leaflet.html`;
 
 let servers;
 
@@ -12,7 +15,7 @@ let servers;
  */
 export const startWebServer = async () => {
     servers = await setupDevServer({
-        command: `npx http-server -a ${SERVER_HOST} -p ${SERVER_PORT}`,
+        command: `npx http-server . -a ${SERVER_HOST} -p ${SERVER_PORT}`,
         protocol: 'http',
         host: SERVER_HOST,
         port: SERVER_PORT,
@@ -30,7 +33,7 @@ export const startWebServer = async () => {
  */
 export const stopWebServer = async () => {
     // Close the web server process and allow a bit of leeway for completion.
-    // @ts-expect-error
+    // @ts-ignore
     await teardownDevServer(servers);
     await new Promise(res => setTimeout(res, 500));
 

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns="https://www.w3.org/1999/xhtml" lang="en-GB">
+
+<head>
+    <title>Leaflet Test</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="" />
+    <link rel="stylesheet" href="../../../dist/leaflet-map.min.css" />
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        html,
+        body,
+        #map {
+            height: 100%;
+            width: 100vw;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"><!-- content filled by createLeafletMap() --></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin=""></script>
+    <script src="https://unpkg.com/Leaflet.MultiOptionsPolyline@1.0.0/Leaflet.MultiOptionsPolyline.js"
+        integrity="sha384-ukRBjy+DK2S3VuulEG8u6g0ab9VAFbnzcku/+qMyE3o4swI3O/pdcoG9yrAcPfuS" crossorigin=""></script>
+
+    <script type="module">
+        import createLeafletMap from '../../../dist/leaflet-map.min.esm.js';
+
+        // Create the Leaflet map.
+        const _leafletMap = createLeafletMap({
+            id: 'map',
+            mapType: 'GOOGLE_SATELLITE',
+            geojson: 'data.geojson',
+        });
+    </script>
+</body>
+
+</html>

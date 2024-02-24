@@ -1,5 +1,9 @@
+import { WebElement } from 'selenium-webdriver';
+
 import { browser, startBrowser, stopBrowser } from './helpers/browser';
-import { SERVER_HOST, SERVER_PORT, startWebServer, stopWebServer } from './helpers/webServer';
+import { startWebServer, stopWebServer, URL_LEAFLET } from './helpers/webServer';
+
+let elementMap: WebElement;
 
 /**
  * Setup: start web server and a browser.
@@ -10,6 +14,16 @@ beforeAll(async () => {
 });
 
 /**
+ * Setup: load the Leaflet map and find the map element.
+ */
+beforeEach(async () => {
+    await browser.get(URL_LEAFLET);
+    // await new Promise(res => setTimeout(res, 10 * 1000));
+
+    elementMap = await browser.findElement({ id: 'map' });
+});
+
+/**
  * Teardown: close the browser and stop the web server.
  */
 afterAll(async () => {
@@ -17,8 +31,21 @@ afterAll(async () => {
     await stopBrowser();
 });
 
-it('should load custom web server', async () => {
-    await browser.get(`http://${SERVER_HOST}:${SERVER_PORT}`);
-    await new Promise(res => setTimeout(res, 5000));
-    expect(await browser.getTitle()).toEqual('Index of /');
+it('should load custom map', async () => {
+    expect(await browser.getTitle()).toEqual('Leaflet Test');
+
+    expect(await elementMap.isDisplayed()).toEqual(true);
+    const elementMapSize = await elementMap.getRect();
+    expect(elementMapSize.height).not.toEqual(0);
+    expect(elementMapSize.width).not.toEqual(0);
+});
+
+it('should show tracks on the map', async () => {
+    const elementTrackList = await elementMap.findElements({ className: 'leaflet-interactive' });
+
+    expect(elementTrackList.length).toEqual(4);
+    for (const trackElement of elementTrackList) {
+        expect(await trackElement.isDisplayed()).toEqual(false);
+        expect(await trackElement.getAttribute('stroke-width')).toEqual('3');
+    }
 });

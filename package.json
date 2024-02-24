@@ -22,10 +22,10 @@
     "build:ts": "tsc",
     "build:css": "sass --verbose --no-source-map --update src:./build/main.css",
     "build": "npm run build:ts && npm run build:css",
-    "test:system": "jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles",
     "dist:expand": "rollup --config rollup.config.mjs",
     "dist:minify": "rollup --config rollup.config.mjs --minify",
-    "dist": "npm run dist:expand && npm run dist:minify"
+    "dist": "npm run dist:expand && npm run dist:minify",
+    "test:system": "npm run dist:minify && jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
