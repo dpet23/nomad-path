@@ -13,6 +13,7 @@
   "include": [
     "./src/*.ts",
     "./test/*.ts",
-    "./node_modules/ngxleafletmultioptionspolyline"
+    "./node_modules/ngxleafletmultioptionspolyline",
+    "./node_modules/jest-expect-message/types/index.d.ts",
   ]
 }

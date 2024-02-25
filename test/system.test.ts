@@ -3,7 +3,7 @@ import { WebElement } from 'selenium-webdriver';
 import { browser, startBrowser, stopBrowser } from './helpers/browser';
 import { startWebServer, stopWebServer, URL_LEAFLET } from './helpers/webServer';
 
-let elementMap: WebElement;
+let mapElement: WebElement;
 
 /**
  * Setup: start web server and a browser.
@@ -20,7 +20,7 @@ beforeEach(async () => {
     await browser.get(URL_LEAFLET);
     // await new Promise(res => setTimeout(res, 10 * 1000));
 
-    elementMap = await browser.findElement({ id: 'map' });
+    mapElement = await browser.findElement({ id: 'map' });
 });
 
 /**
@@ -31,20 +31,26 @@ afterAll(async () => {
     await stopBrowser();
 });
 
-it('should load custom map', async () => {
+it('should load custom map without errors', async () => {
     expect(await browser.getTitle()).toEqual('Leaflet Test');
 
-    expect(await elementMap.isDisplayed()).toEqual(true);
-    const elementMapSize = await elementMap.getRect();
-    expect(elementMapSize.height).not.toEqual(0);
-    expect(elementMapSize.width).not.toEqual(0);
+    expect(await mapElement.isDisplayed()).toEqual(true);
+    const mapElementSize = await mapElement.getRect();
+    expect(mapElementSize.height).not.toEqual(0);
+    expect(mapElementSize.width).not.toEqual(0);
+
+    const errorLogs = await browser.getErrorLogs();
+    expect(
+        errorLogs.length,
+        `The browser reported errors:\n  ${errorLogs.map(entry => entry.message).join('\n  ')}`,
+    ).toEqual(0);
 });
 
 it('should show tracks on the map', async () => {
-    const elementTrackList = await elementMap.findElements({ className: 'leaflet-interactive' });
+    const trackElements = await mapElement.findElements({ className: 'leaflet-interactive' });
 
-    expect(elementTrackList.length).toEqual(4);
-    for (const trackElement of elementTrackList) {
+    expect(trackElements.length).toEqual(4);
+    for (const trackElement of trackElements) {
         expect(await trackElement.isDisplayed()).toEqual(false);
         expect(await trackElement.getAttribute('stroke-width')).toEqual('3');
     }

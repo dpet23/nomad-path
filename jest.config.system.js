@@ -5,10 +5,13 @@
 
 /** @type {import('jest').Config} */
 const config = {
-    // A preset that is used as a base for Jest's configuration
+    // A preset that is used as a base for Jest's configuration.
     preset: 'ts-jest',
 
-    // Automatically clear mock calls, instances, contexts and results before every test
+    // Modules that run code to configure the testing framework, before each test file in the suite is executed.
+    setupFilesAfterEnv: ['jest-expect-message'],
+
+    // Automatically clear mock calls, instances, contexts and results before every test.
     clearMocks: true,
 
     // Timeout of a test in milliseconds.
