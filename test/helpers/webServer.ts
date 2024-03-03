@@ -5,7 +5,19 @@ import { setup as setupDevServer, teardown as teardownDevServer } from 'jest-dev
 const SERVER_HOST = '127.0.0.1';
 const SERVER_PORT = 1337;
 
-const URL_ROOT = `http://${SERVER_HOST}:${SERVER_PORT}`;
+/**
+ * Determine if testing with a locally-installed browser or with a Browserstack's remote browser.
+ */
+export function testingWithBrowserstack(): boolean {
+    return (
+        typeof process.env.BROWSERSTACK_USERNAME !== 'undefined' &&
+        typeof process.env.BROWSERSTACK_ACCESS_KEY !== 'undefined'
+    );
+}
+
+const URL_ROOT = testingWithBrowserstack()
+    ? `http://${process.env.BROWSERSTACK_USERNAME}.browserstack.com`
+    : `http://${SERVER_HOST}:${SERVER_PORT}`;
 export const URL_LEAFLET = `${URL_ROOT}/test/resources/system_website/leaflet.html`;
 export const URL_LEAFLET_EMBED = `${URL_ROOT}/test/resources/system_website/leaflet-embed.html`;
 

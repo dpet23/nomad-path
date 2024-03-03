@@ -31,7 +31,7 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 | `npm run lint:fix` | Run all code linting and automatically fix problems |
 | `npm run lint:ts` | Run [ESLint](https://www.npmjs.com/package/eslint) over the TypeScript files (includes [Prettier](https://www.npmjs.com/package/eslint-plugin-prettier) and [SonarJS](https://www.npmjs.com/package/eslint-plugin-sonarjs)) |
 | `npm run lint:css` | Run [StyleLint](https://www.npmjs.com/package/stylelint) over the SCSS files (includes [Prettier](https://www.npmjs.com/package/stylelint-prettier)) |
-| `npm run test:system` | Run browser-based system testing; use the `SELENIUM_BROWSER=chrome\|firefox\|MicrosoftEdge\|safari` environment variable to configure the browser to use |
+| `npm run test:system:<mode>` | Run browser-based system testing |
 | `npm version [major\|minor\|patch]` | Version bump _(in `package.json`)_ |
 | `npm run build` | Compile the TypeScript code into JavaScript and the Sass code into CSS (for development only) |
 | `npm run dist` | Build the library for production as an ES Module and CSS file, in the `dist` folder |
@@ -40,6 +40,28 @@ Use the Node Package Manager (`npm`) to manage the dependencies and run commands
 
 `npx` is used to execute npm packages that haven't been installed globally.
 `nvm` can be used to manage the current version of Node.
+
+## System testing
+
+A set of browser-based system tests is defined in `test/system.test.ts`.
+These use [Selenium](https://www.selenium.dev/) to automate browser actions.
+
+Tests can be run in one of 2 modes:
+
+#### `local`
+
+Use a locally-installed browser to run the test suite.
+
+Configuration:
+* `SELENIUM_BROWSER=chrome|firefox|MicrosoftEdge|safari`: the browser to use
+* `SELENIUM_HEADLESS=true`: run the browser in headless mode (don't show the UI)
+
+#### `browserstack`
+
+Use the [BrowserStack](https://www.browserstack.com/automate) platform for cross-browser testing.
+
+Configuration:
+* `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY`: BrowserStack credentials
 
 ## JavaScript events
 

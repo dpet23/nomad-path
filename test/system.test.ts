@@ -1,7 +1,13 @@
 import { WebElement } from 'selenium-webdriver';
 
-import { browser, startBrowser, stopBrowser } from './helpers/browser';
-import { startWebServer, stopWebServer, URL_LEAFLET, URL_LEAFLET_EMBED } from './helpers/webServer';
+import { browser, startBrowser, startBrowserstack, stopBrowser } from './helpers/browser';
+import {
+    startWebServer,
+    stopWebServer,
+    testingWithBrowserstack,
+    URL_LEAFLET,
+    URL_LEAFLET_EMBED,
+} from './helpers/webServer';
 
 const CLASS_OVERLAY_PANE = 'leaflet-overlay-pane';
 const CLASS_MARKER_PANE = 'leaflet-marker-pane';
@@ -18,6 +24,12 @@ const COLOR_STRONG_GREEN = '#8AC926';
 
 let mapElement: WebElement;
 let initialBrowserTabs: string[];
+
+/**
+ * Conditionally skip a test case.
+ */
+const testIf = (condition: boolean, ...args: Parameters<typeof test>) =>
+    condition ? test(...args) : test.skip(...args);
 
 /**
  * Asynchronously filter an array.
@@ -38,8 +50,13 @@ async function filterAsync<T>(
  * Setup: start web server and a browser.
  */
 beforeAll(async () => {
-    await startBrowser();
-    await startWebServer();
+    if (testingWithBrowserstack()) {
+        await startBrowserstack();
+        await browser.manage().window().maximize();
+    } else {
+        await startBrowser();
+        await startWebServer();
+    }
 });
 
 /**
@@ -50,6 +67,7 @@ beforeEach(async () => {
     await browser.switchTo().window(initialBrowserTabs[0]);
 
     await browser.get(URL_LEAFLET);
+    await browser.sleep(500);
     mapElement = await browser.findElement({ id: 'map' });
 });
 
@@ -76,7 +94,9 @@ afterEach(async () => {
  * Teardown: close the browser and stop the web server.
  */
 afterAll(async () => {
-    await stopWebServer();
+    if (!testingWithBrowserstack()) {
+        await stopWebServer();
+    }
     await stopBrowser();
 });
 
@@ -90,7 +110,13 @@ describe('Load map', () => {
         expect(mapElementSize.width).not.toEqual(0);
     });
 
-    it('should load embedded map without errors', async () => {
+    /**
+     * Requires `X-Frame-Options: SAMEORIGIN`.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+     * @see https://www.browserstack.com/docs/app-automate/appium/custom-header#nodejs
+     */
+    testIf(!testingWithBrowserstack(), 'should load embedded map without errors', async () => {
         await browser.get(URL_LEAFLET_EMBED);
         expect(await browser.getTitle()).toEqual('Leaflet Embed');
 
@@ -136,7 +162,13 @@ describe('ControlFullScreen', () => {
         expect(await browser.isFullscreen()).toBe(false);
     });
 
-    it('should toggle fullscreen from embedded map', async () => {
+    /**
+     * Requires `X-Frame-Options: SAMEORIGIN`.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+     * @see https://www.browserstack.com/docs/app-automate/appium/custom-header#nodejs
+     */
+    testIf(!testingWithBrowserstack(), 'should toggle fullscreen from embedded map', async () => {
         await browser.get(URL_LEAFLET_EMBED);
 
         const elementIframe = await browser.findElement({ xpath: '//iframe' });
@@ -209,7 +241,7 @@ describe('ControlReset', () => {
         // Reset view.
         const resetViewButton = await mapElement.findElement({ className: 'leaflet-control-reset-button' });
         expect(await resetViewButton.getAttribute('title')).not.toEqual('');
-        await browser.moveToAndClick(resetViewButton, { pauseAfterClick: 500 });
+        await browser.moveToAndClick(resetViewButton, { pauseAfterClick: 1000 });
         expect(await browser.getLeafletMapZoomLevel()).toEqual(initialZoomLevel);
     });
 });
@@ -221,7 +253,13 @@ describe('ControlOpenInNewTab', () => {
         }).rejects.toThrow('Unable to locate element');
     });
 
-    it('should open map in a new tab when pressing the UI button', async () => {
+    /**
+     * Requires `X-Frame-Options: SAMEORIGIN`.
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+     * @see https://www.browserstack.com/docs/app-automate/appium/custom-header#nodejs
+     */
+    testIf(!testingWithBrowserstack(), 'should open map in a new tab when pressing the UI button', async () => {
         await browser.get(URL_LEAFLET_EMBED);
 
         const elementIframe = await browser.findElement({ xpath: '//iframe' });
@@ -403,6 +441,7 @@ describe('ControlTrackLegend', () => {
 
         const selectBoxOptions = await selectBox.findElements({ tagName: 'option' });
         await selectBoxOptions[1].click();
+        await browser.sleep(500);
 
         const legendContentDiv = await trackLegendContentElement.findElement({ tagName: 'div' });
         expect(await legendContentDiv.getText()).toEqual('Driving\nWalking\n(undefined)');

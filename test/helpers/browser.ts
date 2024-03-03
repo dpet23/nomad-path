@@ -1,6 +1,6 @@
 /* Set up a webdriver. */
 
-import { Browser, Builder, ThenableWebDriver, WebDriver, WebElement } from 'selenium-webdriver';
+import { Browser, Builder, Capabilities, ThenableWebDriver, WebDriver, WebElement } from 'selenium-webdriver';
 import Chrome from 'selenium-webdriver/chrome';
 import Edge from 'selenium-webdriver/edge';
 import Firefox from 'selenium-webdriver/firefox';
@@ -89,9 +89,29 @@ class ExtendedWebDriver extends WebDriver {
 }
 
 /**
+ * Customise a new WebDriver instance.
+ */
+async function configureBrowser(thenableBrowser: ThenableWebDriver) {
+    expect(thenableBrowser).toBeDefined();
+
+    // Add custom helper functions.
+    Object.getOwnPropertyNames(ExtendedWebDriver.prototype).forEach(name => {
+        if (name !== 'constructor') {
+            WebDriver.prototype[name] = ExtendedWebDriver.prototype[name];
+        }
+    });
+    browser = thenableBrowser as ThenableWebDriver & ExtendedWebDriver;
+
+    // Customise timeout values.
+    await browser.manage().setTimeouts({
+        pageLoad: BROWSER_DEFAULT_PAGE_TIMEOUT_MS,
+    });
+}
+
+/**
  * Configure and start a new WebDriver instance for testing with a locally-installed browser.
  */
-export const startBrowser = async () => {
+export async function startBrowser() {
     const chromeOptions = new Chrome.Options();
     const edgeOptions = new Edge.Options();
     const firefoxOptions = new Firefox.Options();
@@ -110,25 +130,33 @@ export const startBrowser = async () => {
         .setEdgeOptions(edgeOptions)
         .setFirefoxOptions(firefoxOptions)
         .build();
-    expect(thenableBrowser).toBeDefined();
 
-    // Add custom helper functions.
-    Object.getOwnPropertyNames(ExtendedWebDriver.prototype).forEach(name => {
-        if (name !== 'constructor') {
-            WebDriver.prototype[name] = ExtendedWebDriver.prototype[name];
-        }
-    });
-    browser = thenableBrowser as ThenableWebDriver & ExtendedWebDriver;
+    await configureBrowser(thenableBrowser);
+}
 
-    // Customise timeout values.
-    await browser.manage().setTimeouts({
-        pageLoad: BROWSER_DEFAULT_PAGE_TIMEOUT_MS,
+/**
+ * Configure and start a new WebDriver instance for testing with a remote browser controlled by Browserstack.
+ */
+export async function startBrowserstack() {
+    const capabilities = Capabilities.chrome();
+    /*
+    // Support for HTTP Headers is currently in private Beta. "You do not have access to browserstack.headerParams"
+    capabilities.set('bstack:options', {
+        headerParams: '{"X-Frame-Options":"SAMEORIGIN"}',
     });
-};
+    */
+
+    const thenableBrowser = new Builder()
+        .usingServer('http://localhost:4444/wd/hub')
+        .withCapabilities(capabilities)
+        .build();
+
+    await configureBrowser(thenableBrowser);
+}
 
 /**
  * Close the WebDriver instance.
  */
-export const stopBrowser = async () => {
+export async function stopBrowser() {
     await browser.quit();
-};
+}

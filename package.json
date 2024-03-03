@@ -25,7 +25,8 @@
     "dist:expand": "rollup --config rollup.config.mjs",
     "dist:minify": "rollup --config rollup.config.mjs --minify",
     "dist": "npm run dist:expand && npm run dist:minify",
-    "test:system": "npm run dist:expand && jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles"
+    "test:system:local": "npm run dist:expand && jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles",
+    "test:system:browserstack": "browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
@@ -37,6 +38,8 @@
     "@types/selenium-webdriver": "^4.1.21",
     "@typescript-eslint/eslint-plugin": "^6.7.5",
     "@typescript-eslint/parser": "^6.7.5",
+    "browserstack-local": "^1.5.5",
+    "browserstack-node-sdk": "^1.31.23",
     "eslint": "^8.51.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^9.0.0",
