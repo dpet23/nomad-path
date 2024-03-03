@@ -7,6 +7,14 @@ const CLASS_OVERLAY_PANE = 'leaflet-overlay-pane';
 const CLASS_MARKER_PANE = 'leaflet-marker-pane';
 const CLASS_TOOLTIP_PANE = 'leaflet-tooltip-pane';
 const CLASS_POPUP_PANE = 'leaflet-popup-pane';
+const GEOJSON_NUM_TRACKS_TOTAL = 4;
+const GEOJSON_NUM_TRACKS_DRIVING = 3;
+const GEOJSON_NUM_TRACKS_WALKING = 1;
+const GEOJSON_NUM_MARKERS_TOTAL = 4;
+const COLOR_BLACK = '#000000';
+const COLOR_ELECTRIC_RED = '#E60000';
+const COLOR_DARK_MODERATE_VIOLET = '#6A4C93';
+const COLOR_STRONG_GREEN = '#8AC926';
 
 let mapElement: WebElement;
 let initialBrowserTabs: string[];
@@ -101,11 +109,11 @@ describe('Load map', () => {
     it('should load tracks and markers from GeoJSON', async () => {
         const leafletPaneOverlay = await mapElement.findElement({ className: CLASS_OVERLAY_PANE });
         const trackElements = await leafletPaneOverlay.findElements({ tagName: 'path' });
-        expect(trackElements.length).toEqual(4);
+        expect(trackElements.length).toEqual(GEOJSON_NUM_TRACKS_TOTAL);
 
         const leafletPaneMarker = await mapElement.findElement({ className: CLASS_MARKER_PANE });
         const markerElements = await leafletPaneMarker.findElements({ tagName: 'img' });
-        expect(markerElements.length).toEqual(4);
+        expect(markerElements.length).toEqual(GEOJSON_NUM_MARKERS_TOTAL);
 
         // Do not test for visibility here, since the default browser size may change across devices.
     });
@@ -381,10 +389,10 @@ describe('ControlTrackLegend', () => {
         const trackElements = await mapElement
             .findElement({ className: CLASS_OVERLAY_PANE })
             .findElements({ tagName: 'path' });
-        expect(trackElements.length).toEqual(4);
-
-        const trackElementsRed = trackElements.filter(async e => (await e.getAttribute('stroke')) === '#E60000');
-        expect(trackElementsRed.length).toEqual(4);
+        expect(
+            (await filterAsync(trackElements, async e => (await e.getAttribute('stroke')) === COLOR_ELECTRIC_RED))
+                .length,
+        ).toEqual(GEOJSON_NUM_TRACKS_TOTAL);
     });
 
     it('should redraw the tracks and update the legend when changing the line style', async () => {
@@ -402,21 +410,21 @@ describe('ControlTrackLegend', () => {
         const trackElements = await mapElement
             .findElement({ className: CLASS_OVERLAY_PANE })
             .findElements({ tagName: 'path' });
-        const trackElementsDriving = await filterAsync(
-            trackElements,
-            async e => (await e.getAttribute('stroke')) === '#6A4C93',
-        );
-        expect(trackElementsDriving.length).toEqual(3);
-        const trackElementsWalking = await filterAsync(
-            trackElements,
-            async e => (await e.getAttribute('stroke')) === '#8AC926',
-        );
-        expect(trackElementsWalking.length).toEqual(1);
-        const trackElementsUndefined = await filterAsync(
-            trackElements,
-            async e => (await e.getAttribute('stroke')) === '#000000',
-        );
-        expect(trackElementsUndefined.length).toEqual(0);
+        expect(
+            (
+                await filterAsync(
+                    trackElements,
+                    async e => (await e.getAttribute('stroke')) === COLOR_DARK_MODERATE_VIOLET,
+                )
+            ).length,
+        ).toEqual(GEOJSON_NUM_TRACKS_DRIVING);
+        expect(
+            (await filterAsync(trackElements, async e => (await e.getAttribute('stroke')) === COLOR_STRONG_GREEN))
+                .length,
+        ).toEqual(GEOJSON_NUM_TRACKS_WALKING);
+        expect(
+            (await filterAsync(trackElements, async e => (await e.getAttribute('stroke')) === COLOR_BLACK)).length,
+        ).toEqual(0);
     });
 });
 
