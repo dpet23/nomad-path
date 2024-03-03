@@ -7,6 +7,7 @@ const SERVER_PORT = 1337;
 
 const URL_ROOT = `http://${SERVER_HOST}:${SERVER_PORT}`;
 export const URL_LEAFLET = `${URL_ROOT}/test/resources/system_website/leaflet.html`;
+export const URL_LEAFLET_EMBED = `${URL_ROOT}/test/resources/system_website/leaflet-embed.html`;
 
 let servers;
 

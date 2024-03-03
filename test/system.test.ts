@@ -1,7 +1,7 @@
 import { WebElement } from 'selenium-webdriver';
 
 import { browser, startBrowser, stopBrowser } from './helpers/browser';
-import { startWebServer, stopWebServer, URL_LEAFLET } from './helpers/webServer';
+import { startWebServer, stopWebServer, URL_LEAFLET, URL_LEAFLET_EMBED } from './helpers/webServer';
 
 const CLASS_OVERLAY_PANE = 'leaflet-overlay-pane';
 const CLASS_MARKER_PANE = 'leaflet-marker-pane';
@@ -9,6 +9,7 @@ const CLASS_TOOLTIP_PANE = 'leaflet-tooltip-pane';
 const CLASS_POPUP_PANE = 'leaflet-popup-pane';
 
 let mapElement: WebElement;
+let initialBrowserTabs: string[];
 
 /**
  * Asynchronously filter an array.
@@ -37,6 +38,9 @@ beforeAll(async () => {
  * Setup: load the Leaflet map and find the map element.
  */
 beforeEach(async () => {
+    initialBrowserTabs = await browser.getAllWindowHandles();
+    await browser.switchTo().window(initialBrowserTabs[0]);
+
     await browser.get(URL_LEAFLET);
     mapElement = await browser.findElement({ id: 'map' });
 });
@@ -50,6 +54,14 @@ afterEach(async () => {
         errorLogs.length,
         `The browser reported errors:\n  ${errorLogs.map(entry => entry.message).join('\n  ')}`,
     ).toEqual(0);
+
+    // Close any extra tabs/windows.
+    for (const browserTab of await browser.getAllWindowHandles()) {
+        if (!initialBrowserTabs.includes(browserTab)) {
+            await browser.switchTo().window(browserTab);
+            await browser.close();
+        }
+    }
 });
 
 /**
@@ -64,6 +76,22 @@ describe('Load map', () => {
     it('should load custom map without errors', async () => {
         expect(await browser.getTitle()).toEqual('Leaflet Test');
 
+        expect(await mapElement.isDisplayed()).toEqual(true);
+        const mapElementSize = await mapElement.getRect();
+        expect(mapElementSize.height).not.toEqual(0);
+        expect(mapElementSize.width).not.toEqual(0);
+    });
+
+    it('should load embedded map without errors', async () => {
+        await browser.get(URL_LEAFLET_EMBED);
+        expect(await browser.getTitle()).toEqual('Leaflet Embed');
+
+        const elementIframe = await browser.findElement({ xpath: '//iframe[@title="Leaflet Map"]' });
+        expect(await elementIframe.isDisplayed()).toEqual(true);
+
+        await browser.switchTo().frame(elementIframe);
+
+        mapElement = await browser.findElement({ id: 'map' });
         expect(await mapElement.isDisplayed()).toEqual(true);
         const mapElementSize = await mapElement.getRect();
         expect(mapElementSize.height).not.toEqual(0);
@@ -93,6 +121,24 @@ describe('ControlFullScreen', () => {
         expect(await fullscreenButtonElement.getAttribute('title')).not.toEqual('');
 
         // Ensure element toggles fullscreen mode.
+        expect(await browser.isFullscreen()).toBe(false);
+        await browser.moveToAndClick(fullscreenButtonElement);
+        expect(await browser.isFullscreen()).toBe(true);
+        await browser.moveToAndClick(fullscreenButtonElement);
+        expect(await browser.isFullscreen()).toBe(false);
+    });
+
+    it('should toggle fullscreen from embedded map', async () => {
+        await browser.get(URL_LEAFLET_EMBED);
+
+        const elementIframe = await browser.findElement({ xpath: '//iframe' });
+        await browser.switchTo().frame(elementIframe);
+        mapElement = await browser.findElement({ id: 'map' });
+
+        // Ensure element toggles fullscreen mode.
+        const fullscreenButtonElement = await mapElement.findElement({
+            className: 'leaflet-control-fullscreen-button',
+        });
         expect(await browser.isFullscreen()).toBe(false);
         await browser.moveToAndClick(fullscreenButtonElement);
         expect(await browser.isFullscreen()).toBe(true);
@@ -167,8 +213,25 @@ describe('ControlOpenInNewTab', () => {
         }).rejects.toThrow('Unable to locate element');
     });
 
-    it.skip('should open map in a new tab when pressing the UI button', async () => {
-        // FUTURE: load the map in an iframe wrapper.
+    it('should open map in a new tab when pressing the UI button', async () => {
+        await browser.get(URL_LEAFLET_EMBED);
+
+        const elementIframe = await browser.findElement({ xpath: '//iframe' });
+        await browser.switchTo().frame(elementIframe);
+        mapElement = await browser.findElement({ id: 'map' });
+
+        const openInNewTabButtonElement = await mapElement.findElement({
+            className: 'leaflet-control-open-in-new-tab',
+        });
+        expect(await openInNewTabButtonElement.isDisplayed()).toEqual(true);
+
+        // Ensure element opens the map in a new tab/window.
+        await browser.moveToAndClick(openInNewTabButtonElement);
+        const currentBrowserTabs = await browser.getAllWindowHandles();
+        expect(currentBrowserTabs.length).toEqual(initialBrowserTabs.length + 1);
+
+        await browser.switchTo().window(currentBrowserTabs[currentBrowserTabs.length - 1]);
+        expect(await browser.getTitle()).toEqual('Leaflet Test');
     });
 });
 
