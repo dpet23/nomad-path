@@ -34,13 +34,34 @@
         integrity="sha384-ukRBjy+DK2S3VuulEG8u6g0ab9VAFbnzcku/+qMyE3o4swI3O/pdcoG9yrAcPfuS" crossorigin=""></script>
 
     <script type="module">
-        import createLeafletMap from '../../../dist/leaflet-map.esm.js';
+        import createLeafletMap, {
+            getLineStringConst,
+            getLineStringTransport,
+        } from '../../../dist/leaflet-map.esm.js';
 
         // Create the Leaflet map.
         const _leafletMap = createLeafletMap({
             id: 'map',
             mapType: 'GOOGLE_SATELLITE',
             geojson: 'data.geojson',
+            lineStringStyles: [
+                {
+                    name: 'Single colour',
+                    func: getLineStringConst, // 'Track' for each track point
+                    thresholds: new Map([
+                        ['Track', '#E60000'], // Electric Red
+                    ]),
+                },
+                {
+                    name: 'Transport mode',
+                    func: getLineStringTransport, // $.features[?(/LineString/.test(@.geometry.type))].properties.transport[0]
+                    thresholds: new Map([
+                        [undefined, '#000000'], // Black
+                        ['Driving', '#6A4C93'], // dark moderate violet
+                        ['Walking', '#8AC926'], // strong green
+                    ]),
+                },
+            ],
         });
     </script>
 </body>
