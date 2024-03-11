@@ -34,6 +34,9 @@ function processGeoJsonPoint(
             `<strong>${geoJsonFeature.properties.name}</strong><br/>${geoJsonFeature.properties.desc}`,
         );
     }
+
+    // FUTURE: set custom icon with https://github.com/Leaflet/Leaflet.Icon.Glyph
+    /*
     leafletMarker.setIcon(
         new L.Icon({
             iconUrl: geoJsonFeature.properties?.sym,
@@ -51,6 +54,7 @@ function processGeoJsonPoint(
             tooltipAnchor: geoJsonFeature.properties?.symTooltipAnchor || [0, -29],
         }),
     );
+    */
 
     return { leafletLayer: leafletMarker, layerGroupName };
 }

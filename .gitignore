@@ -15,6 +15,12 @@ node_modules/
 # IDE
 .vscode/
 .idea/
+.run/
+
+# Browserstack testing
+jest_browserstack.config.js
+browserstack.err
+**/*.log
 
 # Others
 .ignore/

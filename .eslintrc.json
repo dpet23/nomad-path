@@ -9,7 +9,8 @@
         "prettier"
     ],
     "ignorePatterns": [
-        "node_modules/**/*.ts"
+        "node_modules/**/*.ts",
+        "jest.config.*.js"
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
@@ -84,9 +85,7 @@
         "max-len": ["error", {
             "code": 120
         }],
-        "newline-per-chained-call": ["error", {
-            "ignoreChainWithDepth": 3
-        }],
+        "newline-per-chained-call": ["off"],
         "no-caller": "error",
         "no-cond-assign": "error",
         "no-empty": "error",
