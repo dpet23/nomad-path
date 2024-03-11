@@ -130,6 +130,8 @@ describe('Load map', () => {
     });
 
     it('should load tracks and markers from GeoJSON', async () => {
+        await browser.sleep(1000);
+
         const leafletPaneOverlay = await mapElement.findElement({ className: CLASS_OVERLAY_PANE });
         const trackElements = await leafletPaneOverlay.findElements({ tagName: 'path' });
         expect(trackElements.length).toEqual(GEOJSON_NUM_TRACKS_TOTAL);
@@ -153,9 +155,9 @@ describe('ControlFullScreen', () => {
 
         // Ensure element toggles fullscreen mode.
         expect(await browser.isFullscreen()).toBe(false);
-        await browser.moveToAndClick(fullscreenButtonElement);
+        await browser.moveToAndClick(fullscreenButtonElement, { pauseAfterClick: 500 });
         expect(await browser.isFullscreen()).toBe(true);
-        await browser.moveToAndClick(fullscreenButtonElement);
+        await browser.moveToAndClick(fullscreenButtonElement, { pauseAfterClick: 500 });
         expect(await browser.isFullscreen()).toBe(false);
     });
 

@@ -1,0 +1,75 @@
+# Test settings and browser capabilities for BrowserStack.
+# Reference: https://www.browserstack.com/docs/automate/selenium/sdk-config-generator
+
+# BrowserStack Credentials
+# (Set BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY as env variables)
+maskBasicAuth: true
+
+# BrowserStack Reporting
+projectName: leaflet-map
+buildName: system-test
+buildIdentifier: ${DATE_TIME}
+
+# Debugging Features
+debug: true       # enable screenshots for every selenium command
+networkLogs: true # network capture for the session, in HAR format
+consoleLogs: info # remote browser’s console log levels (Chrome only)
+
+# BrowserStack Local for localhost private websites
+# (Details: https://www.browserstack.com/docs/automate/selenium/getting-started/nodejs/jest-js/local-testing)
+local: true
+parallelsPerPlatform: 1
+browserStackLocalOptions:
+  f: .
+  localIdentifier: local_connection
+
+# Browsers / Devices to test
+# Based on the Browserslist query `defaults`.
+# To generate YAML for a chosen platform: https://www.browserstack.com/docs/automate/capabilities
+buildTag: mobile android
+platforms:
+  # (limited to max 10)
+
+  # Chrome on Android
+
+  - deviceName: Google Pixel 8 Pro
+    osVersion: 14.0
+    browserName: chrome
+    deviceOrientation: landscape # 6.7", 2992x1344, 489 ppi
+
+  - deviceName: Samsung Galaxy Tab S9
+    osVersion: 13.0
+    browserName: chrome
+    deviceOrientation: portrait # 11", 1600x2560, 274 ppi
+
+  - deviceName: Samsung Galaxy S21
+    osVersion: 12.0
+    browserName: chrome
+    deviceOrientation: portrait # 6.2", 1080x2400, 421 ppi
+
+  - deviceName: OnePlus 9
+    osVersion: 11.0
+    browserName: chrome
+    deviceOrientation: landscape # 6.55", 2400x1080, 402 ppi
+
+  # Samsung Internet
+
+  - deviceName: Samsung Galaxy S24 Ultra
+    osVersion: 14.0
+    browserName: samsung
+    deviceOrientation: landscape # 6.8", 3120x1440, 505 ppi
+
+  - deviceName: Samsung Galaxy S23
+    osVersion: 13.0
+    browserName: samsung
+    deviceOrientation: portrait # 6.1", 1080x2340, 425 ppi
+
+  - deviceName: Samsung Galaxy Tab S8
+    osVersion: 12.0
+    browserName: samsung
+    deviceOrientation: portrait # 11", 1600x2560, 274 ppi
+
+  - deviceName: Samsung Galaxy A52
+    osVersion: 11.0
+    browserName: samsung
+    deviceOrientation: landscape # 6.5", 2400x1080, 407 ppi
