@@ -1,13 +1,7 @@
 import { WebElement } from 'selenium-webdriver';
 
-import { browser, startBrowser, startBrowserstack, stopBrowser } from './helpers/browser';
-import {
-    startWebServer,
-    stopWebServer,
-    testingWithBrowserstack,
-    URL_LEAFLET,
-    URL_LEAFLET_EMBED,
-} from './helpers/webServer';
+import { browser, startBrowser, startBrowserstack, stopBrowser, testingWithBrowserstack } from './helpers/browser';
+import { startWebServer, stopWebServer, URL_LEAFLET, URL_LEAFLET_EMBED } from './helpers/webServer';
 
 const CLASS_OVERLAY_PANE = 'leaflet-overlay-pane';
 const CLASS_MARKER_PANE = 'leaflet-marker-pane';
@@ -22,8 +16,9 @@ const COLOR_ELECTRIC_RED = '#E60000';
 const COLOR_DARK_MODERATE_VIOLET = '#6A4C93';
 const COLOR_STRONG_GREEN = '#8AC926';
 
-let mapElement: WebElement;
+let isMobileBrowser: boolean;
 let initialBrowserTabs: string[];
+let mapElement: WebElement;
 
 /**
  * Conditionally skip a test case.
@@ -57,6 +52,8 @@ beforeAll(async () => {
         await startBrowser();
         await startWebServer();
     }
+
+    isMobileBrowser = await browser.isMobileBrowser();
 });
 
 /**
@@ -67,7 +64,7 @@ beforeEach(async () => {
     await browser.switchTo().window(initialBrowserTabs[0]);
 
     await browser.get(URL_LEAFLET);
-    await browser.sleep(500);
+    await browser.sleep(1000);
     mapElement = await browser.findElement({ id: 'map' });
 });
 
@@ -199,38 +196,49 @@ describe('ControlZoom', () => {
     });
 
     it('should zoom in and out using the control +/- buttons', async () => {
+        if (isMobileBrowser) return; // FUTURE: Update `getLeafletMapZoomLevel()` to work on mobile devices.
+
         const initialZoomLevel = await browser.getLeafletMapZoomLevel();
 
         // Zoom in.
         const zoomInButton = await zoomControlElement.findElement({ className: 'leaflet-control-zoom-in' });
         expect(await zoomInButton.getAttribute('title')).not.toEqual('');
-        await browser.moveToAndClick(zoomInButton, { pauseAfterClick: 500 });
+        await browser.moveToAndClick(zoomInButton, { pauseAfterClick: 1000 });
         expect(await browser.getLeafletMapZoomLevel()).toEqual(initialZoomLevel + 1);
 
         // Zoom out.
         const zoomOutButton = await zoomControlElement.findElement({ className: 'leaflet-control-zoom-out' });
         expect(await zoomOutButton.getAttribute('title')).not.toEqual('');
-        await browser.moveToAndClick(zoomOutButton, { pauseAfterClick: 500 });
+        await browser.moveToAndClick(zoomOutButton, { pauseAfterClick: 1000 });
         expect(await browser.getLeafletMapZoomLevel()).toEqual(initialZoomLevel);
     });
 
     it('should zoom in and out using the zoom bars', async () => {
-        // Zoom in.
-        const zoomInLevel = 15; // note: tiles may not load in time, need to ignore browser errors
-        const zoomInBar = await browser.zoomLeafletMapTo(zoomInLevel);
-        expect(await zoomInBar.getAttribute('title')).not.toEqual('');
-        expect(await browser.getLeafletMapZoomLevel()).toEqual(zoomInLevel);
+        if (isMobileBrowser) {
+            await expect(async () => {
+                await zoomControlElement.findElement({ className: 'leaflet-control-zoom-bar-container' });
+            }).rejects.toThrow('Unable to locate element');
+        } else {
+            // Zoom in.
+            const zoomInLevel = 15; // note: tiles may not load in time, need to ignore browser errors
+            const zoomInBar = await browser.zoomLeafletMapTo(zoomInLevel);
+            expect(await zoomInBar.getAttribute('title')).not.toEqual('');
+            expect(await browser.getLeafletMapZoomLevel()).toEqual(zoomInLevel);
 
-        // Zoom out.
-        const zoomOutLevel = 1;
-        const zoomOutBar = await browser.zoomLeafletMapTo(zoomOutLevel);
-        expect(await zoomOutBar.getAttribute('title')).not.toEqual('');
-        expect(await browser.getLeafletMapZoomLevel()).toEqual(zoomOutLevel);
+            // Zoom out.
+            const zoomOutLevel = 1;
+            const zoomOutBar = await browser.zoomLeafletMapTo(zoomOutLevel);
+            expect(await zoomOutBar.getAttribute('title')).not.toEqual('');
+            expect(await browser.getLeafletMapZoomLevel()).toEqual(zoomOutLevel);
+        }
     });
 });
 
 describe('ControlReset', () => {
     it('should reset map view when pressing the UI button', async () => {
+        // FUTURE: Update `getLeafletMapZoomLevel()` and `zoomLeafletMapTo()` to work on mobile devices.
+        if (isMobileBrowser) return;
+
         const initialZoomLevel = await browser.getLeafletMapZoomLevel();
 
         // Zoom in.
@@ -319,6 +327,8 @@ describe('ControlTrackLayers', () => {
     });
 
     it('should open track popup when clicking on a label', async () => {
+        if (isMobileBrowser) return; // FUTURE: Update `zoomLeafletMapTo()` to work on mobile devices.
+
         await browser.zoomLeafletMapTo(13); // note: tiles may not load in time, need to ignore browser errors
 
         await browser.moveToAndClick(trackLayersIconElement, { pauseAfterClick: 500 });
@@ -441,7 +451,7 @@ describe('ControlTrackLegend', () => {
 
         const selectBoxOptions = await selectBox.findElements({ tagName: 'option' });
         await selectBoxOptions[1].click();
-        await browser.sleep(500);
+        await browser.sleep(1500);
 
         const legendContentDiv = await trackLegendContentElement.findElement({ tagName: 'div' });
         expect(await legendContentDiv.getText()).toEqual('Driving\nWalking\n(undefined)');

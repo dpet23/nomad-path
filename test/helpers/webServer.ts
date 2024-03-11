@@ -2,18 +2,10 @@
 
 import { setup as setupDevServer, teardown as teardownDevServer } from 'jest-dev-server';
 
+import { testingWithBrowserstack } from './browser';
+
 const SERVER_HOST = '127.0.0.1';
 const SERVER_PORT = 1337;
-
-/**
- * Determine if testing with a locally-installed browser or with a Browserstack's remote browser.
- */
-export function testingWithBrowserstack(): boolean {
-    return (
-        typeof process.env.BROWSERSTACK_USERNAME !== 'undefined' &&
-        typeof process.env.BROWSERSTACK_ACCESS_KEY !== 'undefined'
-    );
-}
 
 const URL_ROOT = testingWithBrowserstack()
     ? `http://${process.env.BROWSERSTACK_USERNAME}.browserstack.com`

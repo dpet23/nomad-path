@@ -11,12 +11,43 @@ const BROWSER_DEFAULT_PAGE_TIMEOUT_MS = 60 * 1000;
 export let browser: ThenableWebDriver & ExtendedWebDriver;
 
 /**
+ * Determine if testing with a locally-installed browser or with a Browserstack's remote browser.
+ */
+export function testingWithBrowserstack(): boolean {
+    return (
+        typeof process.env.BROWSERSTACK_USERNAME !== 'undefined' &&
+        typeof process.env.BROWSERSTACK_ACCESS_KEY !== 'undefined'
+    );
+}
+
+/**
  * Helper functions for common browser tasks.
  */
 class ExtendedWebDriver extends WebDriver {
     /**
+     * Check if the browser is running on a mobile device.
+     */
+    async isMobileBrowser(): Promise<boolean> {
+        const userAgent: string = await this.executeScript('return navigator.userAgent');
+        const size = await this.manage().window().getSize();
+
+        const mobileDevices = [
+            'Android',
+            'Blackberry',
+            'IEMobile',
+            'iPhone',
+            'iPad',
+            'iPod',
+            'Opera Mini',
+            'SamsungBrowser',
+            'webOS',
+        ];
+        return mobileDevices.some(device => userAgent.includes(device)) || size.width <= 480 || size.height <= 480;
+    }
+
+    /**
      * Fetch the error log entries shown in the browser's console.
-     * NOTE: not supported on Firefox.
+     * NOTE: not supported on Firefox/Safari.
      */
     async getErrorLogs(): Promise<Entry[]> {
         return (await this.manage().logs().get('browser')).filter(
@@ -68,6 +99,8 @@ class ExtendedWebDriver extends WebDriver {
 
     /**
      * Find the zoom bar that's currently highlighted, and extract the zoom level from its ID.
+     *
+     * TODO: doesn't work on mobile
      *
      * @return The map's current zoom level.
      */

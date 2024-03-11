@@ -19,10 +19,6 @@ const config = {
 
     // The number of seconds after which a test is considered as slow and reported as such in the results.
     slowTestThreshold: 30, // 30 seconds
-
-    // Maximum number of tests allowed to run in parallel.
-    maxConcurrency: 5,
-    maxWorkers: 5,
 };
 
 module.exports = config;
