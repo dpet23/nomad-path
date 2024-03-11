@@ -223,6 +223,7 @@ export default abstract class ControlAbstractCollapsible extends L.Control {
             marginFromOtherEdgeProperty = 'margin-bottom';
         }
 
+        // TODO: `computedStyleMap` not supported on Firefox: https://caniuse.com/mdn-api_element_computedstylemap
         const containerStyles = this.container.computedStyleMap();
         const marginFromOtherEdgePx = Math.round(
             (containerStyles.get(marginFromOtherEdgeProperty) as CSSUnitValue).value,
