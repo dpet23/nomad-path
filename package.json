@@ -26,7 +26,7 @@
     "dist:minify": "rollup --config rollup.config.mjs --minify",
     "dist": "npm run dist:expand && npm run dist:minify",
     "test:system:local": "npm run dist:expand && jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles",
-    "test:system:browserstack": "browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles"
+    "test:system:browserstack": "browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles --browserstack.config test/browserstack.desktop.yml && browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles --browserstack.config test/browserstack.mobile.yml"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",

@@ -451,7 +451,7 @@ describe('ControlTrackLegend', () => {
 
         const selectBoxOptions = await selectBox.findElements({ tagName: 'option' });
         await selectBoxOptions[1].click();
-        await browser.sleep(1500);
+        await browser.sleep(2000);
 
         const legendContentDiv = await trackLegendContentElement.findElement({ tagName: 'div' });
         expect(await legendContentDiv.getText()).toEqual('Driving\nWalking\n(undefined)');
