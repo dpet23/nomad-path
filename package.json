@@ -26,7 +26,10 @@
     "dist:minify": "rollup --config rollup.config.mjs --minify",
     "dist": "npm run dist:expand && npm run dist:minify",
     "test:system:local": "npm run dist:expand && jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles",
-    "test:system:browserstack": "browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles --browserstack.config test/browserstack.desktop.yml && browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles --browserstack.config test/browserstack.mobile.yml"
+    "test:system:browserstack:desktop:chromium": "browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles --browserstack.config test/browserstack.desktop.chromium.yml",
+    "test:system:browserstack:desktop:firefox": "browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles --browserstack.config test/browserstack.desktop.firefox.yml",
+    "test:system:browserstack:mobile:android": "browserstack-node-sdk jest --config jest.config.system.js --runTestsByPath test/system.test.ts --detectOpenHandles --browserstack.config test/browserstack.mobile.android.yml",
+    "test:system:browserstack": "npm run test:system:browserstack:desktop:chromium && npm run test:system:browserstack:desktop:firefox && npm run test:system:browserstack:mobile:android"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",

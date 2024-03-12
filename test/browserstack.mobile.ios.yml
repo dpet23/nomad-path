@@ -26,52 +26,28 @@ browserStackLocalOptions:
 # Browsers / Devices to test
 # Based on the Browserslist query `defaults`.
 # To generate YAML for a chosen platform: https://www.browserstack.com/docs/automate/capabilities
-buildTag: mobile
+buildTag: mobile ios
 platforms:
   # (limited to max 10)
 
-  # Phone: iOS, Safari (fails with `StaleElementReferenceError`)
+  # Safari on iOS
+
+  # (fails with `StaleElementReferenceError`)
   # - deviceName: iPhone 15 Pro Max
   #   osVersion: 17
   #   browserName: safari
   #   deviceOrientation: landscape # 6.7", 2796x1290, 460 ppi
 
-  # Phone: iOS, Chromium (fails with `StaleElementReferenceError`)
-  # - deviceName: iPhone 13
-  #   osVersion: 15
-  #   browserName: chromium
-  #   deviceOrientation: portrait # 6.1", 2532x1170, 460 ppi
-
-  # Tablet: iOS, Safari (user agent not mobile)
+  # (user agent not mobile)
   # - deviceName: iPad Pro 12.9 2022
   #   osVersion: 16
   #   browserName: safari
   #   deviceOrientation: portrait # 12.9", 2048x2732, 265 ppi
 
-  # Phone: Android, Samsung Browser
+  # Chromium on iOS
 
-  - deviceName: Samsung Galaxy S24 Ultra
-    osVersion: 14.0
-    browserName: samsung
-    deviceOrientation: landscape # 6.8", 3120x1440, 505 ppi
-
-  # Tablet: Android, Samsung Browser
-
-  - deviceName: Samsung Galaxy Tab S8
-    osVersion: 12.0
-    browserName: samsung
-    deviceOrientation: portrait # 11", 1600x2560, 274 ppi
-
-  # Phone: Android, Chrome
-
-  - deviceName: OnePlus 8
-    osVersion: 10.0
-    browserName: chrome
-    deviceOrientation: landscape # 6.55", 2400x1080, 402 ppi
-
-  # Tablet: Android, Chrome
-
-  - deviceName: Samsung Galaxy Tab S8
-    osVersion: 12.0
-    browserName: chrome
-    deviceOrientation: portrait # 11", 1600x2560, 274 ppi
+  # (fails with `StaleElementReferenceError`)
+  # - deviceName: iPhone 13
+  #   osVersion: 15
+  #   browserName: chromium
+  #   deviceOrientation: portrait # 6.1", 2532x1170, 460 ppi

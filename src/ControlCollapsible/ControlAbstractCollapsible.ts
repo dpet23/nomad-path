@@ -223,19 +223,18 @@ export default abstract class ControlAbstractCollapsible extends L.Control {
             marginFromOtherEdgeProperty = 'margin-bottom';
         }
 
-        // TODO: `computedStyleMap` not supported on Firefox: https://caniuse.com/mdn-api_element_computedstylemap
-        const containerStyles = this.container.computedStyleMap();
+        const containerStyles = window.getComputedStyle(this.container);
         const marginFromOtherEdgePx = Math.round(
-            (containerStyles.get(marginFromOtherEdgeProperty) as CSSUnitValue).value,
+            parseFloat(containerStyles.getPropertyValue(marginFromOtherEdgeProperty)),
         );
         const containerBorder =
-            Math.round((containerStyles.get('border-top-width') as CSSUnitValue).value) +
-            Math.round((containerStyles.get('border-bottom-width') as CSSUnitValue).value);
+            Math.round(parseFloat(containerStyles.getPropertyValue('border-top-width'))) +
+            Math.round(parseFloat(containerStyles.getPropertyValue('border-bottom-width')));
 
-        const contentStyles = this.content.computedStyleMap();
+        const contentStyles = window.getComputedStyle(this.content);
         const contentPadding =
-            Math.round((contentStyles.get('padding-top') as CSSUnitValue).value) +
-            Math.round((contentStyles.get('padding-bottom') as CSSUnitValue).value);
+            Math.round(parseFloat(contentStyles.getPropertyValue('padding-top'))) +
+            Math.round(parseFloat(contentStyles.getPropertyValue('padding-bottom')));
 
         return window.innerHeight - offsetFromCurrentEdgePx - marginFromOtherEdgePx - containerBorder - contentPadding;
     };

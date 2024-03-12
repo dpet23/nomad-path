@@ -26,7 +26,7 @@ browserStackLocalOptions:
 # Browsers / Devices to test
 # Based on the Browserslist query `defaults`.
 # To generate YAML for a chosen platform: https://www.browserstack.com/docs/automate/capabilities
-buildTag: desktop
+buildTag: desktop chromium
 platforms:
   # (limited to max 10)
 
@@ -81,18 +81,3 @@ platforms:
     browserName: Edge
     browserVersion: 121.0
     resolution: 1920x1080 # FHD, 16∶9
-
-  # Desktop: Firefox
-  # Not currently supported: `computedStyleMap()` and `webdriver.manage().logs().get('browser')`
-  # - os: Windows
-  #   osVersion: 10
-  #   browserName: Firefox
-  #   browserVersion: latest
-  #   resolution: 1920x1080 # FHD, 16∶9
-
-  # Desktop: Safari (fails with `NoSuchSessionError`)
-  # - os: OS X
-  #   osVersion: Ventura
-  #   browserName: Safari
-  #   browserVersion: latest
-  #   resolution: 1920x1080 # FHD, 16∶9

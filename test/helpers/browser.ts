@@ -47,10 +47,18 @@ class ExtendedWebDriver extends WebDriver {
 
     /**
      * Fetch the error log entries shown in the browser's console.
-     * NOTE: not supported on Firefox/Safari.
+     * (Only supported by Chromium-based browsers.)
      */
     async getErrorLogs(): Promise<Entry[]> {
-        return (await this.manage().logs().get('browser')).filter(
+        return (
+            await this.manage()
+                .logs()
+                .get('browser')
+                .then(
+                    entryList => entryList, // Use the browser's list of logs.
+                    _error => [], // This browser does not support retrieving logs, allow tests to pass.
+                )
+        ).filter(
             entry =>
                 // Errors only
                 entry.level <= Level.SEVERE &&

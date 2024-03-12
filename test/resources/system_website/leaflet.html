@@ -40,6 +40,19 @@
             getLineStringTransport,
         } from '../../../dist/leaflet-map.esm.js';
 
+        function randomInt(rightBound) {
+            return Math.floor(Math.random() * rightBound);
+        }
+
+        // Build a big list of example styles.
+        // Add enough items to force the track legend to be scrollable, even on large screens.
+        const lineStringStyle_LongListOfItems = {};
+        for (let i = 1; i <= 200; i++) {
+            // https://css-tricks.com/snippets/javascript/random-hex-color/
+            const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+            lineStringStyle_LongListOfItems[`Item ${i}`] = `#${randomColor}`;
+        }
+
         // Create the Leaflet map.
         const _leafletMap = createLeafletMap({
             id: 'map',
@@ -61,6 +74,11 @@
                         ['Driving', '#6A4C93'], // dark moderate violet
                         ['Walking', '#8AC926'], // strong green
                     ]),
+                },
+                {
+                    name: 'Long list of items',
+                    func: getLineStringConst,
+                    thresholds: new Map(Object.entries(lineStringStyle_LongListOfItems)),
                 },
             ],
         });
