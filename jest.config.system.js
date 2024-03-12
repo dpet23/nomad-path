@@ -18,7 +18,7 @@ const config = {
     testTimeout: 5 * 60 * 1000, // 5 minutes
 
     // The number of seconds after which a test is considered as slow and reported as such in the results.
-    slowTestThreshold: 30, // 30 seconds
+    slowTestThreshold: 70, // seconds
 };
 
 module.exports = config;

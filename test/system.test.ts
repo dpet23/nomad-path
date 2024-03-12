@@ -392,6 +392,8 @@ describe('ControlTrackLayers', () => {
 });
 
 describe('ControlTrackLegend', () => {
+    const NUM_SELECT_BOX_OPTIONS = 3;
+
     let trackLegendControlElement: WebElement;
     let trackLegendIconElement: WebElement;
     let trackLegendContentElement: WebElement;
@@ -430,7 +432,7 @@ describe('ControlTrackLegend', () => {
         const selectBox = await trackLegendContentElement.findElement({ tagName: 'select' });
 
         const selectBoxOptions = await selectBox.findElements({ tagName: 'option' });
-        expect(selectBoxOptions.length).toEqual(2);
+        expect(selectBoxOptions.length).toEqual(NUM_SELECT_BOX_OPTIONS);
         expect(await selectBox.isEnabled()).toBe(true);
 
         const legendContentDiv = await trackLegendContentElement.findElement({ tagName: 'div' });
@@ -476,6 +478,22 @@ describe('ControlTrackLegend', () => {
         expect(
             (await filterAsync(trackElements, async e => (await e.getAttribute('stroke')) === COLOR_BLACK)).length,
         ).toEqual(0);
+    });
+
+    it('should make the control content scrollable to fit on the screen', async () => {
+        await browser.moveToAndClick(trackLegendIconElement, { pauseAfterClick: 500 });
+
+        const selectBox = await trackLegendContentElement.findElement({ tagName: 'select' });
+        await browser.moveToAndClick(selectBox, { pauseAfterClick: 500 });
+
+        const selectBoxOptions = await selectBox.findElements({ tagName: 'option' });
+        await selectBoxOptions[2].click();
+        await browser.sleep(2000);
+
+        // Check that content is scrollable.
+        expect(await trackLegendContentElement.getCssValue('overflow-y')).toEqual('scroll');
+
+        await browser.sleep(10000);
     });
 });
 

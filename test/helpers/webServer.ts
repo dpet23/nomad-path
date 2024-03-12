@@ -26,6 +26,7 @@ export const startWebServer = async () => {
         port: SERVER_PORT,
         usedPortAction: 'error',
         debug: true,
+        launchTimeout: 30000, // milliseconds
     });
     for (const server of servers) {
         expect(server.pid).not.toEqual(null);
