@@ -33,7 +33,6 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
     private classLayerListItem = `${this.classLayerList}-item`;
     private classLayerListItemSelector = `${this.classLayerListItem}-selector`;
     private classLayerListItemLabel = `${this.classLayerListItem}-label`;
-    private classLayerListItemZoom = `${this.classLayerListItem}-zoom`;
 
     /**
      * Populate the Control's collapsible content.
@@ -148,16 +147,11 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         L.DomEvent.addListener(nameElement, 'mouseleave', this.onLabelMouseLeave);
         L.DomEvent.addListener(nameElement, 'click', this.onLabelClick);
 
-        // Button to zoom in to a track group.
-        const zoomElement = L.DomUtil.create('img', this.classLayerListItemZoom, layerObject.uiElement);
-        zoomElement.title = 'zoom to this track';
-        L.DomEvent.addListener(zoomElement, 'click', this.onZoomClick);
-
         // TODO (GPS Visualizer):
         // Next to each label is a zoom icon
-        //  * (/) Icon: base-64 PNG
-        //  * (/) Mouseover: cursor becomes magnifying glass
-        //  * (/) Hover: "zoom to this track" help text
+        //  * (x) Icon: base-64 PNG
+        //  * (x) Mouseover: cursor becomes magnifying glass
+        //  * (x) Hover: "zoom to this track" help text
         //  * (/) Click: zooms map to track (which then updates zoom bar)
 
         // TODO (usability):
@@ -281,23 +275,6 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
             layerGroup.openPopup(layerGroupPopup.getLatLng());
         } else {
             layerGroup.closePopup();
-        }
-    };
-
-    /**
-     * Adjust the map's zoom level to cover a Layer group.
-     *
-     * @see `GV_Autozoom()` in GPS Visualizer.
-     *
-     * @param event - Image icon click event to handle.
-     */
-    private onZoomClick = (event: Event) => {
-        // Get the Layer group to show.
-        const layerGroup = this.controlLayers.find(
-            layerObj => layerObj.uiElement === (event.target as HTMLImageElement).parentElement,
-        )?.layer;
-        if (!layerGroup || !this._map?.hasLayer(layerGroup)) {
-            return;
         }
 
         // FUTURE: `ProcessedLayerGroup` should be a `FeatureGroup` when the GeoJSON source is processed

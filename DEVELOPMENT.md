@@ -73,7 +73,7 @@ The map reacts to the following events:
     * `LeafletMap`: close any open Collapsible Controls
     * `ControlZoom` (zoom bars): set the zoom level of the map
     * `ControlTrackLayers` (checkbox): show or hide a track on the map
-    * `ControlTrackLayers` (label): show or hide a track's popup
+    * `ControlTrackLayers` (label): show or hide a track's popup and zoom the map to the track's bounds
     * `ControlAbstractButton`: call custom handler when the Button Control is clicked
     * `ControlAbstractCollapsible`: expand a Collapsible Control
 

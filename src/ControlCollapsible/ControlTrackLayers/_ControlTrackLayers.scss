@@ -3,9 +3,6 @@
 /// https://fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Aroute%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4024
 $route-svg: 'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iMjQiPjxwYXRoIGQ9Ik0zNjAtMTIwcS02NiAwLTExMy00N3QtNDctMTEzdi0zMjdxLTM1LTEzLTU3LjUtNDMuNVQxMjAtNzIwcTAtNTAgMzUtODV0ODUtMzVxNTAgMCA4NSAzNXQzNSA4NXEwIDM5LTIyLjUgNjkuNVQyODAtNjA3djMyN3EwIDMzIDIzLjUgNTYuNVQzNjAtMjAwcTMzIDAgNTYuNS0yMy41VDQ0MC0yODB2LTQwMHEwLTY2IDQ3LTExM3QxMTMtNDdxNjYgMCAxMTMgNDd0NDcgMTEzdjMyN3EzNSAxMyA1Ny41IDQzLjVUODQwLTI0MHEwIDUwLTM1IDg1dC04NSAzNXEtNTAgMC04NS0zNXQtMzUtODVxMC0zOSAyMi41LTcwdDU3LjUtNDN2LTMyN3EwLTMzLTIzLjUtNTYuNVQ2MDAtNzYwcS0zMyAwLTU2LjUgMjMuNVQ1MjAtNjgwdjQwMHEwIDY2LTQ3IDExM3QtMTEzIDQ3Wk0yNDAtNjgwcTE3IDAgMjguNS0xMS41VDI4MC03MjBxMC0xNy0xMS41LTI4LjVUMjQwLTc2MHEtMTcgMC0yOC41IDExLjVUMjAwLTcyMHEwIDE3IDExLjUgMjguNVQyNDAtNjgwWm00ODAgNDgwcTE3IDAgMjguNS0xMS41VDc2MC0yNDBxMC0xNy0xMS41LTI4LjVUNzIwLTI4MHEtMTcgMC0yOC41IDExLjVUNjgwLTI0MHEwIDE3IDExLjUgMjguNVQ3MjAtMjAwWk0yNDAtNzIwWm00ODAgNDgwWiIvPjwvc3ZnPg==';
 
-/// From `GPS Visualizer`
-$zoom-png: 'iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAIRJREFUeNpiTEtLY0AD/4GYEVmACYkdBsRXoOwrUD6KomAg7gDiPCg/D8oPQlZUB8SJQLwPyt8H5TeAOCxQN4DAATR3wdlMUEeC3OCK5GBGKB8kzgizrhmIZwOxFZTvBMRzgLgJZh0IrAJiZqgECEwB4gogXo2sCASWQzHIPVrI4QQQYACWsBiNL6OieQAAAABJRU5ErkJggg==';
-
 .leaflet-control-collapsible.leaflet-control-layers-tracks {
     @include icon($class: '.leaflet-control-collapsible-toggle', $icon: $route-svg);
 }
@@ -22,26 +19,17 @@ $zoom-png: 'iVBORw0KGgoAAAANSUhEUgAAAAkAAAAJCAYAAADgkQYQAAAAGXRFWHRTb2Z0d2FyZQBB
 
             &-selector {
                 margin: 0; // remove all margins
-                margin-left: 2px; // slightly increase margin between checkbox and border
+                margin-left: 1px; // slightly increase margin between checkbox and border
+                cursor: pointer;
             }
 
             &-label {
                 margin-left: $margin-between-elements; // add spacing between label
-                margin-right: $margin-between-elements; // add spacing between zoom-in icon
             }
 
             &-label:hover {
                 text-decoration: underline;
                 cursor: pointer;
-            }
-
-            &-zoom {
-                content: url('data: image/png;base64,#{$zoom-png}');
-                margin: 0;
-            }
-
-            &-zoom:hover {
-                cursor: zoom-in;
             }
         }
     }
