@@ -132,25 +132,20 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         layerObject.uiElement = L.DomUtil.create('span', this.classLayerListItem, this.layersFormElement);
 
         // Checkbox element for hiding/showing the Layer on the Map.
-        const input = this.createCheckboxElement(layerObject.uiElement);
-        input.checked = Boolean(this._map?.hasLayer(layerObject.layer));
-        L.DomEvent.addListener(input, 'click', this.onLayerCheckUncheck);
-        L.DomEvent.disableClickPropagation(input); // Don't propagate the box's click events to the map.
+        const inputElement = this.createCheckboxElement(layerObject.uiElement);
+        inputElement.checked = Boolean(this._map?.hasLayer(layerObject.layer));
+        inputElement.title = 'show or hide this track';
+        L.DomEvent.addListener(inputElement, 'click', this.onLayerCheckUncheck);
+        L.DomEvent.disableClickPropagation(inputElement); // Don't propagate the box's click events to the map.
 
         // Label to show in the Control.
+        // Use a `span` instead of a `label` to allow custom functionality on click.
         const nameElement = L.DomUtil.create('span', this.classLayerListItemLabel, layerObject.uiElement);
         nameElement.innerHTML = layerObject.name;
         nameElement.title = (layerObject.layer.getTooltip()?.getContent()?.toString() || '').replace(/\<br\/\>/g, '\n');
         L.DomEvent.addListener(nameElement, 'mouseenter', this.onLabelMouseEnter);
         L.DomEvent.addListener(nameElement, 'mouseleave', this.onLabelMouseLeave);
         L.DomEvent.addListener(nameElement, 'click', this.onLabelClick);
-
-        // TODO (GPS Visualizer):
-        // Next to each label is a zoom icon
-        //  * Icon: base-64 PNG
-        //  * Mouseover: cursor becomes magnifying glass
-        //  * Hover: "zoom to this track" help text
-        //  * Click: zooms map to track (which then updates zoom bar)
 
         // TODO (usability):
         //  * Find a way of making the track checkbox/zoom icon easier to press on mobile
@@ -274,6 +269,13 @@ export default class ControlTrackLayers extends ControlAbstractCollapsible {
         } else {
             layerGroup.closePopup();
         }
+
+        // FUTURE: `ProcessedLayerGroup` should be a `FeatureGroup` when the GeoJSON source is processed
+        const featureGroup = L.featureGroup(layerGroup.getLayers());
+
+        // Zoom the map in or out to fit the bounds of the Layer group.
+        // This built-in function won't zoom in past the background map's max zoom level.
+        this._map?.fitBounds(featureGroup.getBounds(), { animate: true });
     };
 
     /**

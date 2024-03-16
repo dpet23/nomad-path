@@ -328,10 +328,10 @@ describe('ControlTrackLayers', () => {
         expect(await trackLayersContentElement.findElement({ tagName: 'form' }).isDisplayed()).toBe(true);
     });
 
-    it('should open track popup when clicking on a label', async () => {
-        if (isMobileBrowser) return; // FUTURE: Update `zoomLeafletMapTo()` to work on mobile devices.
+    it('should zoom to track and open popup when clicking on a label', async () => {
+        if (isMobileBrowser) return; // FUTURE: Update `getLeafletMapZoomLevel()` to work on mobile devices.
 
-        await browser.zoomLeafletMapTo(13); // note: tiles may not load in time, need to ignore browser errors
+        const initialZoomLevel = await browser.getLeafletMapZoomLevel();
 
         await browser.moveToAndClick(trackLayersIconElement, { pauseAfterClick: 500 });
         const trackListItems = await trackLayersContentElement
@@ -353,10 +353,12 @@ describe('ControlTrackLayers', () => {
         // FUTURE: split test here
 
         await trackListEntryLabel.click();
+        await browser.sleep(1000);
         expect(
             (await mapElement.findElement({ className: CLASS_POPUP_PANE }).findElements({ className: 'leaflet-popup' }))
                 .length,
         ).toEqual(1);
+        expect(await browser.getLeafletMapZoomLevel()).toBeGreaterThan(initialZoomLevel);
     });
 
     it('should disable and enable tracks when clicking on a checkbox', async () => {
@@ -377,6 +379,7 @@ describe('ControlTrackLayers', () => {
 
         await browser.moveToAndClick(trackLayersIconElement, { pauseAfterClick: 500 });
         trackListEntryCheckbox = await findTrackListEntryCheckbox(0);
+        expect(await trackListEntryCheckbox.getAttribute('title')).not.toEqual('');
         expect(await trackListEntryCheckbox.isSelected()).toBe(true);
 
         await trackListEntryCheckbox.click();
@@ -492,8 +495,6 @@ describe('ControlTrackLegend', () => {
 
         // Check that content is scrollable.
         expect(await trackLegendContentElement.getCssValue('overflow-y')).toEqual('scroll');
-
-        await browser.sleep(10000);
     });
 });
 

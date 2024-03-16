@@ -73,21 +73,21 @@ The map reacts to the following events:
     * `LeafletMap`: close any open Collapsible Controls
     * `ControlZoom` (zoom bars): set the zoom level of the map
     * `ControlTrackLayers` (checkbox): show or hide a track on the map
-    * `ControlTrackLayers` (label): show or hide a track's popup
+    * `ControlTrackLayers` (label): show or hide a track's popup and zoom the map to the track's bounds
     * `ControlAbstractButton`: call custom handler when the Button Control is clicked
     * `ControlAbstractCollapsible`: expand a Collapsible Control
 
-* [`mouseenter`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseenter_event)
+* [`mouseenter`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseenter_event) / [`mouseover`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseover_event)
   * Fired by the browser: when a pointing device is moved over an element
   * Handled by:
     * `ControlAbstractCollapsible`: expand a Collapsible Control
-    * `ControlTrackLayers` (label): style a group of tracks, show tooltip
+    * `ControlTrackLayers` (label) and `L.Layer`: style a group of tracks, show tooltip
 
-* [`mouseleave`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseleave_event)
+* [`mouseleave`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseleave_event) / [`mouseout`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseout_event)
   * Fired by the browser: when a pointing device is moved out of an element
   * Handled by:
     * `ControlAbstractCollapsible`: close a Collapsible Control
-    * `ControlTrackLayers` (label): reset styles for a group of tracks, hide tooltip
+    * `ControlTrackLayers` (label) and `L.Layer`: reset styles for a group of tracks, hide tooltip
 
 * [`keydown`](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event)
   * Fired by the browser: when a key is pressed
