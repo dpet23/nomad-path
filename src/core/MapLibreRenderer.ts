@@ -71,7 +71,27 @@ export class MapLibreRenderer implements MapController {
   }
 
   setColorMode(mode: ColorMode): void {
-    console.log(`Color mode set to ${mode}`);
+    // Example: recolor each track based on the mode
+    this.tracks.forEach((layerId, trackId) => {
+      const color = this.getColorForTrack(trackId, mode);
+      this.map.setPaintProperty(layerId, 'line-color', color);
+    });
+  }
+
+  private getColorForTrack(trackId: string, mode: ColorMode): string {
+    // Placeholder logic, can be replaced with real mapping
+    switch (mode) {
+      case 'timeOfDay':
+        return '#FF4500'; // sunset
+      case 'speed':
+        return '#00FF00'; // slow
+      case 'transportMode':
+        return '#0000FF'; // walking
+      case 'heartRate':
+        return '#FF0000'; // high
+      default:
+        return '#888888';
+    }
   }
 
   fitBounds(bounds: LatLng[]): void {

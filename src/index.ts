@@ -1,9 +1,11 @@
 import { MapLibreRenderer } from './core/MapLibreRenderer';
-import { TrackSegment, BackgroundMap, LatLng } from './types';
+import { TrackSegment, BackgroundMap, LatLng, ColorMode } from './types';
 import { h, render } from 'preact';
 import { Sidebar } from './ui/Sidebar';
 import { ZoomControl } from './ui/ZoomControl';
 import { MapSwitcher } from './ui/MapSwitcher';
+import { ColorModeSelector } from './ui/ColorModeSelector';
+import { Legend } from './ui/Legend';
 
 export interface RenderMapOptions {
   containerId: string;
@@ -14,6 +16,8 @@ export interface RenderMapOptions {
   sidebarContainerId?: string;
   zoomControlContainerId?: string;
   mapSwitcherContainerId?: string;
+  colorModeContainerId?: string;
+  legendContainerId?: string;
 }
 
 export function renderMap(options: RenderMapOptions) {
@@ -42,6 +46,9 @@ export function renderMap(options: RenderMapOptions) {
     fitBounds: (coords: LatLng[]) => {
       renderer.fitBounds(coords);
     },
+    setColorMode: (mode: ColorMode) => {
+      renderer.setColorMode(mode);
+    },
   };
 
   if (options.sidebarContainerId) {
@@ -53,16 +60,22 @@ export function renderMap(options: RenderMapOptions) {
 
   if (options.zoomControlContainerId) {
     const zoomEl = document.getElementById(options.zoomControlContainerId);
-    if (zoomEl) {
-      render(<ZoomControl map={renderer} />, zoomEl);
-    }
+    if (zoomEl) render(<ZoomControl map={renderer} />, zoomEl);
   }
 
   if (options.mapSwitcherContainerId) {
     const switcherEl = document.getElementById(options.mapSwitcherContainerId);
-    if (switcherEl) {
-      render(<MapSwitcher map={renderer} maps={options.backgroundMaps} />, switcherEl);
-    }
+    if (switcherEl) render(<MapSwitcher map={renderer} maps={options.backgroundMaps} />, switcherEl);
+  }
+
+  if (options.colorModeContainerId) {
+    const colorEl = document.getElementById(options.colorModeContainerId);
+    if (colorEl) render(<ColorModeSelector mapController={mapControllerWrapper} />, colorEl);
+  }
+
+  if (options.legendContainerId) {
+    const legendEl = document.getElementById(options.legendContainerId);
+    if (legendEl) render(<Legend mode="timeOfDay" />, legendEl);
   }
 
   return renderer;
