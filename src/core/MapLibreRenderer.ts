@@ -94,27 +94,30 @@ export class MapLibreRenderer {
     this.map.fitBounds(bounds, { padding: 50 });
   }
 
-  addTracks(tracks: TrackSegment[]): void {
+  addTracks(tracks: TrackSegment[]) {
     tracks.forEach((track) => {
-      const layerId = `track-${track.trackId}`;
-      if (this.tracks.has(track.trackId)) return;
+      const splitSegments = this.splitTrackForAntiMeridian(track.points);
+      splitSegments.forEach((segment, idx) => {
+        const geojson = {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: segment.map((p) => [this.normalizeLng(p.lng), p.lat]),
+          },
+          properties: { trackId: track.trackId, segmentIndex: idx },
+        };
 
-      const coordinates = track.coords.map((c) => [c.lng, c.lat]);
-
-      this.map.addSource(layerId, {
-        type: 'geojson',
-        data: { type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: {} },
+        const layerId = `track-${track.trackId}-${idx}`;
+        this.map.addSource(layerId, { type: 'geojson', data: geojson });
+        this.map.addLayer({
+          id: layerId,
+          type: 'line',
+          source: layerId,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#888888', 'line-width': 3 },
+        });
+        this.tracks.push(layerId);
       });
-
-      this.map.addLayer({
-        id: layerId,
-        type: 'line',
-        source: layerId,
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#FF0000', 'line-width': 3 },
-      });
-
-      this.tracks.set(track.trackId, layerId);
     });
   }
 
@@ -226,23 +229,32 @@ export class MapLibreRenderer {
     return 'local'; // or 'Etc/UTC' for now
   }
 
-  fitBounds(bounds: LatLng[]): void {
-    if (bounds.length === 0) return;
-    const lngLats = bounds.map((b) => [b.lng, b.lat]) as [number, number][];
-    const mapBounds = lngLats.reduce(
-      (acc, [lng, lat]) => {
-        acc[0][0] = Math.min(acc[0][0], lng);
-        acc[0][1] = Math.min(acc[0][1], lat);
-        acc[1][0] = Math.max(acc[1][0], lng);
-        acc[1][1] = Math.max(acc[1][1], lat);
-        return acc;
-      },
-      [
-        [Infinity, Infinity],
-        [-Infinity, -Infinity],
-      ] as [[number, number], [number, number]]
-    );
-    this.map.fitBounds(mapBounds, { padding: 20 });
+  fitBounds(coords: LatLng[]) {
+    if (coords.length === 0) return;
+
+    let minLng = coords[0].lng;
+    let maxLng = coords[0].lng;
+    let minLat = coords[0].lat;
+    let maxLat = coords[0].lat;
+
+    coords.forEach(({ lng, lat }) => {
+      const nLng = this.normalizeLng(lng);
+      minLng = Math.min(minLng, nLng);
+      maxLng = Math.max(maxLng, nLng);
+      minLat = Math.min(minLat, lat);
+      maxLat = Math.max(maxLat, lat);
+    });
+
+    // Handle crossing anti-meridian
+    if (maxLng - minLng > 180) {
+      // Shift all longitudes to positive or negative side
+      coords.forEach((c) => (c.lng = c.lng < 0 ? c.lng + 360 : c.lng));
+      minLng = Math.min(...coords.map((c) => c.lng));
+      maxLng = Math.max(...coords.map((c) => c.lng));
+    }
+
+    const bounds = new maplibregl.LngLatBounds([minLng, minLat], [maxLng, maxLat]);
+    this.map.fitBounds(bounds, { padding: 50 });
   }
 
   setBackgroundMap(mapId: string): void {
@@ -262,5 +274,41 @@ export class MapLibreRenderer {
     } else {
       (this.map.getSource(sourceId) as any).tiles = [mapDef.tileUrl];
     }
+  }
+
+  /**
+   * Normalize longitude to [-180, +180]
+   */
+  private normalizeLng(lng: number): number {
+    let v = ((lng + 180) % 360 + 360) % 360 - 180;
+    return v;
+  }
+
+  /**
+   * Split track into segments if crossing anti-meridian
+   */
+  private splitTrackForAntiMeridian(points: TrackPoint[]): TrackPoint[][] {
+    if (points.length === 0) return [];
+
+    const segments: TrackPoint[][] = [];
+    let currentSegment: TrackPoint[] = [points[0]];
+
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+
+      const delta = Math.abs(curr.lng - prev.lng);
+      if (delta > 180) {
+        // Crossing anti-meridian
+        segments.push(currentSegment);
+        currentSegment = [curr];
+      } else {
+        currentSegment.push(curr);
+      }
+    }
+
+    if (currentSegment.length > 0) segments.push(currentSegment);
+
+    return segments;
   }
 }
