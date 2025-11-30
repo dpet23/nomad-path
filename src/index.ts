@@ -2,6 +2,8 @@ import { MapLibreRenderer } from './core/MapLibreRenderer';
 import { TrackSegment, BackgroundMap, LatLng } from './types';
 import { h, render } from 'preact';
 import { Sidebar } from './ui/Sidebar';
+import { ZoomControl } from './ui/ZoomControl';
+import { MapSwitcher } from './ui/MapSwitcher';
 
 export interface RenderMapOptions {
   containerId: string;
@@ -10,6 +12,8 @@ export interface RenderMapOptions {
   initialCenter?: LatLng;
   initialZoom?: number;
   sidebarContainerId?: string;
+  zoomControlContainerId?: string;
+  mapSwitcherContainerId?: string;
 }
 
 export function renderMap(options: RenderMapOptions) {
@@ -22,7 +26,6 @@ export function renderMap(options: RenderMapOptions) {
 
   renderer.addTracks(options.tracks);
 
-  // Wrap MapController for sidebar
   const mapControllerWrapper = {
     toggleTrack: (trackId: string, visible: boolean) => {
       if (visible) {
@@ -45,6 +48,20 @@ export function renderMap(options: RenderMapOptions) {
     const sidebarEl = document.getElementById(options.sidebarContainerId);
     if (sidebarEl) {
       render(<Sidebar tracks={options.tracks} mapController={mapControllerWrapper} />, sidebarEl);
+    }
+  }
+
+  if (options.zoomControlContainerId) {
+    const zoomEl = document.getElementById(options.zoomControlContainerId);
+    if (zoomEl) {
+      render(<ZoomControl map={renderer} />, zoomEl);
+    }
+  }
+
+  if (options.mapSwitcherContainerId) {
+    const switcherEl = document.getElementById(options.mapSwitcherContainerId);
+    if (switcherEl) {
+      render(<MapSwitcher map={renderer} maps={options.backgroundMaps} />, switcherEl);
     }
   }
 
