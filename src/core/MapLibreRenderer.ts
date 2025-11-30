@@ -3,6 +3,7 @@ import { MapController } from './MapController';
 import { TrackSegment, ColorMode, BackgroundMap, LatLng } from '../types';
 import SunCalc from 'suncalc';
 import { DateTime } from 'luxon';
+import { scaleOrdinal, schemeCategory10 } from 'd3-scale';
 
 interface TrackPoint {
   lat: number;
@@ -145,72 +146,70 @@ export class MapLibreRenderer {
     });
   }
 
+  private generateTransportModeColors(tracks: TrackSegment[]) {
+    const modes = new Set<string>();
+    tracks.forEach(track => {
+      track.points.forEach(p => {
+        if (p.transportMode) modes.add(p.transportMode.toLowerCase());
+      });
+    });
+
+    const palette = scaleOrdinal(schemeCategory10).domain(Array.from(modes));
+    this.transportModeColorMap = Object.fromEntries(
+      Array.from(modes).map(mode => [mode, palette(mode)])
+    );
+  }
+
+  private computeContinuousScales(tracks: TrackSegment[]) {
+    const speedValues = tracks.flatMap(t => t.points.map(p => p.speed ?? []).filter(s => s > 0));
+    const hrValues = tracks.flatMap(t => t.points.map(p => p.heartRate ?? []).filter(h => h > 0));
+
+    this.speedScale = speedValues.length
+      ? (v: number) => this.interpolateColor('#00FF00', '#FF0000', (v - Math.min(...speedValues)) / (Math.max(...speedValues) - Math.min(...speedValues)))
+      : null;
+
+    this.heartRateScale = hrValues.length
+      ? (v: number) => this.interpolateColor('#00FF00', '#FF0000', (v - Math.min(...hrValues)) / (Math.max(...hrValues) - Math.min(...hrValues)))
+      : null;
+  }
+
+  private generateColorModeOptions(tracks: TrackSegment[]) {
+    const options: { value: ColorMode, label: string }[] = [];
+
+    if (tracks.some(t => t.points.some(p => p.timestamp))) options.push({ value: 'timeOfDay', label: 'Time of Day' });
+    if (tracks.some(t => t.points.some(p => p.speed))) options.push({ value: 'speed', label: 'Speed' });
+    if (tracks.some(t => t.points.some(p => p.transportMode))) options.push({ value: 'transportMode', label: 'Transport Mode' });
+    if (tracks.some(t => t.points.some(p => p.heartRate))) options.push({ value: 'heartRate', label: 'Heart Rate' });
+
+    return options;
+  }
+
   private getColorForTrack(trackId: string, mode: ColorMode): string {
-    const track = this.trackSegments.find((t) => t.trackId === trackId);
+    const track = this.trackSegments.find(t => t.trackId === trackId);
     if (!track || track.points.length === 0) return '#888888';
 
     switch (mode) {
-      case 'timeOfDay': {
-        // Stage 6 implementation (sunrise/midday/sunset gradient)
-        const midIndex = Math.floor(track.points.length / 2);
-        const midPoint = track.points[midIndex];
-        const localTime = DateTime.fromISO(midPoint.timestamp, { zone: 'utc' }).setZone(this.getTimeZone(midPoint.lat, midPoint.lng));
-        const { sunrise, sunset } = SunCalc.getTimes(new Date(localTime.toISO()), midPoint.lat, midPoint.lng);
+      case 'timeOfDay':
+        return this.getTimeOfDayColor(track);
 
-        let dayFraction: number;
-        const sunriseT = DateTime.fromJSDate(sunrise);
-        const sunsetT = DateTime.fromJSDate(sunset);
-        if (localTime < sunriseT) dayFraction = 0;
-        else if (localTime > sunsetT) dayFraction = 1;
-        else dayFraction = (localTime.toMillis() - sunriseT.toMillis()) / (sunsetT.toMillis() - sunriseT.toMillis());
+      case 'speed':
+        if (!this.speedScale) return '#888888';
+        const speedMid = track.points[Math.floor(track.points.length / 2)].speed ?? 0;
+        return this.speedScale(speedMid);
 
-        return this.interpolateColor('#FFA500', '#00FF00', dayFraction); // sunrise->midday
-      }
+      case 'transportMode':
+        const modeKey = track.points[0].transportMode?.toLowerCase() ?? 'unknown';
+        return this.transportModeColorMap[modeKey] ?? '#888888';
 
-      case 'speed': {
-        // Continuous linear scale: slow=green, medium=yellow, fast=red
-        const speeds = track.points.map((p) => p.speed ?? 0);
-        const validSpeeds = speeds.filter((s) => s > 0);
-        if (validSpeeds.length === 0) return '#888888'; // no data
-
-        const minSpeed = Math.min(...validSpeeds);
-        const maxSpeed = Math.max(...validSpeeds);
-        const midIndex = Math.floor(speeds.length / 2);
-        const speed = speeds[midIndex] ?? minSpeed;
-
-        const fraction = maxSpeed === minSpeed ? 0.5 : (speed - minSpeed) / (maxSpeed - minSpeed);
-        return this.interpolateColor('#00FF00', '#FF0000', fraction); // green->red
-      }
-
-      case 'transportMode': {
-        // Categorical mapping
-        const transportColors: Record<string, string> = {
-          walking: '#00FF00',
-          driving: '#0000FF',
-          public: '#FF00FF',
-          boat: '#00FFFF',
-        };
-        const mode = track.points[0].transportMode?.toLowerCase() ?? 'unknown';
-        return transportColors[mode] ?? '#888888';
-      }
-
-      case 'heartRate': {
-        const hrValues = track.points.map((p) => p.heartRate ?? 0).filter((v) => v > 0);
-        if (hrValues.length === 0) return '#888888'; // no data
-
-        const minHR = Math.min(...hrValues);
-        const maxHR = Math.max(...hrValues);
-        const midIndex = Math.floor(track.points.length / 2);
-        const hr = track.points[midIndex].heartRate ?? minHR;
-
-        const fraction = maxHR === minHR ? 0.5 : (hr - minHR) / (maxHR - minHR);
-        return this.interpolateColor('#00FF00', '#FF0000', fraction); // low->high
-      }
+      case 'heartRate':
+        if (!this.heartRateScale) return '#888888';
+        const hrMid = track.points[Math.floor(track.points.length / 2)].heartRate ?? 0;
+        return this.heartRateScale(hrMid);
 
       default:
         return '#888888';
     }
-  };
+  }
 
   // Simple linear color interpolation
   private interpolateColor(color1: string, color2: string, fraction: number): string {
@@ -230,7 +229,7 @@ export class MapLibreRenderer {
   }
 
   fitBounds(coords: LatLng[]) {
-    if (coords.length === 0) return;
+    if (!coords.length) return;
 
     let minLng = coords[0].lng;
     let maxLng = coords[0].lng;
@@ -238,23 +237,14 @@ export class MapLibreRenderer {
     let maxLat = coords[0].lat;
 
     coords.forEach(({ lng, lat }) => {
-      const nLng = this.normalizeLng(lng);
+      const nLng = ((lng + 180) % 360 + 360) % 360 - 180;
       minLng = Math.min(minLng, nLng);
       maxLng = Math.max(maxLng, nLng);
       minLat = Math.min(minLat, lat);
       maxLat = Math.max(maxLat, lat);
     });
 
-    // Handle crossing anti-meridian
-    if (maxLng - minLng > 180) {
-      // Shift all longitudes to positive or negative side
-      coords.forEach((c) => (c.lng = c.lng < 0 ? c.lng + 360 : c.lng));
-      minLng = Math.min(...coords.map((c) => c.lng));
-      maxLng = Math.max(...coords.map((c) => c.lng));
-    }
-
-    const bounds = new maplibregl.LngLatBounds([minLng, minLat], [maxLng, maxLat]);
-    this.map.fitBounds(bounds, { padding: 50 });
+    this.map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 50 });
   }
 
   setBackgroundMap(mapId: string): void {
