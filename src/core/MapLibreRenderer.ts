@@ -1,6 +1,24 @@
 import maplibregl from 'maplibre-gl';
 import { MapController } from './MapController';
 import { TrackSegment, ColorMode, BackgroundMap, LatLng } from '../types';
+import SunCalc from 'suncalc';
+import { DateTime } from 'luxon';
+
+interface TrackPoint {
+  lat: number;
+  lng: number;
+  timestamp: string; // UTC ISO string
+  speed?: number;
+  transportMode?: string;
+  heartRate?: number;
+}
+
+interface TrackSegment {
+  trackId: string;
+  points: TrackPoint[];
+  name?: string;
+  description?: string;
+}
 
 interface MapLibreRendererOptions {
   containerId: string;
@@ -125,19 +143,54 @@ export class MapLibreRenderer {
   }
 
   private getColorForTrack(trackId: string, mode: ColorMode): string {
-    // Placeholder logic, can be replaced with real mapping
+    const track = this.trackSegments.find((t) => t.trackId === trackId);
+    if (!track) return '#888888';
+
     switch (mode) {
-      case 'timeOfDay':
-        return '#FF4500'; // sunset
+      case 'timeOfDay': {
+        // Take the middle point for a simple color estimate
+        const midIndex = Math.floor(track.points.length / 2);
+        const midPoint = track.points[midIndex];
+        const localTime = DateTime.fromISO(midPoint.timestamp, { zone: 'utc' }).setZone(this.getTimeZone(midPoint.lat, midPoint.lng));
+        const { sunrise, sunset } = SunCalc.getTimes(new Date(localTime.toISO()), midPoint.lat, midPoint.lng);
+
+        const dayFraction = (() => {
+          const sunriseT = DateTime.fromJSDate(sunrise);
+          const sunsetT = DateTime.fromJSDate(sunset);
+          if (localTime < sunriseT) return 0; // night
+          if (localTime > sunsetT) return 1; // night
+          return (localTime.toMillis() - sunriseT.toMillis()) / (sunsetT.toMillis() - sunriseT.toMillis());
+        })();
+
+        return this.interpolateColor('#FFA500', '#00FF00', dayFraction); // orange -> green
+      }
+
       case 'speed':
-        return '#00FF00'; // slow
+        return '#00FF00';
       case 'transportMode':
-        return '#0000FF'; // walking
+        return '#0000FF';
       case 'heartRate':
-        return '#FF0000'; // high
+        return '#FF0000';
       default:
         return '#888888';
     }
+  }
+
+  // Simple linear color interpolation
+  private interpolateColor(color1: string, color2: string, fraction: number): string {
+    const c1 = parseInt(color1.slice(1), 16);
+    const c2 = parseInt(color2.slice(1), 16);
+
+    const r = Math.round(((c1 >> 16) * (1 - fraction) + (c2 >> 16) * fraction));
+    const g = Math.round((((c1 >> 8) & 0xff) * (1 - fraction) + ((c2 >> 8) & 0xff) * fraction));
+    const b = Math.round(((c1 & 0xff) * (1 - fraction) + (c2 & 0xff) * fraction));
+
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // Placeholder: return a timezone string based on lat/lng. For more accuracy, integrate a tz lookup library.
+  private getTimeZone(lat: number, lng: number): string {
+    return 'local'; // or 'Etc/UTC' for now
   }
 
   fitBounds(bounds: LatLng[]): void {
