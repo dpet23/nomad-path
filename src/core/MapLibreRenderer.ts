@@ -144,37 +144,70 @@ export class MapLibreRenderer {
 
   private getColorForTrack(trackId: string, mode: ColorMode): string {
     const track = this.trackSegments.find((t) => t.trackId === trackId);
-    if (!track) return '#888888';
+    if (!track || track.points.length === 0) return '#888888';
 
     switch (mode) {
       case 'timeOfDay': {
-        // Take the middle point for a simple color estimate
+        // Stage 6 implementation (sunrise/midday/sunset gradient)
         const midIndex = Math.floor(track.points.length / 2);
         const midPoint = track.points[midIndex];
         const localTime = DateTime.fromISO(midPoint.timestamp, { zone: 'utc' }).setZone(this.getTimeZone(midPoint.lat, midPoint.lng));
         const { sunrise, sunset } = SunCalc.getTimes(new Date(localTime.toISO()), midPoint.lat, midPoint.lng);
 
-        const dayFraction = (() => {
-          const sunriseT = DateTime.fromJSDate(sunrise);
-          const sunsetT = DateTime.fromJSDate(sunset);
-          if (localTime < sunriseT) return 0; // night
-          if (localTime > sunsetT) return 1; // night
-          return (localTime.toMillis() - sunriseT.toMillis()) / (sunsetT.toMillis() - sunriseT.toMillis());
-        })();
+        let dayFraction: number;
+        const sunriseT = DateTime.fromJSDate(sunrise);
+        const sunsetT = DateTime.fromJSDate(sunset);
+        if (localTime < sunriseT) dayFraction = 0;
+        else if (localTime > sunsetT) dayFraction = 1;
+        else dayFraction = (localTime.toMillis() - sunriseT.toMillis()) / (sunsetT.toMillis() - sunriseT.toMillis());
 
-        return this.interpolateColor('#FFA500', '#00FF00', dayFraction); // orange -> green
+        return this.interpolateColor('#FFA500', '#00FF00', dayFraction); // sunrise->midday
       }
 
-      case 'speed':
-        return '#00FF00';
-      case 'transportMode':
-        return '#0000FF';
-      case 'heartRate':
-        return '#FF0000';
+      case 'speed': {
+        // Continuous linear scale: slow=green, medium=yellow, fast=red
+        const speeds = track.points.map((p) => p.speed ?? 0);
+        const validSpeeds = speeds.filter((s) => s > 0);
+        if (validSpeeds.length === 0) return '#888888'; // no data
+
+        const minSpeed = Math.min(...validSpeeds);
+        const maxSpeed = Math.max(...validSpeeds);
+        const midIndex = Math.floor(speeds.length / 2);
+        const speed = speeds[midIndex] ?? minSpeed;
+
+        const fraction = maxSpeed === minSpeed ? 0.5 : (speed - minSpeed) / (maxSpeed - minSpeed);
+        return this.interpolateColor('#00FF00', '#FF0000', fraction); // green->red
+      }
+
+      case 'transportMode': {
+        // Categorical mapping
+        const transportColors: Record<string, string> = {
+          walking: '#00FF00',
+          driving: '#0000FF',
+          public: '#FF00FF',
+          boat: '#00FFFF',
+        };
+        const mode = track.points[0].transportMode?.toLowerCase() ?? 'unknown';
+        return transportColors[mode] ?? '#888888';
+      }
+
+      case 'heartRate': {
+        const hrValues = track.points.map((p) => p.heartRate ?? 0).filter((v) => v > 0);
+        if (hrValues.length === 0) return '#888888'; // no data
+
+        const minHR = Math.min(...hrValues);
+        const maxHR = Math.max(...hrValues);
+        const midIndex = Math.floor(track.points.length / 2);
+        const hr = track.points[midIndex].heartRate ?? minHR;
+
+        const fraction = maxHR === minHR ? 0.5 : (hr - minHR) / (maxHR - minHR);
+        return this.interpolateColor('#00FF00', '#FF0000', fraction); // low->high
+      }
+
       default:
         return '#888888';
     }
-  }
+  };
 
   // Simple linear color interpolation
   private interpolateColor(color1: string, color2: string, fraction: number): string {
