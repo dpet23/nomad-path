@@ -9,9 +9,20 @@ interface MapLibreRendererOptions {
   backgroundMaps: BackgroundMap[];
 }
 
-export class MapLibreRenderer implements MapController {
-  private map: maplibregl.Map;
-  private tracks: Map<string, string>; // trackId -> layerId
+interface Waypoint {
+  id: string;
+  name: string;
+  description?: string;
+  lat: number;
+  lng: number;
+  order?: number; // chronological
+}
+
+export class MapLibreRenderer {
+  map: maplibregl.Map;
+  tracks: string[] = [];
+  waypoints: Waypoint[] = [];
+  waypointMarkers: maplibregl.Marker[] = [];
   private backgroundMaps: BackgroundMap[];
   private activeBackgroundMap: BackgroundMap;
 
@@ -28,6 +39,41 @@ export class MapLibreRenderer implements MapController {
     });
 
     this.setBackgroundMap(this.activeBackgroundMap.id);
+  }
+
+  addWaypoints(points: Waypoint[]) {
+    this.waypoints = points;
+    this.waypointMarkers.forEach((m) => m.remove());
+    this.waypointMarkers = [];
+
+    points.forEach((wp, idx) => {
+      const el = document.createElement('div');
+      el.className = 'waypoint-marker';
+      el.textContent = (wp.order ?? idx + 1).toString();
+      el.style.background = '#FF4500';
+      el.style.color = '#fff';
+      el.style.borderRadius = '50%';
+      el.style.width = '24px';
+      el.style.height = '24px';
+      el.style.display = 'flex';
+      el.style.justifyContent = 'center';
+      el.style.alignItems = 'center';
+      el.style.cursor = 'pointer';
+
+      const marker = new maplibregl.Marker(el)
+        .setLngLat([wp.lng, wp.lat])
+        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<strong>${wp.name}</strong><p>${wp.description ?? ''}</p>`))
+        .addTo(this.map);
+
+      this.waypointMarkers.push(marker);
+    });
+  }
+
+  fitBoundsToWaypoints() {
+    if (this.waypoints.length === 0) return;
+    const bounds = new maplibregl.LngLatBounds();
+    this.waypoints.forEach((wp) => bounds.extend([wp.lng, wp.lat]));
+    this.map.fitBounds(bounds, { padding: 50 });
   }
 
   addTracks(tracks: TrackSegment[]): void {

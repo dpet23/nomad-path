@@ -7,9 +7,11 @@ import { MapSwitcher } from './ui/MapSwitcher';
 import { ColorModeSelector } from './ui/ColorModeSelector';
 import { Legend } from './ui/Legend';
 
+// Add new containers for waypoints
 export interface RenderMapOptions {
   containerId: string;
   tracks: TrackSegment[];
+  waypoints?: Waypoint[];
   backgroundMaps: BackgroundMap[];
   initialCenter?: LatLng;
   initialZoom?: number;
@@ -18,6 +20,7 @@ export interface RenderMapOptions {
   mapSwitcherContainerId?: string;
   colorModeContainerId?: string;
   legendContainerId?: string;
+  waypointListContainerId?: string;
 }
 
 export function renderMap(options: RenderMapOptions) {
@@ -29,6 +32,10 @@ export function renderMap(options: RenderMapOptions) {
   });
 
   renderer.addTracks(options.tracks);
+
+  if (options.waypoints) {
+    renderer.addWaypoints(options.waypoints);
+  }
 
   const mapControllerWrapper = {
     toggleTrack: (trackId: string, visible: boolean) => {
@@ -49,7 +56,22 @@ export function renderMap(options: RenderMapOptions) {
     setColorMode: (mode: ColorMode) => {
       renderer.setColorMode(mode);
     },
+    focusWaypoint: (id: string) => {
+      const marker = renderer.waypointMarkers.find((m) => (m.getElement().textContent ?? '') === id);
+      if (marker) {
+        marker.togglePopup();
+        renderer.map.flyTo({ center: marker.getLngLat(), zoom: 15 });
+      }
+    },
   };
+
+  // Render waypoint list if container provided
+  if (options.waypointListContainerId && options.waypoints) {
+    const wpEl = document.getElementById(options.waypointListContainerId);
+    if (wpEl) {
+      render(<WaypointList waypoints={options.waypoints} mapController={mapControllerWrapper} />, wpEl);
+    }
+  }
 
   if (options.sidebarContainerId) {
     const sidebarEl = document.getElementById(options.sidebarContainerId);
