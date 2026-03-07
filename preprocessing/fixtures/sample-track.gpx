@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
+     version="1.1" creator="OsmAnd">
+  <metadata>
+    <name>2024-03-15_08-00_Fri</name>
+    <extensions>
+      <osmand:activity>driving</osmand:activity>
+    </extensions>
+  </metadata>
+  <trk>
+    <name>Morning Drive</name>
+    <trkseg>
+      <trkpt lat="35.6895" lon="139.6917">
+        <ele>40</ele>
+        <time>2024-03-15T08:00:00Z</time>
+      </trkpt>
+      <trkpt lat="35.6900" lon="139.6925">
+        <ele>42</ele>
+        <time>2024-03-15T08:05:00Z</time>
+      </trkpt>
+      <trkpt lat="35.6910" lon="139.6940">
+        <ele>45</ele>
+        <time>2024-03-15T08:10:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
