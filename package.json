@@ -1,0 +1,71 @@
+{
+  "name": "nomad-path",
+  "version": "0.1.0",
+  "description": "A TypeScript library for visualising GPS travel data on interactive web maps",
+  "type": "module",
+  "main": "dist/nomad-path.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c",
+    "build:data": "node preprocessing/build-trip-data.js",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@turf/bbox": "^7.0.0",
+    "@turf/length": "^7.0.0",
+    "maplibre-gl": "^4.0.0"
+  },
+  "devDependencies": {
+    "@tmcw/togeojson": "^5.0.0",
+    "@photostructure/tz-lookup": "^8.0.0",
+    "@playwright/test": "^1.40.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^8.55.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-jsdoc": "^48.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-simple-import-sort": "^12.0.0",
+    "eslint-plugin-sonarjs": "^0.23.0",
+    "eslint-plugin-unused-imports": "^3.0.0",
+    "happy-dom": "^20.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "luxon": "^3.4.0",
+    "prettier": "^3.1.0",
+    "rollup": "^4.0.0",
+    "@rollup/plugin-terser": "^1.0.0",
+    "simplify-js": "^1.2.4",
+    "suncalc": "^1.9.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

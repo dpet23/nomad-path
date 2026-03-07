@@ -1,2 +1,20 @@
 # Folders
 **/.ignore
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+
+# Environment
+.env
+.env.local
+
+# Editor
+.DS_Store
+
+# Test results
+playwright-report/
+test-results/
