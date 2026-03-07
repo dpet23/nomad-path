@@ -70,6 +70,20 @@ describe('parseGPX — track with metadata', () => {
         expect(tracks[0].points[1].time).toBe(Date.parse('2024-03-15T08:05:00Z'));
     });
 
+    it('reads speed from <osmand:speed> extension (m/s → km/h)', () => {
+        // 8.33 m/s × 3.6 ≈ 29.988 km/h
+        expect(tracks[0].points[0].speedKmh).toBeCloseTo(8.33 * 3.6, 2);
+    });
+
+    it('reads speed from <speed_2d><value> extension (m/s → km/h)', () => {
+        // 12.5 m/s × 3.6 = 45 km/h
+        expect(tracks[0].points[1].speedKmh).toBeCloseTo(45, 2);
+    });
+
+    it('omits speedKmh when no speed extension is present', () => {
+        expect(tracks[0].points[2].speedKmh).toBeUndefined();
+    });
+
     it('returns no waypoints', () => {
         expect(waypoints).toHaveLength(0);
     });

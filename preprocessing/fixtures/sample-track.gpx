@@ -14,10 +14,16 @@
       <trkpt lat="35.6895" lon="139.6917">
         <ele>40</ele>
         <time>2024-03-15T08:00:00Z</time>
+        <extensions>
+          <osmand:speed>8.33</osmand:speed>
+        </extensions>
       </trkpt>
       <trkpt lat="35.6900" lon="139.6925">
         <ele>42</ele>
         <time>2024-03-15T08:05:00Z</time>
+        <extensions>
+          <speed_2d><value>12.5</value><unit>m/s</unit></speed_2d>
+        </extensions>
       </trkpt>
       <trkpt lat="35.6910" lon="139.6940">
         <ele>45</ele>

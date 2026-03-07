@@ -12,6 +12,7 @@ const domParser = new DOMParser();
  * @property {number} lat
  * @property {number|undefined} elevation - metres above sea level
  * @property {number|undefined} time - Unix timestamp in milliseconds
+ * @property {number|undefined} speedKmh - speed in km/h from trkpt extensions
  */
 
 /**
@@ -135,6 +136,67 @@ function detectCategory(filename, waypointType) {
 }
 
 // ---------------------------------------------------------------------------
+// GPX speed extraction
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract speed in m/s from a single trkpt element's <extensions>, or null.
+ *
+ * Priority:
+ *   1. Any element whose local name is "speed" (covers <osmand:speed>)
+ *   2. <speed_2d><value> — used by some OsmAnd variants
+ *
+ * @param {Element} trkpt
+ * @returns {number|null} speed in m/s, or null if absent/invalid
+ */
+function extractTrkptSpeedMs(trkpt) {
+    const extEls = trkpt.getElementsByTagName('extensions');
+    if (extEls.length === 0) return null;
+    const ext = extEls[0];
+
+    // Priority 1: element with local name "speed" (e.g. <osmand:speed>)
+    for (let i = 0; i < ext.childNodes.length; i++) {
+        const node = ext.childNodes[i];
+        if (node.nodeType !== 1) continue;
+        const localName = node.localName || node.nodeName.split(':').pop();
+        if (localName === 'speed') {
+            const val = parseFloat(node.textContent?.trim() ?? '');
+            if (isFinite(val)) return val;
+        }
+    }
+
+    // Priority 2: <speed_2d><value>
+    const speed2d = ext.getElementsByTagName('speed_2d');
+    if (speed2d.length > 0) {
+        const valueEl = speed2d[0].getElementsByTagName('value');
+        if (valueEl.length > 0) {
+            const val = parseFloat(valueEl[0].textContent?.trim() ?? '');
+            if (isFinite(val)) return val;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Build a flat array of speed values (km/h, or null) for every trkpt in the
+ * document, in document order. The array is aligned 1:1 with the coordinate
+ * arrays produced by togeojson for the same document.
+ *
+ * @param {Document} dom
+ * @returns {(number|null)[]}
+ */
+function buildTrkptSpeedArray(dom) {
+    const trkpts = dom.getElementsByTagName('trkpt');
+    const speeds = [];
+    for (let i = 0; i < trkpts.length; i++) {
+        const ms = extractTrkptSpeedMs(trkpts[i]);
+        speeds.push(ms !== null ? ms * 3.6 : null);
+    }
+    return speeds;
+}
+
+// ---------------------------------------------------------------------------
 // GeoJSON normalisation
 // ---------------------------------------------------------------------------
 
@@ -143,12 +205,14 @@ function detectCategory(filename, waypointType) {
  *
  * @param {Object} geojson
  * @param {string} sourceFile
- * @param {string} transportMode - already resolved
+ * @param {string} transportMode
+ * @param {(number|null)[]} speedsKmh - flat per-trkpt speed array (GPX only)
  * @returns {ParsedFile}
  */
-function normaliseFeatures(geojson, sourceFile, transportMode) {
+function normaliseFeatures(geojson, sourceFile, transportMode, speedsKmh = []) {
     const tracks = [];
     const waypoints = [];
+    let trkptOffset = 0;
 
     for (const feature of geojson.features) {
         const geomType = feature.geometry?.type;
@@ -158,7 +222,7 @@ function normaliseFeatures(geojson, sourceFile, transportMode) {
             const name =
                 feature.properties?.name || basename(sourceFile, extname(sourceFile));
 
-            // Flatten multi-segment tracks into a single point sequence.
+            // Flatten multi-segment tracks into a single coordinate sequence.
             const coords =
                 geomType === 'LineString'
                     ? feature.geometry.coordinates
@@ -173,16 +237,25 @@ function normaliseFeatures(geojson, sourceFile, transportMode) {
                       : rawTimes;
 
             const points = coords
-                .map((coord, i) => ({
-                    lon: coord[0],
-                    lat: coord[1],
-                    elevation:
-                        coord.length > 2 && coord[2] != null && isFinite(coord[2])
-                            ? coord[2]
-                            : undefined,
-                    time: times?.[i] != null ? Date.parse(times[i]) : undefined,
-                }))
+                .map((coord, i) => {
+                    /** @type {RawPoint} */
+                    const point = { lon: coord[0], lat: coord[1] };
+                    if (coord.length > 2 && coord[2] != null && isFinite(coord[2])) {
+                        point.elevation = coord[2];
+                    }
+                    if (times?.[i] != null) {
+                        const ms = Date.parse(times[i]);
+                        if (isFinite(ms)) point.time = ms;
+                    }
+                    const speedKmh = speedsKmh[trkptOffset + i];
+                    if (speedKmh != null) {
+                        point.speedKmh = speedKmh;
+                    }
+                    return point;
+                })
                 .filter(p => isFinite(p.lon) && isFinite(p.lat));
+
+            trkptOffset += coords.length;
 
             if (points.length >= 2) {
                 tracks.push({ name, sourceFile, transportMode, points });
@@ -207,6 +280,10 @@ function normaliseFeatures(geojson, sourceFile, transportMode) {
 /**
  * Parse a GPX file into tracks and waypoints.
  *
+ * Uses togeojson for structural parsing (coordinates, timestamps, track names,
+ * waypoints) and a targeted DOM query for per-trkpt speed extensions that
+ * togeojson does not expose.
+ *
  * @param {string} filePath - absolute path to the .gpx file
  * @returns {ParsedFile}
  */
@@ -215,12 +292,14 @@ export function parseGPX(filePath) {
     const dom = domParser.parseFromString(content, 'text/xml');
     const activity = extractGPXActivity(dom);
     const transportMode = resolveTransportMode(activity, filePath);
-    return normaliseFeatures(gpx(dom), filePath, transportMode);
+    const speedsKmh = buildTrkptSpeedArray(dom);
+    return normaliseFeatures(gpx(dom), filePath, transportMode, speedsKmh);
 }
 
 /**
  * Parse a KML file into tracks and waypoints.
- * KML has no standard activity metadata; transport mode is inferred from filename.
+ * KML has no standard activity metadata or speed extensions; transport mode
+ * is inferred from filename.
  *
  * @param {string} filePath - absolute path to the .kml file
  * @returns {ParsedFile}
