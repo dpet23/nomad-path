@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="test">
+  <wpt lat="35.6938" lon="139.7006">
+    <name>Hotel Gracery Shinjuku</name>
+    <type>accommodation</type>
+  </wpt>
+  <wpt lat="35.6585" lon="139.7454">
+    <name>Tokyo Tower</name>
+    <type>landmark</type>
+  </wpt>
+</gpx>

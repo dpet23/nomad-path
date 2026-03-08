@@ -1,0 +1,206 @@
+// @vitest-environment node
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { describe, expect, it } from 'vitest';
+
+import { parseGPX, parseKML } from './parsers.js';
+import { enrichTrack } from './enrichment.js';
+import { groupTracks } from './grouping.js';
+import { buildGeoJSON } from './output.js';
+
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures');
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the full pipeline on one or more fixture files and return the result.
+ *
+ * @param {string[]} gpxPaths
+ * @param {string[]} kmlPaths
+ * @param {string[]} waypointPaths
+ */
+function runPipeline(gpxPaths = [], kmlPaths = [], waypointPaths = []) {
+    const allTracks = [];
+    const allWaypoints = [];
+
+    for (const p of gpxPaths) {
+        const { tracks, waypoints } = parseGPX(p);
+        allTracks.push(...tracks.map(enrichTrack));
+        allWaypoints.push(...waypoints);
+    }
+    for (const p of kmlPaths) {
+        const { tracks, waypoints } = parseKML(p);
+        allTracks.push(...tracks.map(enrichTrack));
+        allWaypoints.push(...waypoints);
+    }
+    for (const p of waypointPaths) {
+        const { waypoints } = parseGPX(p);
+        allWaypoints.push(...waypoints);
+    }
+
+    const grouped = groupTracks(allTracks);
+    return buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName: 'Test Trip' });
+}
+
+// ---------------------------------------------------------------------------
+// FeatureCollection structure
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- FeatureCollection structure', () => {
+    const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
+
+    it('produces a valid GeoJSON FeatureCollection', () => {
+        expect(result.type).toBe('FeatureCollection');
+        expect(Array.isArray(result.features)).toBe(true);
+    });
+
+    it('embeds metadata with tripName and attributeRanges', () => {
+        expect(result.metadata.tripName).toBe('Test Trip');
+        expect(result.metadata).toHaveProperty('attributeRanges');
+    });
+
+    it('has no feature ids (deferred to Epic 3)', () => {
+        for (const f of result.features) {
+            expect(f.id).toBeUndefined();
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Track features
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- track features', () => {
+    const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
+    const track = result.features.find(f => f.properties.type === 'track');
+
+    it('produces a LineString feature for the track', () => {
+        expect(track).toBeDefined();
+        expect(track.geometry.type).toBe('LineString');
+    });
+
+    it('sets required track properties', () => {
+        expect(track.properties.name).toBe('Morning Drive');
+        expect(track.properties.type).toBe('track');
+        expect(track.properties.transportMode).toBe('drive');
+        expect(track.properties.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(track.properties.defaultVisible).toBe(true);
+    });
+
+    it('coordinates are [lon, lat] pairs', () => {
+        const [lon, lat] = track.geometry.coordinates[0];
+        expect(lon).toBeCloseTo(139.6917, 4);
+        expect(lat).toBeCloseTo(35.6895, 4);
+    });
+
+    it('includes times parallel array', () => {
+        expect(Array.isArray(track.properties.times)).toBe(true);
+        expect(track.properties.times).toHaveLength(track.geometry.coordinates.length);
+    });
+
+    it('includes elevations parallel array', () => {
+        expect(Array.isArray(track.properties.elevations)).toBe(true);
+        expect(track.properties.elevations[0]).toBe(40);
+    });
+
+    it('includes speeds parallel array (with null where missing)', () => {
+        expect(Array.isArray(track.properties.speeds)).toBe(true);
+        // Point 0: osmand:speed present
+        expect(track.properties.speeds[0]).toBeCloseTo(8.33 * 3.6, 1);
+        // Point 2: no extension, Haversine fallback applied
+        expect(track.properties.speeds[2]).toBeGreaterThan(0);
+    });
+
+    it('includes sunAngles parallel array', () => {
+        expect(Array.isArray(track.properties.sunAngles)).toBe(true);
+        // All points are timestamped daytime (Tokyo 17:00-17:10 JST)
+        for (const angle of track.properties.sunAngles) {
+            expect(angle).not.toBeNull();
+            expect(angle).toBeGreaterThanOrEqual(90);
+            expect(angle).toBeLessThanOrEqual(270);
+        }
+    });
+
+    it('parallel arrays all have the same length as coordinates', () => {
+        const n = track.geometry.coordinates.length;
+        expect(track.properties.times).toHaveLength(n);
+        expect(track.properties.elevations).toHaveLength(n);
+        expect(track.properties.speeds).toHaveLength(n);
+        expect(track.properties.sunAngles).toHaveLength(n);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// KML flight -- omitted parallel arrays when all values absent
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- KML flight (no timestamps)', () => {
+    const result = runPipeline([], [join(FIXTURES, 'flight-SYD-NRT.kml')]);
+    const track = result.features.find(f => f.properties.type === 'track');
+
+    it('produces a flight track with day key starting with "flight-"', () => {
+        expect(track.properties.day).toMatch(/^flight-/);
+    });
+
+    it('omits times array when no timestamps present', () => {
+        expect(track.properties.times).toBeUndefined();
+    });
+
+    it('omits sunAngles array when all values would be null', () => {
+        expect(track.properties.sunAngles).toBeUndefined();
+    });
+
+    it('omits speeds array when no speeds could be computed', () => {
+        // No timestamps means no Haversine fallback either
+        expect(track.properties.speeds).toBeUndefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// POI features
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- POI features', () => {
+    const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')]);
+    const pois = result.features.filter(f => f.properties.type === 'poi');
+
+    it('produces Point features for waypoints', () => {
+        expect(pois).toHaveLength(2);
+        expect(pois[0].geometry.type).toBe('Point');
+    });
+
+    it('sets poi properties', () => {
+        expect(pois[0].properties.name).toBe('Hotel Gracery Shinjuku');
+        expect(pois[0].properties.category).toBe('accommodation');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Attribute ranges
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- attribute ranges', () => {
+    const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
+    const { attributeRanges } = result.metadata;
+
+    it('computes elevation range across all track points', () => {
+        expect(attributeRanges.elevation).toBeDefined();
+        expect(attributeRanges.elevation.min).toBe(40);
+        expect(attributeRanges.elevation.max).toBe(45);
+        expect(attributeRanges.elevation.unit).toBe('m');
+    });
+
+    it('computes speed range across all track points', () => {
+        expect(attributeRanges.speed).toBeDefined();
+        expect(attributeRanges.speed.min).toBeGreaterThan(0);
+        expect(attributeRanges.speed.unit).toBe('km/h');
+    });
+
+    it('omits elevation range when no track has elevation data', () => {
+        // sample-no-elevation.gpx has no <ele> elements
+        const noElevResult = runPipeline([join(FIXTURES, 'sample-no-elevation.gpx')]);
+        expect(noElevResult.metadata.attributeRanges.elevation).toBeUndefined();
+    });
+});

@@ -68,7 +68,6 @@ export interface AttributeRange {
  */
 export interface TrackFeature {
     type: 'Feature';
-    id: string;
     geometry: {
         type: 'LineString';
         coordinates: ([number, number] | [number, number, number])[];
@@ -87,10 +86,12 @@ export interface TrackProperties {
     times?: number[];
     /** Parallel array: elevation (m) per point. */
     elevations?: number[];
-    /** Parallel array: speed (km/h) per point. */
-    speeds?: number[];
-    /** Parallel array: sun hour (0-23) or -1 for night, per point. */
-    sunHours?: number[];
+    /** Parallel array: speed (km/h) per point. null where speed could not be determined. */
+    speeds?: (number | null)[];
+    /** Parallel array: solar altitude angle (degrees, −90 to +90) per point.
+     *  Negative = below horizon (night), ~0 = dawn/dusk, positive = daytime.
+     *  null entries indicate points with no timestamp. */
+    sunAngles?: (number | null)[];
 }
 
 /**
@@ -98,7 +99,6 @@ export interface TrackProperties {
  */
 export interface POIFeature {
     type: 'Feature';
-    id: string;
     geometry: {
         type: 'Point';
         coordinates: [number, number];
