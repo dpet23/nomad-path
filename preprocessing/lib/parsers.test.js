@@ -90,6 +90,22 @@ describe('parseGPX — track with metadata', () => {
 });
 
 // ---------------------------------------------------------------------------
+// parseGPX — activity inside <trk><extensions>
+// ---------------------------------------------------------------------------
+
+describe('parseGPX — activity in <trk><extensions>', () => {
+    const { tracks } = parseGPX(join(FIXTURES, 'sample-trk-activity.gpx'));
+
+    it('reads transport mode from <osmand:activity> inside <trk><extensions>', () => {
+        expect(tracks[0].transportMode).toBe('walk');
+    });
+
+    it('reads track name', () => {
+        expect(tracks[0].name).toBe('Morning Walk');
+    });
+});
+
+// ---------------------------------------------------------------------------
 // parseGPX — track without elevation (activity = walking)
 // ---------------------------------------------------------------------------
 

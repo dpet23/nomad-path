@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readdirSync, statSync, writeFileSync } from 'fs';
-import { resolve, join } from 'path';
+import { resolve, join, dirname, basename } from 'path';
 import { parseArgs } from 'util';
 
 import { parseFile } from './lib/parsers.js';
@@ -13,16 +13,16 @@ import { buildGeoJSON } from './lib/output.js';
 // ---------------------------------------------------------------------------
 
 const USAGE = `
-Usage: node preprocessing/build-trip-data.js [options]
+Usage: node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>]
 
 Options:
-  -i, --input  <dir>   Directory to scan for GPS files (recursive)
-  -o, --output <file>  Output path for trip-data.geojson
-  -n, --name   <name>  Trip name embedded in GeoJSON metadata
+  -i, --input  <dir>   Directory to scan for GPS files (recursive) [required]
+  -o, --output <file>  Output path (default: <input>/trip-data.geojson)
+  -n, --name   <name>  Trip name in GeoJSON metadata (default: parent dir name, title-cased)
 
 Example:
-  node preprocessing/build-trip-data.js -i ./gps -o ./public/trip-data.geojson -n "Japan 2024"
-  npm run build:data -- -i ./gps -o ./public/trip-data.geojson -n "Japan 2024"
+  npm run build:data -- -i ./trips/japan-2024/tracks
+  npm run build:data -- -i ./trips/japan-2024/tracks -n "Japan 2024" -o ./public/trip-data.geojson
 `.trim();
 
 let values;
@@ -39,14 +39,16 @@ try {
     process.exit(1);
 }
 
-if (!values.input || !values.output || !values.name) {
-    console.error(`Error: --input, --output, and --name are all required.\n\n${USAGE}`);
+if (!values.input) {
+    console.error(`Error: --input is required.\n\n${USAGE}`);
     process.exit(1);
 }
 
-const inputDir  = resolve(values.input);
-const outputFile = resolve(values.output);
-const tripName  = values.name;
+const inputDir   = resolve(values.input);
+const outputFile = resolve(values.output ?? join(values.input, 'trip-data.geojson'));
+const tripName   = values.name ?? basename(dirname(inputDir))
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
 
 // ---------------------------------------------------------------------------
 // File discovery (recursive)
@@ -61,6 +63,7 @@ const tripName  = values.name;
 function collectFiles(dir) {
     const files = [];
     for (const entry of readdirSync(dir)) {
+        if (entry.startsWith('.')) continue; // skip hidden files and dirs (e.g. .git)
         const full = join(dir, entry);
         if (statSync(full).isDirectory()) {
             files.push(...collectFiles(full));

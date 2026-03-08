@@ -56,29 +56,53 @@ const ACTIVITY_MAP = {
 };
 
 /**
- * Extract the activity value from GPX metadata extensions.
- * Handles OsmAnd's <osmand:activity> and any other app using a local name
- * of "activity" anywhere inside <metadata><extensions>.
+ * Find an element with local name "activity" among direct children of a parent.
+ *
+ * @param {Element} parent
+ * @returns {string|null}
+ */
+function findActivityInChildren(parent) {
+    for (let i = 0; i < parent.childNodes.length; i++) {
+        const node = parent.childNodes[i];
+        if (node.nodeType !== 1) continue;
+        const localName = node.localName || node.nodeName.split(':').pop();
+        if (localName === 'activity') return node.textContent?.trim() || null;
+    }
+    return null;
+}
+
+/**
+ * Extract the activity value from a GPX document. Checked in order:
+ *   1. <metadata><extensions><*:activity>
+ *   2. <trk> direct children with local name "activity"
+ *   3. <trk><extensions><*:activity>
  *
  * @param {Document} dom
  * @returns {string|null}
  */
 function extractGPXActivity(dom) {
+    // Priority 1: <metadata><extensions>
     const metadataEls = dom.getElementsByTagName('metadata');
     for (let m = 0; m < metadataEls.length; m++) {
         const extEls = metadataEls[m].getElementsByTagName('extensions');
         for (let e = 0; e < extEls.length; e++) {
-            const children = extEls[e].childNodes;
-            for (let c = 0; c < children.length; c++) {
-                const node = children[c];
-                if (node.nodeType !== 1) continue; // element nodes only
-                const localName = node.localName || node.nodeName.split(':').pop();
-                if (localName === 'activity') {
-                    return node.textContent?.trim() || null;
-                }
-            }
+            const found = findActivityInChildren(extEls[e]);
+            if (found) return found;
         }
     }
+
+    // Priority 2 & 3: <trk> direct children, then <trk><extensions>
+    const trkEls = dom.getElementsByTagName('trk');
+    for (let t = 0; t < trkEls.length; t++) {
+        const direct = findActivityInChildren(trkEls[t]);
+        if (direct) return direct;
+        const extEls = trkEls[t].getElementsByTagName('extensions');
+        for (let e = 0; e < extEls.length; e++) {
+            const found = findActivityInChildren(extEls[e]);
+            if (found) return found;
+        }
+    }
+
     return null;
 }
 

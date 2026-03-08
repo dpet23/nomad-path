@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
+     version="1.1" creator="OsmAnd">
+  <trk>
+    <name>Morning Walk</name>
+    <extensions>
+      <osmand:activity>walking</osmand:activity>
+    </extensions>
+    <trkseg>
+      <trkpt lat="35.6895" lon="139.6917">
+        <ele>40</ele>
+        <time>2024-03-15T08:00:00Z</time>
+      </trkpt>
+      <trkpt lat="35.6900" lon="139.6925">
+        <ele>42</ele>
+        <time>2024-03-15T08:05:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
