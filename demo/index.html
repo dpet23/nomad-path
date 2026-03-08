@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nomad Path — Demo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+
+        #toolbar {
+            display: flex; align-items: center; gap: 12px;
+            padding: 8px 14px; background: #1a1a2e; color: #eee; flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        #toolbar h1 { font-size: 1rem; font-weight: 600; margin-right: 4px; }
+
+        #toolbar label { font-size: 0.8rem; color: #aaa; }
+        #toolbar select, #toolbar button {
+            font-size: 0.82rem; padding: 4px 8px; border-radius: 4px;
+            border: 1px solid #444; background: #2a2a4a; color: #eee; cursor: pointer;
+        }
+        #toolbar button:hover { background: #3a3a6a; }
+        #toolbar .sep { width: 1px; background: #444; height: 22px; }
+
+        #map { flex: 1; }
+
+        #status {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: #fff; padding: 6px 14px;
+            border-radius: 20px; font-size: 0.82rem; pointer-events: none;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div id="toolbar">
+    <h1>Nomad Path</h1>
+    <div class="sep"></div>
+
+    <label>Colour by</label>
+    <select id="colour-select">
+        <option value="day">Day</option>
+        <option value="speed">Speed</option>
+        <option value="elevation">Elevation</option>
+        <option value="sunAngle">Sun angle</option>
+        <option value="transportMode">Transport mode</option>
+    </select>
+
+    <div class="sep"></div>
+
+    <label>Basemap</label>
+    <select id="basemap-select">
+        <option value="osm">OpenStreetMap</option>
+        <option value="blueMarble">Blue Marble (NASA)</option>
+    </select>
+
+    <div class="sep"></div>
+
+    <button id="fit-btn">Fit to tracks</button>
+</div>
+
+<div id="map"></div>
+<div id="status">Loading…</div>
+
+<!-- MapLibre CSS (needed for map controls) -->
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
+
+<script type="module">
+// ---------------------------------------------------------------------------
+// CONFIG — edit DATA_URLS to point to your trip-data.geojson file(s)
+// ---------------------------------------------------------------------------
+const DATA_URLS = [
+    './trip-data.geojson',
+];
+
+// ---------------------------------------------------------------------------
+// Bootstrap
+// ---------------------------------------------------------------------------
+import { NomadPath, BASEMAPS } from '../dist/nomad-path.js';
+
+const status = document.getElementById('status');
+const show = msg => { status.style.display = 'block'; status.textContent = msg; };
+const hide = () => { status.style.display = 'none'; };
+
+show('Loading trip data…');
+
+let nomadMap;
+try {
+    nomadMap = await NomadPath.create({
+        container: 'map',
+        dataUrls: DATA_URLS,
+        defaultBasemap: 'osm',
+        initialBounds: 'auto',
+    });
+    hide();
+
+    // Log trip summary to console
+    for (const trip of nomadMap.trips) {
+        const tracks = trip.features.filter(f => f.properties.type === 'track');
+        const pois   = trip.features.filter(f => f.properties.type === 'poi');
+        console.info(`[${trip.metadata.tripName}] ${tracks.length} tracks, ${pois.length} POIs`);
+        console.info('  Attribute ranges:', trip.metadata.attributeRanges);
+    }
+} catch (err) {
+    show(`Error: ${err.message}`);
+    console.error(err);
+}
+
+// ---------------------------------------------------------------------------
+// Controls
+// ---------------------------------------------------------------------------
+document.getElementById('colour-select').addEventListener('change', e => {
+    nomadMap?.setColourAttribute(e.target.value);
+});
+
+document.getElementById('basemap-select').addEventListener('change', e => {
+    show('Switching basemap…');
+    nomadMap?.setBasemap(e.target.value);
+    // Hide status after style loads (give it a moment)
+    setTimeout(hide, 1500);
+});
+
+document.getElementById('fit-btn').addEventListener('click', () => {
+    // Re-create the map with auto bounds — simplest way to re-fit
+    // (fitToFeatures is internal; this is a demo workaround)
+    const sel = document.getElementById('basemap-select').value;
+    show('Re-fitting…');
+    location.reload();
+});
+</script>
+</body>
+</html>
