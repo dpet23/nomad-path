@@ -1,6 +1,5 @@
-import { getPosition, getTimes } from 'suncalc';
-import tzlookup from '@photostructure/tz-lookup';
-import { DateTime } from 'luxon';
+import suncalc from 'suncalc';
+const { getPosition, getTimes } = suncalc;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -37,39 +36,23 @@ function haversineMetres(lat1, lon1, lat2, lon2) {
 // ---------------------------------------------------------------------------
 // Sun angle
 // ---------------------------------------------------------------------------
-
-/**
- * Solar altitude angle in degrees for a given position and UTC timestamp.
- * Rounded to the nearest integer degree.
- *
- * @param {number} lat - degrees
- * @param {number} lon - degrees
- * @param {Date} date
- * @returns {number} altitude in degrees (−90 to +90), rounded to nearest integer
- */
-function sunAltitudeDeg(lat, lon, date) {
-    const { altitude } = getPosition(date, lat, lon);
-    return Math.round(altitude * RAD_TO_DEG);
-}
-
-// ---------------------------------------------------------------------------
-// Solar day angle (0–360°)
+// Solar day angle (0-360)
 // ---------------------------------------------------------------------------
 
 /**
- * Compute the solar day angle (0–360°) for a point in time, relative to
+ * Compute the solar day angle (0-360) for a point in time, relative to
  * the actual sunrise and sunset for that location and date.
  *
  * The scale is normalised so that fixed stops always mean the same phase:
- *   0°   = solar midnight (start of day)
- *   90°  = sunrise
- *   180° = solar noon
- *   270° = sunset
- *   360° = solar midnight (end of day)
+ *   0   = solar midnight (start of day)
+ *   90  = sunrise
+ *   180 = solar noon
+ *   270 = sunset
+ *   360 = solar midnight (end of day)
  *
- * Pre-dawn night (0–90) and post-dusk night (270–360) are distinguishable.
- * Null is returned when suncalc cannot determine sunrise/sunset (e.g. polar
- * night/midnight sun) — callers should fall back to sunAltitudeDeg alone.
+ * Pre-dawn night (0-90) and post-dusk night (270-360) are distinguishable.
+ * Returns NaN for polar locations where suncalc cannot determine
+ * sunrise/sunset; callers should check isFinite() and treat NaN as null.
  *
  * @param {number} lat
  * @param {number} lon
@@ -81,12 +64,9 @@ export function computeSunAngle(lat, lon, date) {
     const sunrise = times.sunrise?.getTime();
     const sunset = times.sunset?.getTime();
 
-    // Polar edge-cases: suncalc returns NaN or missing dates
+    // Polar edge-cases: suncalc returns NaN or missing dates.
+    // Return NaN as a null-sentinel; callers check isFinite().
     if (!sunrise || !isFinite(sunrise) || !sunset || !isFinite(sunset)) {
-        // Fall back: map altitude linearly to 0–360 so pre/post dawn are still
-        // distinguishable via the altitude sign (caller can handle this case).
-        const alt = getPosition(date, lat, lon).altitude * RAD_TO_DEG;
-        // Return null-sentinel encoded as NaN; callers check isFinite().
         return NaN;
     }
 
