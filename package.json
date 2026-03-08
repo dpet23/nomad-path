@@ -10,10 +10,10 @@
   ],
   "scripts": {
     "dev": "rollup -c -w",
-    "build": "rollup -c",
+    "build:lib": "rollup -c",
     "build:data": "node preprocessing/build-trip-data.js",
     "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
+    "lint:fix": "npm run lint -- --fix",
     "format": "prettier --write src",
     "test:unit": "vitest run",
     "test:watch": "vitest",
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@turf/bbox": "^7.0.0",
+    "@turf/helpers": "^7.3.4",
     "@turf/length": "^7.0.0",
     "maplibre-gl": "^4.0.0"
   },
