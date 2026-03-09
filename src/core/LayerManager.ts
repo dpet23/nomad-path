@@ -333,14 +333,25 @@ export class LayerManager {
     /**
      * Add track and POI layers to the map from the loaded trip data.
      *
-     * All tracks start visible. Must be called after the map has loaded.
+     * Tracks with `defaultVisible: false` start hidden. Must be called after
+     * the map's style has loaded.
      */
     addLayers(trips: TripData[]): void {
         const tracks = trips.flatMap(t => t.features.filter((f): f is TrackFeature => f.properties.type === 'track'));
         const pois = trips.flatMap(t => t.features.filter((f): f is POIFeature => f.properties.type === 'poi'));
 
+        // Defensive cleanup: setStyle() clears sources/layers, but guard against
+        // any case where they still exist (e.g. race conditions or double calls).
+        for (const id of [POI_LABEL_LAYER, POI_LAYER, TRACK_LAYER]) {
+            if (this._map.getLayer(id)) this._map.removeLayer(id);
+        }
+        for (const id of [POI_SOURCE, TRACK_SOURCE]) {
+            if (this._map.getSource(id)) this._map.removeSource(id);
+        }
+
         this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
-        this._visibleIds = new Set(tracks.map(deriveTrackId));
+        // Respect the defaultVisible flag set during preprocessing.
+        this._visibleIds = new Set(tracks.filter(t => t.properties.defaultVisible !== false).map(deriveTrackId));
 
         const { featureCollection, maxDayIndex } = buildSegmentFeatures(tracks);
         this._maxDayIndex = maxDayIndex;
@@ -385,10 +396,10 @@ export class LayerManager {
             type: 'circle',
             source: POI_SOURCE,
             paint: {
-                'circle-radius': 9,
-                'circle-color': '#FFD700',
-                'circle-stroke-color': '#333',
-                'circle-stroke-width': 1.5,
+                'circle-radius': 12,
+                'circle-color': '#FF4081',
+                'circle-stroke-color': '#fff',
+                'circle-stroke-width': 2,
             },
         });
         this._map.addLayer({

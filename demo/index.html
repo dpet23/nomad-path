@@ -122,11 +122,7 @@ document.getElementById('basemap-select').addEventListener('change', e => {
 });
 
 document.getElementById('fit-btn').addEventListener('click', () => {
-    // Re-create the map with auto bounds — simplest way to re-fit
-    // (fitToFeatures is internal; this is a demo workaround)
-    const sel = document.getElementById('basemap-select').value;
-    show('Re-fitting…');
-    location.reload();
+    nomadMap?.fitToTracks();
 });
 </script>
 </body>

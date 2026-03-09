@@ -1,6 +1,6 @@
 import type { Map as MaplibreMap } from 'maplibre-gl';
 
-import { extractTracks, loadTripData } from './core/DataLoader';
+import { deriveTrackId, extractTracks, loadTripData } from './core/DataLoader';
 import { type ColourAttribute, LayerManager, TRANSPORT_MODE_COLOURS } from './core/LayerManager';
 import {
     type BasemapId,
@@ -98,20 +98,28 @@ export class NomadPath {
         const prevAttribute = this._layers.colourAttribute;
         const prevVisibleIds = new Set(this._layers.visibleIds);
 
-        // Register BEFORE setStyle: for inline styles (e.g. BlueMarble) the
-        // style.load event can fire synchronously, before a post-call once() fires.
-        this._map.once('style.load', () => {
+        // Use styledata + isStyleLoaded() for robustness: styledata fires
+        // multiple times during a style transition; we re-schedule until the
+        // style is fully ready, then restore layers and state exactly once.
+        const restoreLayers = () => {
+            if (!this._map.isStyleLoaded()) {
+                this._map.once('styledata', restoreLayers);
+                return;
+            }
             this._layers.addLayers(this._trips);
-            // Restore previous visibility and colour state
-            for (const id of this._layers.visibleIds) {
-                if (!prevVisibleIds.has(id)) {
-                    this._layers.setTrackVisible(id, false);
+            // Restore exact previous visibility for every track.
+            for (const track of extractTracks(this._trips)) {
+                const id = deriveTrackId(track);
+                const wasVisible = prevVisibleIds.has(id);
+                if (this._layers.isTrackVisible(id) !== wasVisible) {
+                    this._layers.setTrackVisible(id, wasVisible);
                 }
             }
             if (prevAttribute !== 'day') {
                 this._layers.setColourAttribute(prevAttribute);
             }
-        });
+        };
+        this._map.once('styledata', restoreLayers);
 
         engineSetBasemap(this._map, basemapId);
 
@@ -146,6 +154,16 @@ export class NomadPath {
     /** The currently active colour attribute. */
     get colourAttribute(): ColourAttribute {
         return this._layers.colourAttribute;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Viewport
+    // ---------------------------------------------------------------------------
+
+    /** Fit the viewport to all loaded tracks, handling antimeridian crossings. */
+    fitToTracks(padding = 40): this {
+        fitToFeatures(this._map, extractTracks(this._trips), padding);
+        return this;
     }
 
     // ---------------------------------------------------------------------------

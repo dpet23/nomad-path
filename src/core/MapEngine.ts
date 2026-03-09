@@ -118,16 +118,42 @@ export function setBasemap(map: Map, basemapId: BasemapId): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Fit the map viewport to a set of GeoJSON features using @turf/bbox.
+ * Fit the map viewport to a set of GeoJSON features.
+ *
+ * Handles trips that cross the antimeridian (e.g. Australia → Hawaii): if the
+ * raw bbox spans more than 180° of longitude, negative longitudes are shifted
+ * by +360 so that MapLibre receives an unwrapped bbox and fits correctly.
+ *
  * No-ops if the features array is empty.
  */
 export function fitToFeatures(map: Map, features: Feature[], padding = 40): void {
     if (features.length === 0) return;
     const [minLng, minLat, maxLng, maxLat] = bbox(featureCollection(features));
+
+    let west = minLng;
+    let east = maxLng;
+
+    if (east - west > 180) {
+        // Likely an antimeridian-crossing trip. Shift negative longitudes by
+        // +360 so the bbox stays contiguous (e.g. -161°W becomes 199°E).
+        const lons: number[] = [];
+        for (const f of features) {
+            const geom = f.geometry;
+            if (geom.type === 'LineString') {
+                for (const [lon] of geom.coordinates as [number, number][]) lons.push(lon);
+            } else if (geom.type === 'Point') {
+                lons.push((geom.coordinates as [number, number])[0]);
+            }
+        }
+        const shifted = lons.map(l => (l < 0 ? l + 360 : l));
+        west = Math.min(...shifted);
+        east = Math.max(...shifted);
+    }
+
     map.fitBounds(
         [
-            [minLng, minLat],
-            [maxLng, maxLat],
+            [west, minLat],
+            [east, maxLat],
         ],
         { padding },
     );
