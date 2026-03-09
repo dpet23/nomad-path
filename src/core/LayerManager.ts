@@ -65,6 +65,36 @@ function avgNullable(a: number | null | undefined, b: number | null | undefined)
     return (a + b) / 2;
 }
 
+type Coord = [number, number] | [number, number, number];
+
+/**
+ * If a segment crosses the antimeridian (|dLon| > 180), split it at ±180°
+ * and return the two boundary points [westBoundary, eastBoundary].
+ *
+ * Returns null for normal segments that don't cross.
+ *
+ * The boundary pair represents the same geographic location (the antimeridian)
+ * as seen from each side: [180, lat] and [-180, lat].
+ */
+function antimeridianSplit(c1: Coord, c2: Coord): [[number, number], [number, number]] | null {
+    const dLon = c2[0] - c1[0];
+    if (Math.abs(dLon) <= 180) return null;
+
+    // Unwrap c2's longitude so we can linearly interpolate to the boundary.
+    // Eastward crossing: c1 near 180°E, c2 near 180°W → unwrap c2 by +360
+    // Westward crossing: c1 near 180°W, c2 near 180°E → unwrap c2 by -360
+    const lon2Unwrapped = dLon < -180 ? c2[0] + 360 : c2[0] - 360;
+    const boundaryLon = dLon < -180 ? 180 : -180;
+    const t = (boundaryLon - c1[0]) / (lon2Unwrapped - c1[0]);
+    const boundaryLat = c1[1] + t * (c2[1] - c1[1]);
+
+    // Return the boundary as seen from each side of the antimeridian.
+    return [
+        [boundaryLon, boundaryLat], // end of the first sub-segment
+        [-boundaryLon, boundaryLat], // start of the second sub-segment
+    ];
+}
+
 /**
  * Merge an array of AttributeRanges objects into one, taking global min/max.
  */
@@ -119,22 +149,37 @@ export function buildSegmentFeatures(tracks: TrackFeature[]): SegmentBuildResult
         const dayIndex = dayIndexMap.get(day) ?? 0;
 
         for (let i = 0; i < coords.length - 1; i++) {
-            features.push({
-                type: 'Feature',
-                geometry: {
-                    type: 'LineString',
-                    coordinates: [coords[i], coords[i + 1]],
-                },
-                properties: {
-                    trackId,
-                    day,
-                    dayIndex,
-                    transportMode: transportMode ?? 'drive',
-                    elevValue: avgNullable(elevations?.[i], elevations?.[i + 1]),
-                    speedValue: avgNullable(speeds?.[i], speeds?.[i + 1]),
-                    sunValue: avgNullable(sunAngles?.[i], sunAngles?.[i + 1]),
-                },
-            });
+            const props: SegmentProperties = {
+                trackId,
+                day,
+                dayIndex,
+                transportMode: transportMode ?? 'drive',
+                elevValue: avgNullable(elevations?.[i], elevations?.[i + 1]),
+                speedValue: avgNullable(speeds?.[i], speeds?.[i + 1]),
+                sunValue: avgNullable(sunAngles?.[i], sunAngles?.[i + 1]),
+            };
+
+            const split = antimeridianSplit(coords[i], coords[i + 1]);
+            if (split) {
+                // Antimeridian crossing: emit two sub-segments, one on each side.
+                const [boundaryA, boundaryB] = split;
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: [coords[i], boundaryA] },
+                    properties: props,
+                });
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: [boundaryB, coords[i + 1]] },
+                    properties: props,
+                });
+            } else {
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: [coords[i], coords[i + 1]] },
+                    properties: props,
+                });
+            }
         }
     }
 
@@ -149,7 +194,12 @@ const MISSING_COLOUR = '#9E9E9E';
 
 // Rainbow spectrum: red (hue 0) at day 0, violet (hue 270) at the last day.
 // Uses interpolate-hcl for perceptual uniformity across the hue range.
+// Intermediate stops at 1/3 (green) and 2/3 (cyan) force HCL to take the
+// 270° forward arc through yellow→green→cyan→blue rather than the short
+// 90° backward path through magenta.
 const DAY_COLOUR_START = 'hsl(0, 85%, 52%)'; // red
+const DAY_COLOUR_MID1 = 'hsl(100, 72%, 38%)'; // green
+const DAY_COLOUR_MID2 = 'hsl(200, 78%, 46%)'; // cyan-blue
 const DAY_COLOUR_END = 'hsl(270, 85%, 52%)'; // violet
 
 // MapLibre's ExpressionSpecification is a complex discriminated union that
@@ -182,6 +232,10 @@ export function buildColourExpression(
                 ['get', 'dayIndex'],
                 0,
                 DAY_COLOUR_START,
+                maxDayIndex * (1 / 3),
+                DAY_COLOUR_MID1,
+                maxDayIndex * (2 / 3),
+                DAY_COLOUR_MID2,
                 maxDayIndex,
                 DAY_COLOUR_END,
             ]);
