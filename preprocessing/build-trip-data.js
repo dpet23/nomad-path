@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { readdirSync, statSync, writeFileSync } from 'fs';
-import { resolve, join, dirname, basename } from 'path';
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { resolve, join, relative, dirname, basename } from 'path';
 import { parseArgs } from 'util';
+
+import { parse as parseYAML } from 'yaml';
 
 import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
@@ -13,15 +15,17 @@ import { buildGeoJSON } from './lib/output.js';
 // ---------------------------------------------------------------------------
 
 const USAGE = `
-Usage: node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>]
+Usage: node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>] [--init]
 
 Options:
   -i, --input  <dir>   Directory to scan for GPS files (recursive) [required]
   -o, --output <file>  Output path (default: <input>/trip-data.geojson)
   -n, --name   <name>  Trip name in GeoJSON metadata (default: parent dir name, title-cased)
+      --init           Write a nomadpath.yaml template to <input>/ and exit
 
 Example:
   npm run build:data -- -i ./trips/japan-2024/tracks
+  npm run build:data -- -i ./trips/japan-2024/tracks --init
   npm run build:data -- -i ./trips/japan-2024/tracks -n "Japan 2024" -o ./public/trip-data.geojson
 `.trim();
 
@@ -29,9 +33,10 @@ let values;
 try {
     ({ values } = parseArgs({
         options: {
-            input:  { type: 'string', short: 'i' },
-            output: { type: 'string', short: 'o' },
-            name:   { type: 'string', short: 'n' },
+            input:  { type: 'string',  short: 'i' },
+            output: { type: 'string',  short: 'o' },
+            name:   { type: 'string',  short: 'n' },
+            init:   { type: 'boolean'              },
         },
     }));
 } catch (err) {
@@ -49,6 +54,96 @@ const outputFile = resolve(values.output ?? join(values.input, 'trip-data.geojso
 const tripName   = values.name ?? basename(dirname(inputDir))
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
+
+// ---------------------------------------------------------------------------
+// --init: generate nomadpath.yaml template
+// ---------------------------------------------------------------------------
+
+if (values.init) {
+    const configPath = join(inputDir, 'nomadpath.yaml');
+
+    // Discover immediate subdirectories to pre-populate the template.
+    let subdirs = [];
+    try {
+        subdirs = readdirSync(inputDir)
+            .filter(e => !e.startsWith('.') && statSync(join(inputDir, e)).isDirectory());
+    } catch { /* ignore scan errors */ }
+
+    const groupEntries = subdirs.length > 0
+        ? subdirs.map(d => `  ${d}:\n    defaultVisible: true`).join('\n')
+        : '  # my-flights:\n  #   defaultVisible: false';
+
+    const template = `\
+# nomadpath.yaml — Nomad Path preprocessing configuration
+# See: preprocessing/README.md for full documentation.
+#
+# Groups correspond to immediate subdirectories of your input directory.
+# Tracks at the root level (not in any subfolder) are always visible.
+#
+# Available group options:
+#   defaultVisible: true | false   — whether tracks are shown at map load (default: true)
+
+groups:
+${groupEntries}
+`;
+
+    writeFileSync(configPath, template);
+    console.log(`Created: ${configPath}`);
+    console.log(`Edit the file, then re-run without --init to build your trip data.`);
+    process.exit(0);
+}
+
+// ---------------------------------------------------------------------------
+// nomadpath.yaml config
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {{ defaultVisible?: boolean }} GroupConfig
+ */
+
+/** @type {Record<string, GroupConfig>} */
+let groupConfig = {};
+
+const configPath = join(inputDir, 'nomadpath.yaml');
+try {
+    const raw = readFileSync(configPath, 'utf8');
+    const parsed = parseYAML(raw);
+    groupConfig = parsed?.groups ?? {};
+} catch (err) {
+    if (err.code !== 'ENOENT') {
+        console.error(`Warning: failed to load nomadpath.yaml: ${err.message}`);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Track augmentation
+// ---------------------------------------------------------------------------
+
+/**
+ * Augment an enriched track with `group` and `defaultVisible` fields derived
+ * from the file's position relative to the input directory.
+ *
+ * The group is the first subfolder component under inputDir (e.g. "flights-2025"
+ * for a file at "flights-2025/QFA468.kml"). Files at the root level have group = null.
+ *
+ * defaultVisible priority:
+ *   1. Group config in nomadpath.yaml
+ *   2. true (default — show everything unless told otherwise)
+ *
+ * @param {import('./lib/enrichment.js').EnrichedTrack} track
+ * @param {string} filePath
+ * @returns {import('./lib/enrichment.js').EnrichedTrack & { group: string|null, defaultVisible: boolean }}
+ */
+function augmentTrack(track, filePath) {
+    const rel = relative(inputDir, filePath).replace(/\\/g, '/');
+    const firstComponent = rel.split('/')[0];
+    const group = firstComponent.includes('.') ? null : firstComponent;
+
+    const cfg = (group && groupConfig[group]) ?? {};
+    const defaultVisible = cfg.defaultVisible ?? true;
+
+    return { ...track, group: group ?? null, defaultVisible };
+}
 
 // ---------------------------------------------------------------------------
 // File discovery (recursive)
@@ -88,7 +183,7 @@ let parsed = 0;
 for (const filePath of allFiles) {
     try {
         const { tracks, waypoints } = parseFile(filePath);
-        allTracks.push(...tracks.map(enrichTrack));
+        allTracks.push(...tracks.map(t => augmentTrack(enrichTrack(t), filePath)));
         allWaypoints.push(...waypoints);
         parsed++;
     } catch (err) {

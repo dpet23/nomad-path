@@ -97,6 +97,8 @@ export interface TrackProperties {
     type: 'track';
     defaultVisible: boolean;
     transportMode?: 'walk' | 'drive' | 'flight' | 'boat' | string;
+    /** Subfolder group this track belongs to (e.g. 'flights', 'disasters'), or null for root-level files. */
+    group?: string | null;
     /** Parallel array: Unix timestamps (ms) per point. */
     times?: number[];
     /** Parallel array: elevation (m) per point. */

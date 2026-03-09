@@ -80,7 +80,8 @@ function trackToFeature(track) {
         name: track.name,
         day: track.day,
         type: 'track',
-        defaultVisible: true,
+        defaultVisible: track.defaultVisible ?? true,
+        group: track.group ?? null,
         transportMode: track.transportMode,
         ...(times && { times }),
         ...(elevations && { elevations }),
@@ -140,7 +141,26 @@ export function buildGeoJSON({ tracks, waypoints, tripName }) {
         attributeRanges.speed = { min: speedRange.min, max: speedRange.max, unit: 'km/h' };
     }
 
+    // Stats
+    const transportModes = {};
+    for (const t of tracks) {
+        const mode = t.transportMode ?? 'unknown';
+        transportModes[mode] = (transportModes[mode] ?? 0) + 1;
+    }
+    const groundDays = [...new Set(
+        tracks.map(t => t.day).filter(d => !d.startsWith('flight-')),
+    )].sort();
+    const stats = {
+        trackCount: tracks.length,
+        waypointCount: waypoints.length,
+        dayCount: groundDays.length,
+        transportModes,
+        ...(groundDays.length > 0 && {
+            dateRange: { start: groundDays[0], end: groundDays[groundDays.length - 1] },
+        }),
+    };
+
     const collection = featureCollection([...trackFeatures, ...poiFeatures]);
-    collection.metadata = { tripName, attributeRanges };
+    collection.metadata = { tripName, attributeRanges, stats };
     return collection;
 }
