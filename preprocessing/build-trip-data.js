@@ -137,7 +137,11 @@ try {
 function augmentTrack(track, filePath) {
     const rel = relative(inputDir, filePath).replace(/\\/g, '/');
     const firstComponent = rel.split('/')[0];
-    const group = firstComponent.includes('.') ? null : firstComponent;
+    // Use statSync to reliably distinguish directory names from filenames — dot-based
+    // heuristics fail for folder names like "0. Australia".
+    const firstComponentPath = join(inputDir, firstComponent);
+    const isSubdir = rel.includes('/') && statSync(firstComponentPath).isDirectory();
+    const group = isSubdir ? firstComponent : null;
 
     const cfg = (group && groupConfig[group]) ?? {};
     const defaultVisible = cfg.defaultVisible ?? true;
@@ -207,8 +211,15 @@ const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripNam
 
 writeFileSync(outputFile, JSON.stringify(geojson));
 
-const trackCount = grouped.length;
-const poiCount = allWaypoints.length;
-const days = new Set(grouped.map(t => t.day)).size;
+const { stats } = geojson.metadata;
+const modesSummary = Object.entries(stats.transportModes)
+    .sort((a, b) => b[1] - a[1])
+    .map(([mode, count]) => `${count} ${mode}`)
+    .join(', ');
+const rangeSummary = stats.dateRange
+    ? ` · ${stats.dateRange.start} → ${stats.dateRange.end}`
+    : '';
+
 console.log(`Done: ${parsed} file(s) parsed, ${skipped} skipped.`);
-console.log(`Output: ${trackCount} track(s) across ${days} day(s), ${poiCount} POI(s) → ${outputFile}`);
+console.log(`Output: ${stats.trackCount} track(s)${rangeSummary}, ${stats.waypointCount} POI(s) → ${outputFile}`);
+console.log(`Modes:  ${modesSummary}`);
