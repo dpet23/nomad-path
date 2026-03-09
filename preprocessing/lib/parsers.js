@@ -110,6 +110,20 @@ function extractGPXActivity(dom) {
 }
 
 /**
+ * Return true if the file lives inside a directory named exactly "flights".
+ *
+ * Placing flight KML/GPX files under a `flights/` subfolder is the canonical
+ * way to mark them as flight tracks. This overrides all other transport mode
+ * detection — no filename or metadata inference needed.
+ *
+ * @param {string} filePath - absolute or relative path
+ * @returns {boolean}
+ */
+function isInFlightsSubfolder(filePath) {
+    return filePath.split(/[/\\]/).includes('flights');
+}
+
+/**
  * Infer transport mode from a filename (fallback when no metadata is present).
  *
  * @param {string} filename
@@ -318,7 +332,10 @@ export function parseGPX(filePath) {
     const content = readFileSync(filePath, 'utf8');
     const dom = domParser.parseFromString(content, 'text/xml');
     const activity = extractGPXActivity(dom);
-    const transportMode = resolveTransportMode(activity, filePath);
+    // flights/ subfolder takes priority over all other detection
+    const transportMode = isInFlightsSubfolder(filePath)
+        ? 'flight'
+        : resolveTransportMode(activity, filePath);
     const speedsKmh = buildTrkptSpeedArray(dom);
     return normaliseFeatures(gpx(dom), filePath, transportMode, speedsKmh);
 }
@@ -353,10 +370,16 @@ function getKMLDocumentName(dom) {
 export function parseKML(filePath) {
     const content = readFileSync(filePath, 'utf8');
     const dom = domParser.parseFromString(content, 'text/xml');
-    const docName = getKMLDocumentName(dom);
-    const transportMode = docName?.startsWith('FlightAware')
-        ? 'flight'
-        : detectTransportMode(filePath);
+    // flights/ subfolder takes priority over all other detection
+    let transportMode;
+    if (isInFlightsSubfolder(filePath)) {
+        transportMode = 'flight';
+    } else {
+        const docName = getKMLDocumentName(dom);
+        transportMode = docName?.startsWith('FlightAware')
+            ? 'flight'
+            : detectTransportMode(filePath);
+    }
     return normaliseFeatures(kml(dom), filePath, transportMode);
 }
 

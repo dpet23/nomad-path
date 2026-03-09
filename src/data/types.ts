@@ -47,6 +47,21 @@ export interface TripData {
 export interface TripMetadata {
     tripName: string;
     attributeRanges: AttributeRanges;
+    stats?: TripStats;
+}
+
+/** Summary statistics embedded in the GeoJSON metadata. */
+export interface TripStats {
+    /** Total number of GPS tracks. */
+    trackCount: number;
+    /** Total number of POI waypoints. */
+    waypointCount: number;
+    /** Number of unique calendar days covered (flight-day keys excluded). */
+    dayCount: number;
+    /** Track count per transport mode, e.g. { drive: 12, walk: 8, flight: 3 }. */
+    transportModes: Record<string, number>;
+    /** Earliest and latest date-string day keys (ISO date, flight keys excluded). */
+    dateRange?: { start: string; end: string };
 }
 
 /** Global min/max ranges for each continuous attribute. */
