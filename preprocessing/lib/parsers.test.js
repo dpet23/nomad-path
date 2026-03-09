@@ -17,6 +17,11 @@ describe('detectTransportMode', () => {
         expect(detectTransportMode('fly-london.gpx')).toBe('flight');
     });
 
+    it('detects flight from FlightAware-prefixed filename', () => {
+        expect(detectTransportMode('FlightAware_QFA468_YMML_YSSY_20250912.kml')).toBe('flight');
+        expect(detectTransportMode('1. FlightAware_HAL158_PHNL_PHKO_20250919.kml')).toBe('flight');
+    });
+
     it('detects walk from filename', () => {
         expect(detectTransportMode('morning-walk.gpx')).toBe('walk');
         expect(detectTransportMode('fuji-hike.gpx')).toBe('walk');
@@ -183,6 +188,42 @@ describe('parseKML — flight track', () => {
 
     it('returns no waypoints', () => {
         expect(waypoints).toHaveLength(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// parseKML — FlightAware gx:Track (document-name detection)
+// ---------------------------------------------------------------------------
+
+describe('parseKML — FlightAware gx:Track with filename containing "FlightAware"', () => {
+    const { tracks } = parseKML(join(FIXTURES, 'FlightAware_QFA468_YMML_YSSY_20250912.kml'));
+
+    it('returns one track', () => {
+        expect(tracks).toHaveLength(1);
+    });
+
+    it('detects flight transport mode from filename', () => {
+        expect(tracks[0].transportMode).toBe('flight');
+    });
+
+    it('reads track name from Placemark', () => {
+        expect(tracks[0].name).toBe('QF 468');
+    });
+
+    it('reads timestamps from gx:Track', () => {
+        expect(tracks[0].points[0].time).toBe(Date.parse('2025-09-12T06:59:32Z'));
+    });
+
+    it('reads three coordinate points', () => {
+        expect(tracks[0].points).toHaveLength(3);
+    });
+});
+
+describe('parseKML — FlightAware with renamed file (no "flight" in filename)', () => {
+    const { tracks } = parseKML(join(FIXTURES, 'renamed-flight.kml'));
+
+    it('detects flight transport mode from KML document name', () => {
+        expect(tracks[0].transportMode).toBe('flight');
     });
 });
 

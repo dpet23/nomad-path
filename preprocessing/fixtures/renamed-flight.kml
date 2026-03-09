@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+    <name>FlightAware ✈ QFA600 13-Dec-2024 (YMML-YBBN)</name>
+    <Placemark>
+        <name>QFA600</name>
+        <description>Melbourne - Brisbane</description>
+        <gx:Track>
+            <when>2024-12-13T06:00:00Z</when>
+            <when>2024-12-13T06:30:00Z</when>
+            <when>2024-12-13T07:00:00Z</when>
+            <gx:coord>144.8433 -37.6733 0</gx:coord>
+            <gx:coord>148.0000 -33.0000 10000</gx:coord>
+            <gx:coord>153.1175 -27.3842 0</gx:coord>
+        </gx:Track>
+    </Placemark>
+</Document>
+</kml>
