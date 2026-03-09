@@ -345,7 +345,9 @@ export class LayerManager {
         const { featureCollection, maxDayIndex } = buildSegmentFeatures(tracks);
         this._maxDayIndex = maxDayIndex;
 
-        this._map.addSource(TRACK_SOURCE, { type: 'geojson', data: featureCollection });
+        // tolerance: 0 disables tile simplification, preventing short segments
+        // from being collapsed to dots at low zoom levels.
+        this._map.addSource(TRACK_SOURCE, { type: 'geojson', data: featureCollection, tolerance: 0 });
         this._map.addLayer({
             id: TRACK_LAYER,
             type: 'line',
@@ -383,7 +385,7 @@ export class LayerManager {
             type: 'circle',
             source: POI_SOURCE,
             paint: {
-                'circle-radius': 6,
+                'circle-radius': 9,
                 'circle-color': '#FFD700',
                 'circle-stroke-color': '#333',
                 'circle-stroke-width': 1.5,

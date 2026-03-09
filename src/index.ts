@@ -98,9 +98,8 @@ export class NomadPath {
         const prevAttribute = this._layers.colourAttribute;
         const prevVisibleIds = new Set(this._layers.visibleIds);
 
-        engineSetBasemap(this._map, basemapId);
-
-        // setStyle clears all user sources/layers; re-add once style reloads
+        // Register BEFORE setStyle: for inline styles (e.g. BlueMarble) the
+        // style.load event can fire synchronously, before a post-call once() fires.
         this._map.once('style.load', () => {
             this._layers.addLayers(this._trips);
             // Restore previous visibility and colour state
@@ -113,6 +112,8 @@ export class NomadPath {
                 this._layers.setColourAttribute(prevAttribute);
             }
         });
+
+        engineSetBasemap(this._map, basemapId);
 
         return this;
     }
