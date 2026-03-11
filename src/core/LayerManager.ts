@@ -414,6 +414,9 @@ export class LayerManager {
             source: POI_LABEL_SOURCE,
             layout: {
                 'text-field': ['get', 'name'],
+                // Explicitly match openfreemap's available fonts; the MapLibre default
+                // ("Open Sans Regular") is not served by openfreemap's font endpoint.
+                'text-font': ['literal', ['Noto Sans Regular']],
                 'text-size': 12,
                 'text-offset': [0, 1.2],
                 'text-anchor': 'top',

@@ -177,7 +177,9 @@ export class NomadPath {
 
     /** Fit the viewport to all currently visible tracks, handling antimeridian crossings. */
     fitToTracks(padding = 40): this {
-        const visibleTracks = extractTracks(this._trips).filter(t => this._layers.visibleIds.has(deriveTrackId(t)));
+        const visibleTracks = extractTracks(this._trips).filter(
+            t => this._layers.visibleIds.has(deriveTrackId(t)) && !t.properties.excludeFromAutoBounds,
+        );
         fitToFeatures(this._map, visibleTracks, padding);
         return this;
     }

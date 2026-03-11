@@ -25,7 +25,8 @@ function buildBlueMarbleStyle(): StyleSpecification {
     return {
         version: 8,
         // Required for any symbol layer using text-field (including our POI labels).
-        glyphs: 'https://tiles.openfreemap.org/glyphs/{fontstack}/{range}.pbf',
+        // openfreemap uses /fonts/ (not /glyphs/) as the path prefix.
+        glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
         sources: {
             'blue-marble': {
                 type: 'raster',
