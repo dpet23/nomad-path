@@ -5,17 +5,19 @@
  * a deterministic fixture (e2e/fixture.geojson) with:
  *   - "Tokyo Drive"  — defaultVisible: true,  day 2024-01-01, coords ~139.7°E 35.7°N
  *   - "Sydney Walk"  — defaultVisible: false, day 2024-01-02, coords ~151.2°E -33.9°N
+ *   - "Helsinki Flight"— defaultVisible: true,  day 2024-01-03, excludeFromAutoBounds, coords ~25°E 60.2°N
  *   - "Test Hotel"   — POI at 139.695°E 35.691°N
  *
  * Tests interact via window.nomadMap (NomadPath instance) and window._map
  * (MapLibre Map instance), both exposed by the harness page.
  *
  * Layer/source IDs (from LayerManager.ts):
- *   TRACK_SOURCE = 'np-tracks'
- *   TRACK_LAYER  = 'np-tracks-layer'
- *   POI_SOURCE   = 'np-pois'
- *   POI_LAYER    = 'np-pois-layer'
- *   POI_LABELS   = 'np-pois-labels'
+ *   TRACK_SOURCE     = 'np-tracks'
+ *   TRACK_LAYER      = 'np-tracks-layer'
+ *   POI_SOURCE       = 'np-pois'            (circle data only)
+ *   POI_LABEL_SOURCE = 'np-pois-labels-src' (separate source for label layer)
+ *   POI_LAYER        = 'np-pois-layer'
+ *   POI_LABELS       = 'np-pois-labels'
  */
 
 import { expect, test } from '@playwright/test';
@@ -28,10 +30,13 @@ const TEST_PAGE = '/e2e/test.html';
 
 const TRACK_A_ID = '2024-01-01::Tokyo Drive';
 const TRACK_B_ID = '2024-01-02::Sydney Walk';
+const TRACK_C_ID = '2024-01-03::Helsinki Flight';
 
 // Tokyo bounds (Track A, visible): ~35.68–35.70°N, 139.69–139.71°E
 // Sydney bounds (Track B, hidden): ~-33.87–-33.85°N, 151.20–151.23°E
+// Helsinki bounds (Track C, excludeFromAutoBounds): ~60.17–60.18°N, 24.94–24.96°E
 const TOKYO_MIN_LAT = 35.5;
+const TOKYO_MAX_LAT = 40.0; // Helsinki (60°N) is well above this
 const SYDNEY_MAX_LAT = -33.0; // Any latitude below this means Sydney is included
 
 type PwPage = import('@playwright/test').Page;
@@ -130,6 +135,23 @@ test.describe('POI rendering', () => {
         // MapLibre default (undefined) means visible; explicit 'visible' also fine
         expect(visibility === undefined || visibility === 'visible').toBe(true);
     });
+
+    test('POI circle actually renders in the viewport at POI coordinates', async ({ page }) => {
+        await gotoMap(page);
+        // Jump to the fixture POI location then wait for it to actually appear in
+        // queryRenderedFeatures. GeoJSON tiles are generated client-side but may
+        // not be ready on the first idle event.
+        await page.evaluate(() => {
+            const map = (window as any)._map;
+            map.jumpTo({ center: [139.695, 35.691], zoom: 14 });
+        });
+        await page.waitForFunction(
+            () =>
+                (window as any)._map.queryRenderedFeatures(undefined, { layers: ['np-pois-layer'] }).length >
+                0,
+            { timeout: 10_000 },
+        );
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -196,6 +218,22 @@ test.describe('fitToTracks', () => {
         await waitForMapSettle(page);
         const south = await page.evaluate(() => (window as any)._map.getBounds().getSouth());
         expect(south).toBeGreaterThan(TOKYO_MIN_LAT);
+    });
+
+    test('excludeFromAutoBounds track is visible but excluded from initial auto-fit', async ({ page }) => {
+        await gotoMap(page);
+        await waitForMapSettle(page);
+        // Helsinki Flight is defaultVisible:true but excludeFromAutoBounds:true.
+        // It should be visible (renderable) but its coords (~60°N) must not affect initial bounds.
+        const [isVisible, north] = await page.evaluate(
+            id => [
+                (window as any).nomadMap.isTrackVisible(id),
+                (window as any)._map.getBounds().getNorth(),
+            ],
+            TRACK_C_ID,
+        );
+        expect(isVisible).toBe(true);
+        expect(north).toBeLessThan(TOKYO_MAX_LAT); // ~36°N at most; Helsinki at 60°N would push this far higher
     });
 
     test('fitToTracks() expands bounds when hidden track is made visible', async ({ page }) => {

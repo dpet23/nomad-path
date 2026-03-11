@@ -7,11 +7,11 @@
       "speed": { "min": 10, "max": 60, "unit": "km/h" }
     },
     "stats": {
-      "trackCount": 2,
+      "trackCount": 3,
       "waypointCount": 1,
-      "dayCount": 2,
-      "transportModes": { "drive": 1, "walk": 1 },
-      "dateRange": { "start": "2024-01-01", "end": "2024-01-02" }
+      "dayCount": 3,
+      "transportModes": { "drive": 1, "walk": 1, "flight": 1 },
+      "dateRange": { "start": "2024-01-01", "end": "2024-01-03" }
     }
   },
   "features": [
@@ -57,6 +57,29 @@
         "elevations": [20, 25, 30],
         "speeds": [10, 12, 11],
         "sunAngles": [200, 205, 210]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [24.9384, 60.1699],
+          [24.9500, 60.1750],
+          [24.9600, 60.1800]
+        ]
+      },
+      "properties": {
+        "type": "track",
+        "name": "Helsinki Flight",
+        "day": "2024-01-03",
+        "transportMode": "flight",
+        "defaultVisible": true,
+        "excludeFromAutoBounds": true,
+        "group": "flights",
+        "elevations": [100, 5000, 100],
+        "speeds": [100, 800, 100],
+        "sunAngles": [10, 10, 10]
       }
     },
     {

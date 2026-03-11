@@ -30,6 +30,9 @@ const TRACK_SOURCE = 'np-tracks';
 const TRACK_LAYER = 'np-tracks-layer';
 const POI_SOURCE = 'np-pois';
 const POI_LAYER = 'np-pois-layer';
+// Labels use a separate source so glyph-loading (required by symbol layers) does
+// not block the circle source from delivering tiles to np-pois-layer.
+const POI_LABEL_SOURCE = 'np-pois-labels-src';
 const POI_LABEL_LAYER = 'np-pois-labels';
 
 // ---------------------------------------------------------------------------
@@ -345,7 +348,7 @@ export class LayerManager {
         for (const id of [POI_LABEL_LAYER, POI_LAYER, TRACK_LAYER]) {
             if (this._map.getLayer(id)) this._map.removeLayer(id);
         }
-        for (const id of [POI_SOURCE, TRACK_SOURCE]) {
+        for (const id of [POI_LABEL_SOURCE, POI_SOURCE, TRACK_SOURCE]) {
             if (this._map.getSource(id)) this._map.removeSource(id);
         }
 
@@ -402,10 +405,13 @@ export class LayerManager {
                 'circle-stroke-width': 2,
             },
         });
+        // Labels use a separate GeoJSON source (same data) so that the symbol
+        // layer's glyph-loading requirement does not block np-pois tile delivery.
+        this._map.addSource(POI_LABEL_SOURCE, { type: 'geojson', data: poiGeoJSON });
         this._map.addLayer({
             id: POI_LABEL_LAYER,
             type: 'symbol',
-            source: POI_SOURCE,
+            source: POI_LABEL_SOURCE,
             layout: {
                 'text-field': ['get', 'name'],
                 'text-size': 12,
