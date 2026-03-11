@@ -5,10 +5,16 @@ See `PROJECT_SPEC.md` for full requirements. This file records implementation st
 ## Epic Progress
 - [x] Epic 1: Project setup
 - [x] Epic 2: Preprocessing pipeline (parsers, enrichment, grouping, output) — 127 unit tests
-- [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests
+- [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 24 e2e tests
 - [ ] Epic 4: UI components (TrackLegend, AttributeLegend, POI markers, mobile menu)
 - [ ] Epic 5: Integration & polish
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
+
+## Current Status (branch: impl/claude)
+- 127 unit tests + 25 Playwright e2e tests, all passing
+- Four bugs fixed: basemap switch layer restoration, fitToTracks visibility filter, initial bounds visibility filter, POI circles not rendering on OSM
+- POI root cause: MapLibre gates GeoJSON tile delivery on glyph loading when a symbol layer shares the source. Fix: `np-pois` (circles) and `np-pois-labels-src` (labels) are now separate sources.
+- Blue Marble style now includes `glyphs` URL to prevent repeated "requires glyphs" errors on basemap switch.
 
 ## Key Deviations from Spec
 - Public API class is `NomadPath` (not `TravelMap` — spec name is outdated)
@@ -23,6 +29,7 @@ src/styling/    ColorRamps, SymbolLibrary (pure functions)
 src/index.ts    Public API (NomadPath.create)
 preprocessing/  Node.js GPX/KML → trip-data.geojson pipeline
 demo/           index.html demo page (npx serve .)
+e2e/            Playwright tests (fixture.geojson, test.html, map.spec.ts)
 ```
 
 ## Rendering Architecture
@@ -50,14 +57,23 @@ Show "Elevation: 0–847m · based on visible tracks" in attribute legend.
 - **suncalc**: CJS module — `import suncalc from 'suncalc'; const { getPosition, getTimes } = suncalc;`
 - **tsconfig split**: `tsconfig.json` (IDE), `tsconfig.rollup.json` (Rollup), `tsconfig.node.json` (preprocessing)
 - **Playwright browsers**: binaries in `~/.cache/ms-playwright/` (global/shared, not in node_modules). First-time setup: `npm run test:e2e:install`. `clean` script only removes `dist/`.
+- **MapLibre 4.7.1**: does NOT emit `style.load` after `setStyle()`. Use `styledata` event + check for source absence + try/catch on `addLayers`. `isStyleLoaded()` also unreliable (depends on tile loading). See `src/index.ts setBasemap()`.
+- **MapLibre GeoJSON + symbol layers**: Adding a symbol layer to the same source as a circle layer gates circle tile delivery on glyph loading. Always use a SEPARATE source for label/symbol layers.
+- **Playwright headless**: `idle` event never fires with OSM basemap (tile fetches stay pending). `querySourceFeatures` unreliable; use `source.serialize().data.features` for data checks. Use `waitForFunction` polling `queryRenderedFeatures` for render checks. `isMoving()` is reliable; `isStyleLoaded()` is not.
 
 ## npm Scripts
 ```
 build:lib          rollup -c  →  dist/nomad-path.js
 build:data         node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>]
-test:e2e:install   playwright install --with-deps chromium  (one-time per machine)
-dev / lint / lint:fix / format / typecheck / test:unit / test:watch / test:e2e / clean
+test:unit          vitest run  (fast, no coverage report)
+test:coverage      npm run test:unit -- --coverage  (unit + coverage gate, used in pre-commit)
+test:e2e:install   playwright install chromium  (one-time per machine)
+test:e2e           playwright test  (requires built dist/ and serve running or webServer config)
+test:e2e -- --grep "pattern"   run specific tests by name
+dev / lint / lint:fix / format / typecheck / test:watch / clean
 ```
+Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
+E2e tests run manually at the end of each epic: npm run build:lib && npm run test:e2e
 
 ## Real Data
 - `/home/dan/Documents/holidays/` — DO NOT COPY OR COMMIT
