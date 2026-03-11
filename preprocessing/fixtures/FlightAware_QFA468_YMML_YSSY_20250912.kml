@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+    <name>FlightAware ✈ QFA468 12-Sep-2025 (YMML-YSSY)</name>
+    <Placemark>
+        <name>QF 468</name>
+        <description>Melbourne, Australia - Sydney, Australia</description>
+        <gx:Track>
+            <when>2025-09-12T06:59:32Z</when>
+            <when>2025-09-12T07:30:00Z</when>
+            <when>2025-09-12T08:00:00Z</when>
+            <gx:coord>144.8433 -37.6733 0</gx:coord>
+            <gx:coord>149.0000 -35.0000 10000</gx:coord>
+            <gx:coord>151.1772 -33.9461 0</gx:coord>
+        </gx:Track>
+    </Placemark>
+</Document>
+</kml>

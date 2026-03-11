@@ -44,6 +44,9 @@ const domParser = new DOMParser();
 /** OsmAnd activity strings → canonical transport mode. */
 const ACTIVITY_MAP = {
     driving: 'drive',
+    car: 'drive',
+    passenger: 'drive',
+    'public transport': 'drive',
     walking: 'walk',
     hiking: 'walk',
     running: 'walk',
@@ -107,6 +110,20 @@ function extractGPXActivity(dom) {
 }
 
 /**
+ * Return true if the file lives inside a directory named exactly "flights".
+ *
+ * Placing flight KML/GPX files under a `flights/` subfolder is the canonical
+ * way to mark them as flight tracks. This overrides all other transport mode
+ * detection — no filename or metadata inference needed.
+ *
+ * @param {string} filePath - absolute or relative path
+ * @returns {boolean}
+ */
+function isInFlightsSubfolder(filePath) {
+    return filePath.split(/[/\\]/).includes('flights');
+}
+
+/**
  * Infer transport mode from a filename (fallback when no metadata is present).
  *
  * @param {string} filename
@@ -114,7 +131,7 @@ function extractGPXActivity(dom) {
  */
 export function detectTransportMode(filename) {
     const name = basename(filename, extname(filename)).toLowerCase();
-    if (/\b(flight|fly|plane|air)\b/.test(name)) return 'flight';
+    if (/\bflight/.test(name) || /\b(fly|plane|air)\b/.test(name)) return 'flight';
     if (/\b(walk|hike|trek|run|jog)\b/.test(name)) return 'walk';
     if (/\b(cycle|bike|cycling|biking)\b/.test(name)) return 'cycling';
     if (/\b(boat|sail|ferry|ship|kayak|canoe)\b/.test(name)) return 'boat';
@@ -315,15 +332,37 @@ export function parseGPX(filePath) {
     const content = readFileSync(filePath, 'utf8');
     const dom = domParser.parseFromString(content, 'text/xml');
     const activity = extractGPXActivity(dom);
-    const transportMode = resolveTransportMode(activity, filePath);
+    // flights/ subfolder takes priority over all other detection
+    const transportMode = isInFlightsSubfolder(filePath)
+        ? 'flight'
+        : resolveTransportMode(activity, filePath);
     const speedsKmh = buildTrkptSpeedArray(dom);
     return normaliseFeatures(gpx(dom), filePath, transportMode, speedsKmh);
 }
 
 /**
+ * Extract the text content of the first <Document><name> element in a KML DOM.
+ *
+ * FlightAware KML files identify themselves here with a "FlightAware ✈ …" prefix,
+ * regardless of how the file was renamed by the user.
+ *
+ * @param {Document} dom
+ * @returns {string|null}
+ */
+function getKMLDocumentName(dom) {
+    const docs = dom.getElementsByTagName('Document');
+    if (docs.length === 0) return null;
+    const names = docs[0].getElementsByTagName('name');
+    if (names.length === 0) return null;
+    return names[0].textContent?.trim() || null;
+}
+
+/**
  * Parse a KML file into tracks and waypoints.
- * KML has no standard activity metadata or speed extensions; transport mode
- * is inferred from filename.
+ *
+ * Transport mode priority:
+ *   1. FlightAware document name (covers renamed files without "flight" in filename)
+ *   2. Filename keyword inference
  *
  * @param {string} filePath - absolute path to the .kml file
  * @returns {ParsedFile}
@@ -331,7 +370,16 @@ export function parseGPX(filePath) {
 export function parseKML(filePath) {
     const content = readFileSync(filePath, 'utf8');
     const dom = domParser.parseFromString(content, 'text/xml');
-    const transportMode = detectTransportMode(filePath);
+    // flights/ subfolder takes priority over all other detection
+    let transportMode;
+    if (isInFlightsSubfolder(filePath)) {
+        transportMode = 'flight';
+    } else {
+        const docName = getKMLDocumentName(dom);
+        transportMode = docName?.startsWith('FlightAware')
+            ? 'flight'
+            : detectTransportMode(filePath);
+    }
     return normaliseFeatures(kml(dom), filePath, transportMode);
 }
 

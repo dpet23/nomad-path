@@ -47,6 +47,21 @@ export interface TripData {
 export interface TripMetadata {
     tripName: string;
     attributeRanges: AttributeRanges;
+    stats?: TripStats;
+}
+
+/** Summary statistics embedded in the GeoJSON metadata. */
+export interface TripStats {
+    /** Total number of GPS tracks. */
+    trackCount: number;
+    /** Total number of POI waypoints. */
+    waypointCount: number;
+    /** Number of unique calendar days covered (flight-day keys excluded). */
+    dayCount: number;
+    /** Track count per transport mode, e.g. { drive: 12, walk: 8, flight: 3 }. */
+    transportModes: Record<string, number>;
+    /** Earliest and latest date-string day keys (ISO date, flight keys excluded). */
+    dateRange?: { start: string; end: string };
 }
 
 /** Global min/max ranges for each continuous attribute. */
@@ -81,7 +96,11 @@ export interface TrackProperties {
     day: string;
     type: 'track';
     defaultVisible: boolean;
+    /** When true, this track is excluded from the initial auto-fit bounds even if visible. */
+    excludeFromAutoBounds?: boolean;
     transportMode?: 'walk' | 'drive' | 'flight' | 'boat' | string;
+    /** Subfolder group this track belongs to (e.g. 'flights', 'disasters'), or null for root-level files. */
+    group?: string | null;
     /** Parallel array: Unix timestamps (ms) per point. */
     times?: number[];
     /** Parallel array: elevation (m) per point. */

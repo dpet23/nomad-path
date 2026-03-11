@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NomadPath E2E Test Harness</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { display: flex; flex-direction: column; height: 100vh; }
+        #map { flex: 1; }
+        #error { display: none; color: red; padding: 1rem; font-family: monospace; }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
+</head>
+<body>
+<div id="map"></div>
+<div id="error"></div>
+
+<script type="module">
+import { NomadPath } from '../dist/nomad-path.js';
+
+try {
+    const nomadMap = await NomadPath.create({
+        container: 'map',
+        dataUrls: ['./fixture.geojson'],
+        defaultBasemap: 'osm',
+        initialBounds: 'auto',
+    });
+
+    // Expose globals for Playwright tests.
+    // TypeScript `private` fields are regular JS properties at runtime.
+    window.nomadMap = nomadMap;
+    window._map = nomadMap._map;
+    window.nomadMapReady = true;
+
+} catch (err) {
+    const el = document.getElementById('error');
+    el.style.display = 'block';
+    el.textContent = err.message;
+    window.nomadMapError = err.message;
+    console.error(err);
+}
+</script>
+</body>
+</html>

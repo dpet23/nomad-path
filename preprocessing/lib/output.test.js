@@ -181,6 +181,76 @@ describe('buildGeoJSON -- POI features', () => {
 // Attribute ranges
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// group and defaultVisible passthrough
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- group and defaultVisible', () => {
+    it('passes group and defaultVisible from augmented track to feature properties', () => {
+        const { tracks } = parseGPX(join(FIXTURES, 'sample-track.gpx'));
+        const augmented = tracks.map(t => enrichTrack(t)).map(t => ({
+            ...t,
+            group: 'my-group',
+            defaultVisible: false,
+        }));
+        const grouped = groupTracks(augmented);
+        const result = buildGeoJSON({ tracks: grouped, waypoints: [], tripName: 'Test' });
+        const track = result.features.find(f => f.properties.type === 'track');
+        expect(track.properties.group).toBe('my-group');
+        expect(track.properties.defaultVisible).toBe(false);
+    });
+
+    it('defaults group to null and defaultVisible to true when not set', () => {
+        const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
+        const track = result.features.find(f => f.properties.type === 'track');
+        expect(track.properties.group).toBeNull();
+        expect(track.properties.defaultVisible).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Stats
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- stats', () => {
+    const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
+    const { stats } = result.metadata;
+
+    it('embeds stats in metadata', () => {
+        expect(stats).toBeDefined();
+    });
+
+    it('counts tracks and waypoints', () => {
+        expect(stats.trackCount).toBe(1);
+        expect(stats.waypointCount).toBe(0);
+    });
+
+    it('counts unique ground days', () => {
+        expect(stats.dayCount).toBe(1);
+    });
+
+    it('counts transport modes', () => {
+        expect(stats.transportModes).toHaveProperty('drive');
+        expect(stats.transportModes.drive).toBe(1);
+    });
+
+    it('includes dateRange for ground tracks', () => {
+        expect(stats.dateRange).toBeDefined();
+        expect(stats.dateRange.start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(stats.dateRange.end).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('excludes flight day keys from dayCount and dateRange', () => {
+        const result2 = runPipeline([], [join(FIXTURES, 'flight-SYD-NRT.kml')]);
+        expect(result2.metadata.stats.dayCount).toBe(0);
+        expect(result2.metadata.stats.dateRange).toBeUndefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Attribute ranges
+// ---------------------------------------------------------------------------
+
 describe('buildGeoJSON -- attribute ranges', () => {
     const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
     const { attributeRanges } = result.metadata;

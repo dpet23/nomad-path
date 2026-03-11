@@ -10,14 +10,18 @@
   ],
   "scripts": {
     "dev": "rollup -c -w",
+    "demo": "npm run build:lib && npx serve .",
     "build:lib": "rollup -c",
     "build:data": "node preprocessing/build-trip-data.js",
     "lint": "eslint src --ext .ts",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier --write src",
     "test:unit": "vitest run",
+    "test:coverage": "npm run test:unit -- --coverage",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build:lib && playwright test --project=chromium",
+    "test:e2e:all": "npm run build:lib && playwright test",
+    "test:e2e:install": "playwright install chromium",
     "typecheck": "tsc --noEmit",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "prepare": "husky"
@@ -59,7 +63,8 @@
     "suncalc": "^1.9.0",
     "tslib": "^2.6.0",
     "typescript": "^5.3.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "yaml": "^2.8.2"
   },
   "lint-staged": {
     "src/**/*.ts": [
