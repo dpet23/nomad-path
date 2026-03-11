@@ -81,6 +81,7 @@ function trackToFeature(track) {
         day: track.day,
         type: 'track',
         defaultVisible: track.defaultVisible ?? true,
+        ...(track.excludeFromAutoBounds && { excludeFromAutoBounds: true }),
         group: track.group ?? null,
         transportMode: track.transportMode,
         ...(times && { times }),

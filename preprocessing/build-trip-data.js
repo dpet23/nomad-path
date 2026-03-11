@@ -81,7 +81,8 @@ if (values.init) {
 # Tracks at the root level (not in any subfolder) are always visible.
 #
 # Available group options:
-#   defaultVisible: true | false   — whether tracks are shown at map load (default: true)
+#   defaultVisible:        true | false   — whether tracks are shown at map load (default: true)
+#   excludeFromAutoBounds: true | false   — exclude from initial viewport fit even when visible (default: false)
 
 groups:
 ${groupEntries}
@@ -98,7 +99,7 @@ ${groupEntries}
 // ---------------------------------------------------------------------------
 
 /**
- * @typedef {{ defaultVisible?: boolean }} GroupConfig
+ * @typedef {{ defaultVisible?: boolean, excludeFromAutoBounds?: boolean }} GroupConfig
  */
 
 /** @type {Record<string, GroupConfig>} */
@@ -145,8 +146,9 @@ function augmentTrack(track, filePath) {
 
     const cfg = (group && groupConfig[group]) ?? {};
     const defaultVisible = cfg.defaultVisible ?? true;
+    const excludeFromAutoBounds = cfg.excludeFromAutoBounds ?? false;
 
-    return { ...track, group: group ?? null, defaultVisible };
+    return { ...track, group: group ?? null, defaultVisible, excludeFromAutoBounds };
 }
 
 // ---------------------------------------------------------------------------

@@ -96,6 +96,8 @@ export interface TrackProperties {
     day: string;
     type: 'track';
     defaultVisible: boolean;
+    /** When true, this track is excluded from the initial auto-fit bounds even if visible. */
+    excludeFromAutoBounds?: boolean;
     transportMode?: 'walk' | 'drive' | 'flight' | 'boat' | string;
     /** Subfolder group this track belongs to (e.g. 'flights', 'disasters'), or null for root-level files. */
     group?: string | null;

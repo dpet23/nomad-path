@@ -74,7 +74,9 @@ export class NomadPath {
         layers.addLayers(trips);
 
         if ((config.initialBounds ?? 'auto') === 'auto') {
-            const visibleTracks = extractTracks(trips).filter(t => layers.visibleIds.has(deriveTrackId(t)));
+            const visibleTracks = extractTracks(trips).filter(
+                t => layers.visibleIds.has(deriveTrackId(t)) && !t.properties.excludeFromAutoBounds,
+            );
             fitToFeatures(map, visibleTracks);
         } else if (Array.isArray(config.initialBounds)) {
             const [[lat1, lng1], [lat2, lng2]] = config.initialBounds;
