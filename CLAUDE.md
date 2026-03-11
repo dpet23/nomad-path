@@ -5,16 +5,17 @@ See `PROJECT_SPEC.md` for full requirements. This file records implementation st
 ## Epic Progress
 - [x] Epic 1: Project setup
 - [x] Epic 2: Preprocessing pipeline (parsers, enrichment, grouping, output) — 127 unit tests
-- [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 24 e2e tests
+- [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 26 e2e tests
 - [ ] Epic 4: UI components (TrackLegend, AttributeLegend, POI markers, mobile menu)
 - [ ] Epic 5: Integration & polish
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
-## Current Status (branch: impl/claude)
-- 127 unit tests + 25 Playwright e2e tests, all passing
-- Four bugs fixed: basemap switch layer restoration, fitToTracks visibility filter, initial bounds visibility filter, POI circles not rendering on OSM
+## Current Status
+- Epic 3 complete and manually verified. Starting Epic 4.
+- 127 unit tests + 26 Playwright e2e tests, all passing
+- Bugs fixed in Epic 3: basemap switch layer restoration, fitToTracks visibility filter, initial bounds visibility filter, POI circles not rendering on OSM, POI labels not rendering (wrong glyph URL path + missing text-font)
 - POI root cause: MapLibre gates GeoJSON tile delivery on glyph loading when a symbol layer shares the source. Fix: `np-pois` (circles) and `np-pois-labels-src` (labels) are now separate sources.
-- Blue Marble style now includes `glyphs` URL to prevent repeated "requires glyphs" errors on basemap switch.
+- openfreemap font server: use `/fonts/` path (not `/glyphs/`) and `Noto Sans Regular` (not the MapLibre default "Open Sans Regular" which openfreemap doesn't serve)
 
 ## Key Deviations from Spec
 - Public API class is `NomadPath` (not `TravelMap` — spec name is outdated)
@@ -68,12 +69,14 @@ build:data         node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-
 test:unit          vitest run  (fast, no coverage report)
 test:coverage      npm run test:unit -- --coverage  (unit + coverage gate, used in pre-commit)
 test:e2e:install   playwright install chromium  (one-time per machine)
-test:e2e           playwright test  (requires built dist/ and serve running or webServer config)
+demo               build:lib + npx serve .  (requires demo/trip-data.geojson from build:data)
+test:e2e           build:lib + playwright test --project=chromium
+test:e2e:all       build:lib + playwright test  (chromium + firefox + webkit)
 test:e2e -- --grep "pattern"   run specific tests by name
 dev / lint / lint:fix / format / typecheck / test:watch / clean
 ```
 Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
-E2e tests run manually at the end of each epic: npm run build:lib && npm run test:e2e
+E2e tests run at the end of each epic via `npm run test:e2e`.
 
 ## Real Data
 - `/home/dan/Documents/holidays/` — DO NOT COPY OR COMMIT
