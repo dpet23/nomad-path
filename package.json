@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "dev": "rollup -c -w",
+    "demo": "npm run build:lib && npx serve .",
     "build:lib": "rollup -c",
     "build:data": "node preprocessing/build-trip-data.js",
     "lint": "eslint src --ext .ts",
@@ -18,7 +19,8 @@
     "test:unit": "vitest run",
     "test:coverage": "npm run test:unit -- --coverage",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build:lib && playwright test --project=chromium",
+    "test:e2e:all": "npm run build:lib && playwright test",
     "test:e2e:install": "playwright install chromium",
     "typecheck": "tsc --noEmit",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
