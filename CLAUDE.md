@@ -49,11 +49,13 @@ Show "Elevation: 0–847m · based on visible tracks" in attribute legend.
 - **Vitest**: v2, `passWithNoTests: true`
 - **suncalc**: CJS module — `import suncalc from 'suncalc'; const { getPosition, getTimes } = suncalc;`
 - **tsconfig split**: `tsconfig.json` (IDE), `tsconfig.rollup.json` (Rollup), `tsconfig.node.json` (preprocessing)
+- **Playwright browsers**: binaries in `~/.cache/ms-playwright/` (global/shared, not in node_modules). First-time setup: `npm run test:e2e:install`. `clean` script only removes `dist/`.
 
 ## npm Scripts
 ```
-build:lib     rollup -c  →  dist/nomad-path.js
-build:data    node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>]
+build:lib          rollup -c  →  dist/nomad-path.js
+build:data         node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>]
+test:e2e:install   playwright install --with-deps chromium  (one-time per machine)
 dev / lint / lint:fix / format / typecheck / test:unit / test:watch / test:e2e / clean
 ```
 

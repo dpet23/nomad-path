@@ -2,13 +2,23 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
     testDir: 'e2e',
-    fullyParallel: true,
+    fullyParallel: false, // Map tests share browser state; run serially for reliability
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     reporter: 'html',
     use: {
         baseURL: 'http://localhost:3000',
         trace: 'on-first-retry',
+    },
+    timeout: 30_000, // Map tile loading can be slow
+    expect: {
+        timeout: 10_000,
+    },
+    webServer: {
+        command: 'npx serve . -l 3000 --no-clipboard',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env.CI,
+        timeout: 60_000,
     },
     projects: [
         {

@@ -74,7 +74,8 @@ export class NomadPath {
         layers.addLayers(trips);
 
         if ((config.initialBounds ?? 'auto') === 'auto') {
-            fitToFeatures(map, extractTracks(trips));
+            const visibleTracks = extractTracks(trips).filter(t => layers.visibleIds.has(deriveTrackId(t)));
+            fitToFeatures(map, visibleTracks);
         } else if (Array.isArray(config.initialBounds)) {
             const [[lat1, lng1], [lat2, lng2]] = config.initialBounds;
             map.fitBounds([
@@ -98,15 +99,27 @@ export class NomadPath {
         const prevAttribute = this._layers.colourAttribute;
         const prevVisibleIds = new Set(this._layers.visibleIds);
 
-        // Use styledata + isStyleLoaded() for robustness: styledata fires
-        // multiple times during a style transition; we re-schedule until the
-        // style is fully ready, then restore layers and state exactly once.
-        const restoreLayers = () => {
-            if (!this._map.isStyleLoaded()) {
-                this._map.once('styledata', restoreLayers);
+        // MapLibre 4 does not emit a 'style.load' event after setStyle(). We use
+        // 'styledata' instead, but avoid isStyleLoaded() — it returns false until
+        // tiles finish loading, which may never happen in headless environments.
+        //
+        // Strategy: wait for our source to disappear (style cleared), then call
+        // addLayers(). MapLibre's addSource internally checks style._loaded (not
+        // tile-loading state), so it throws only if the style JSON isn't applied
+        // yet. Catch and retry on the next styledata if that happens.
+        const onStyleData = () => {
+            if (this._map.getSource('np-tracks')) {
+                // Old style still active — wait for the next styledata event.
+                this._map.once('styledata', onStyleData);
                 return;
             }
-            this._layers.addLayers(this._trips);
+            try {
+                this._layers.addLayers(this._trips);
+            } catch {
+                // Style JSON not yet applied — retry.
+                this._map.once('styledata', onStyleData);
+                return;
+            }
             // Restore exact previous visibility for every track.
             for (const track of extractTracks(this._trips)) {
                 const id = deriveTrackId(track);
@@ -119,8 +132,8 @@ export class NomadPath {
                 this._layers.setColourAttribute(prevAttribute);
             }
         };
-        this._map.once('styledata', restoreLayers);
 
+        this._map.once('styledata', onStyleData);
         engineSetBasemap(this._map, basemapId);
 
         return this;
@@ -160,9 +173,10 @@ export class NomadPath {
     // Viewport
     // ---------------------------------------------------------------------------
 
-    /** Fit the viewport to all loaded tracks, handling antimeridian crossings. */
+    /** Fit the viewport to all currently visible tracks, handling antimeridian crossings. */
     fitToTracks(padding = 40): this {
-        fitToFeatures(this._map, extractTracks(this._trips), padding);
+        const visibleTracks = extractTracks(this._trips).filter(t => this._layers.visibleIds.has(deriveTrackId(t)));
+        fitToFeatures(this._map, visibleTracks, padding);
         return this;
     }
 

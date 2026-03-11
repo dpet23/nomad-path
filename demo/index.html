@@ -95,6 +95,9 @@ try {
     });
     hide();
 
+    // Expose on window for browser console debugging
+    window.nomadMap = nomadMap;
+
     // Log trip summary to console
     for (const trip of nomadMap.trips) {
         const tracks = trip.features.filter(f => f.properties.type === 'track');
