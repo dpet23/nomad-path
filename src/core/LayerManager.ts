@@ -2,14 +2,11 @@ import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, Map as MaplibreMap } from 'maplibre-gl';
 
 import type { AttributeRanges, POIFeature, TrackFeature, TripData } from '../data/types';
+import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/** Supported colour visualisation modes for track layers. */
-export type ColourAttribute = 'day' | 'speed' | 'elevation' | 'sunAngle' | 'transportMode';
+// Re-export for consumers that imported from LayerManager previously.
+export type { ColourAttribute, MaplibreExpression };
 
 /** Properties stored on each segment feature (2-point LineString). */
 interface SegmentProperties {
@@ -35,26 +32,8 @@ const POI_LAYER = 'np-pois-layer';
 const POI_LABEL_SOURCE = 'np-pois-labels-src';
 const POI_LABEL_LAYER = 'np-pois-labels';
 
-// ---------------------------------------------------------------------------
-// Transport mode colours (exported — usable by UI and colour expressions)
-// ---------------------------------------------------------------------------
-
-/**
- * Canonical colour map for transport modes.
- * Keys match the transportMode strings from TrackProperties.
- * The fallback colour is used for unknown/unlisted modes.
- */
-export const TRANSPORT_MODE_COLOURS: Record<string, string> = {
-    walk: '#4CAF50',
-    drive: '#2196F3',
-    flight: '#F44336',
-    boat: '#00BCD4',
-    cycling: '#FF9800',
-    skiing: '#9C27B0',
-};
-
-/** Fallback colour for unrecognised transport modes. */
-export const TRANSPORT_MODE_FALLBACK = '#9E9E9E';
+// Re-export transport mode colours for consumers that imported from here.
+export { TRANSPORT_MODE_COLOURS, TRANSPORT_MODE_FALLBACK } from '../styling/ColorRamps';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -187,116 +166,6 @@ export function buildSegmentFeatures(tracks: TrackFeature[]): SegmentBuildResult
     }
 
     return { featureCollection: { type: 'FeatureCollection', features }, maxDayIndex };
-}
-
-// ---------------------------------------------------------------------------
-// Colour expressions
-// ---------------------------------------------------------------------------
-
-const MISSING_COLOUR = '#9E9E9E';
-
-// Rainbow spectrum: red (hue 0) at day 0, violet (hue 270) at the last day.
-// Uses interpolate-hcl for perceptual uniformity across the hue range.
-// Intermediate stops at 1/3 (green) and 2/3 (cyan) force HCL to take the
-// 270° forward arc through yellow→green→cyan→blue rather than the short
-// 90° backward path through magenta.
-const DAY_COLOUR_START = 'hsl(0, 85%, 52%)'; // red
-const DAY_COLOUR_MID1 = 'hsl(100, 72%, 38%)'; // green
-const DAY_COLOUR_MID2 = 'hsl(200, 78%, 46%)'; // cyan-blue
-const DAY_COLOUR_END = 'hsl(270, 85%, 52%)'; // violet
-
-// MapLibre's ExpressionSpecification is a complex discriminated union that
-// TypeScript cannot verify from manually-built array literals. We cast via
-// unknown — the runtime values are valid MapLibre expressions.
-type MaplibreExpression = ExpressionSpecification | string;
-
-/** Cast an unknown array literal to a MapLibre expression. */
-const expr = (e: unknown): MaplibreExpression => e as MaplibreExpression;
-
-/**
- * Build a MapLibre paint expression for the given colour attribute.
- *
- * @param attribute - which attribute to visualise
- * @param ranges - global min/max ranges from the GeoJSON metadata
- * @param maxDayIndex - highest day index in the data (for spectrum endpoints)
- */
-export function buildColourExpression(
-    attribute: ColourAttribute,
-    ranges: AttributeRanges,
-    maxDayIndex: number,
-): MaplibreExpression {
-    switch (attribute) {
-        case 'day':
-            // Single day: all red. Multi-day: spread across hue spectrum.
-            if (maxDayIndex === 0) return DAY_COLOUR_START;
-            return expr([
-                'interpolate-hcl',
-                ['linear'],
-                ['get', 'dayIndex'],
-                0,
-                DAY_COLOUR_START,
-                maxDayIndex * (1 / 3),
-                DAY_COLOUR_MID1,
-                maxDayIndex * (2 / 3),
-                DAY_COLOUR_MID2,
-                maxDayIndex,
-                DAY_COLOUR_END,
-            ]);
-
-        case 'transportMode':
-            return expr([
-                'match',
-                ['get', 'transportMode'],
-                ...Object.entries(TRANSPORT_MODE_COLOURS).flat(),
-                TRANSPORT_MODE_FALLBACK,
-            ]);
-
-        case 'speed': {
-            const r = ranges.speed;
-            if (!r) return MISSING_COLOUR;
-            const mid = (r.min + r.max) / 2;
-            return expr([
-                'case',
-                ['==', ['get', 'speedValue'], null],
-                MISSING_COLOUR,
-                ['interpolate', ['linear'], ['get', 'speedValue'], r.min, '#4CAF50', mid, '#FFEB3B', r.max, '#F44336'],
-            ]);
-        }
-
-        case 'elevation': {
-            const r = ranges.elevation;
-            if (!r) return MISSING_COLOUR;
-            const mid = (r.min + r.max) / 2;
-            return expr([
-                'case',
-                ['==', ['get', 'elevValue'], null],
-                MISSING_COLOUR,
-                ['interpolate', ['linear'], ['get', 'elevValue'], r.min, '#2E7D32', mid, '#FDD835', r.max, '#FFFFFF'],
-            ]);
-        }
-
-        case 'sunAngle':
-            return expr([
-                'case',
-                ['==', ['get', 'sunValue'], null],
-                MISSING_COLOUR,
-                [
-                    'interpolate',
-                    ['linear'],
-                    ['get', 'sunValue'],
-                    0,
-                    '#1A237E', // solar midnight
-                    90,
-                    '#FF6F00', // sunrise
-                    180,
-                    '#FDD835', // solar noon
-                    270,
-                    '#FF6F00', // sunset
-                    360,
-                    '#1A237E', // solar midnight (end)
-                ],
-            ]);
-    }
 }
 
 // ---------------------------------------------------------------------------

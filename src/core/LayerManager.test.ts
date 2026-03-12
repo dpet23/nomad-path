@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TrackFeature } from '../data/types';
-import { buildColourExpression, buildSegmentFeatures, TRANSPORT_MODE_COLOURS } from './LayerManager';
+import { buildSegmentFeatures } from './LayerManager';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -149,75 +149,5 @@ describe('buildSegmentFeatures', () => {
         expect(props.speedValue).toBeNull();
         expect(props.elevValue).toBeNull();
         expect(props.sunValue).toBeNull();
-    });
-});
-
-// ---------------------------------------------------------------------------
-// buildColourExpression
-// ---------------------------------------------------------------------------
-
-describe('buildColourExpression', () => {
-    const ranges = {
-        speed: { min: 0, max: 100, unit: 'km/h' },
-        elevation: { min: 0, max: 1000, unit: 'm' },
-    };
-
-    it('returns a string for day mode with a single day (maxDayIndex 0)', () => {
-        const result = buildColourExpression('day', ranges, 0);
-        expect(typeof result).toBe('string');
-    });
-
-    it('returns an array expression for day mode with multiple days', () => {
-        const result = buildColourExpression('day', ranges, 5);
-        expect(Array.isArray(result)).toBe(true);
-        expect((result as unknown[])[0]).toBe('interpolate-hcl');
-    });
-
-    it('returns a match expression for transportMode', () => {
-        const result = buildColourExpression('transportMode', ranges, 0);
-        expect(Array.isArray(result)).toBe(true);
-        expect((result as unknown[])[0]).toBe('match');
-    });
-
-    it('returns a fallback colour when speed range is absent', () => {
-        const result = buildColourExpression('speed', {}, 0);
-        expect(typeof result).toBe('string');
-    });
-
-    it('returns an interpolate expression when speed range is present', () => {
-        const result = buildColourExpression('speed', ranges, 0);
-        expect(Array.isArray(result)).toBe(true);
-        expect((result as unknown[])[0]).toBe('case');
-    });
-
-    it('returns an interpolate expression for elevation', () => {
-        const result = buildColourExpression('elevation', ranges, 0);
-        expect(Array.isArray(result)).toBe(true);
-        expect((result as unknown[])[0]).toBe('case');
-    });
-
-    it('returns an interpolate expression for sunAngle', () => {
-        const result = buildColourExpression('sunAngle', ranges, 0);
-        expect(Array.isArray(result)).toBe(true);
-        expect((result as unknown[])[0]).toBe('case');
-    });
-});
-
-// ---------------------------------------------------------------------------
-// TRANSPORT_MODE_COLOURS
-// ---------------------------------------------------------------------------
-
-describe('TRANSPORT_MODE_COLOURS', () => {
-    it('covers the core transport modes', () => {
-        expect(TRANSPORT_MODE_COLOURS).toHaveProperty('walk');
-        expect(TRANSPORT_MODE_COLOURS).toHaveProperty('drive');
-        expect(TRANSPORT_MODE_COLOURS).toHaveProperty('flight');
-        expect(TRANSPORT_MODE_COLOURS).toHaveProperty('boat');
-    });
-
-    it('all values are hex colour strings', () => {
-        for (const colour of Object.values(TRANSPORT_MODE_COLOURS)) {
-            expect(colour).toMatch(/^#[0-9a-fA-F]{6}$/);
-        }
     });
 });
