@@ -338,4 +338,23 @@ export class LayerManager {
     get colourAttribute(): ColourAttribute {
         return this._colourAttribute;
     }
+
+    /**
+     * Update the attribute ranges used for colour interpolation and re-apply
+     * the current colour expression. Call this after visibility changes to
+     * reflect dynamic ranges (e.g. "Elevation: 0–847m · visible tracks").
+     */
+    updateRanges(ranges: AttributeRanges): void {
+        this._ranges = ranges;
+        this._map.setPaintProperty(
+            TRACK_LAYER,
+            'line-color',
+            buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
+        );
+    }
+
+    /** The current attribute ranges (for legend display). */
+    get ranges(): Readonly<AttributeRanges> {
+        return this._ranges;
+    }
 }
