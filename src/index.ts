@@ -13,6 +13,7 @@ import {
 } from './core/MapEngine';
 import type { TravelMapConfig, TripData } from './data/types';
 import { AttributeLegend } from './ui/AttributeLegend';
+import { MapControls } from './ui/MapControls';
 import { MobileMenu } from './ui/MobileMenu';
 import { POILegend } from './ui/POILegend';
 import { TrackLegend } from './ui/TrackLegend';
@@ -37,6 +38,7 @@ interface UIComponents {
     attrLegend: AttributeLegend;
     poiLegend: POILegend;
     mobileMenu: MobileMenu;
+    mapControls: MapControls;
 }
 
 /**
@@ -117,6 +119,7 @@ export class NomadPath {
             layers,
             trips,
             fitToTrack: (trackId: string) => instance.fitToTrack(trackId),
+            fitToTrackGroup: (trackIds: string[]) => instance.fitToTrackGroup(trackIds),
             fitToPOI: (coords: [number, number], zoom?: number) => engineFitToPOI(map, coords, zoom),
         };
 
@@ -129,8 +132,14 @@ export class NomadPath {
         });
         const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
         const mobileMenu = new MobileMenu(containerEl, [trackLegend, attrLegend, poiLegend]);
+        const mapControls = new MapControls(
+            containerEl,
+            () => instance.fitToTracks(),
+            id => instance.setBasemap(id),
+            basemapId,
+        );
 
-        instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu };
+        instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu, mapControls };
 
         return instance;
     }
@@ -225,6 +234,14 @@ export class NomadPath {
     fitToTrack(trackId: string): this {
         const track = extractTracks(this._trips).find(t => deriveTrackId(t) === trackId);
         if (track) fitToFeatures(this._map, [track]);
+        return this;
+    }
+
+    /** Fit the viewport to all tracks matching the given IDs. No-op if none are found. */
+    fitToTrackGroup(trackIds: string[]): this {
+        const ids = new Set(trackIds);
+        const tracks = extractTracks(this._trips).filter(t => ids.has(deriveTrackId(t)));
+        if (tracks.length > 0) fitToFeatures(this._map, tracks);
         return this;
     }
 

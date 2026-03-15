@@ -30,6 +30,11 @@
     top: 10px;
     right: 10px;
 }
+
+/* TrackLegend sits below the basemap selector at top-right */
+.np-track-legend {
+    top: 46px;
+}
 .np-panel--bottomleft {
     bottom: 30px;
     left: 10px;
@@ -240,6 +245,54 @@
     flex-shrink: 0;
 }
 
+/* Map controls overlay — full-size, non-blocking container for fit button and basemap selector */
+.np-map-controls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Fit-to-visible button — top-left, near where zoom controls live */
+.np-fit-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    pointer-events: auto;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    font-size: 16px;
+    cursor: pointer;
+    color: #333;
+    line-height: 1;
+}
+
+.np-fit-btn:hover {
+    background: #f5f5f5;
+}
+
+/* Basemap selector — top-right, sits above the track legend panel */
+.np-basemap-select {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    pointer-events: auto;
+    height: 30px;
+    padding: 0 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+}
+
 /* Mobile hamburger */
 .np-mobile-btn {
     position: absolute;
@@ -314,5 +367,10 @@
 
     .np-panel:not(.np-mobile-drawer .np-panel) {
         display: none;
+    }
+
+    /* Hamburger is at top-left; shift fit button right to sit beside it */
+    .np-fit-btn {
+        left: 54px;
     }
 }
