@@ -36,7 +36,7 @@ export class AttributeLegend extends BasePanel {
      * @param config - panel position and collapsed state
      */
     constructor(mapContainer: HTMLElement, ctx: UIContext, config?: LegendPanelConfig) {
-        super(mapContainer, 'np-attr-legend', 'Colour', config);
+        super(mapContainer, 'np-attr-legend', 'Colour', { position: 'bottomleft', ...config });
         this._ctx = ctx;
         this._ranges = this._mergedRanges();
         this._render();

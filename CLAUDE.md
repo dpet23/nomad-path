@@ -6,13 +6,13 @@ See `PROJECT_SPEC.md` for full requirements. This file records implementation st
 - [x] Epic 1: Project setup
 - [x] Epic 2: Preprocessing pipeline (parsers, enrichment, grouping, output) — 127 unit tests
 - [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 26 e2e tests
-- [ ] Epic 4: UI components (TrackLegend, AttributeLegend, POI markers, mobile menu)
+- [x] Epic 4: UI components (TrackLegend, AttributeLegend, POILegend, MobileMenu) — 205 unit tests + e2e tests
 - [ ] Epic 5: Integration & polish
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 3 complete and manually verified. Starting Epic 4.
-- 127 unit tests + 26 Playwright e2e tests, all passing
+- Epic 4 complete. Starting Epic 5.
+- 205 unit tests + Playwright e2e tests, all passing
 - Bugs fixed in Epic 3: basemap switch layer restoration, fitToTracks visibility filter, initial bounds visibility filter, POI circles not rendering on OSM, POI labels not rendering (wrong glyph URL path + missing text-font)
 - POI root cause: MapLibre gates GeoJSON tile delivery on glyph loading when a symbol layer shares the source. Fix: `np-pois` (circles) and `np-pois-labels-src` (labels) are now separate sources.
 - openfreemap font server: use `/fonts/` path (not `/glyphs/`) and `Noto Sans Regular` (not the MapLibre default "Open Sans Regular" which openfreemap doesn't serve)

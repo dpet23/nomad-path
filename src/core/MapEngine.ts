@@ -161,3 +161,14 @@ export function fitToFeatures(map: Map, features: Feature[], padding = 40): void
         { padding },
     );
 }
+
+/**
+ * Fly the map to a single POI coordinate.
+ *
+ * @param map - MapLibre map instance
+ * @param coords - [longitude, latitude] of the POI
+ * @param zoom - target zoom level (default 14)
+ */
+export function fitToPOI(map: Map, coords: [number, number], zoom = 14): void {
+    map.flyTo({ center: coords, zoom });
+}

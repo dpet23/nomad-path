@@ -51,7 +51,7 @@ export class POILegend extends BasePanel {
      * @param config - panel position and collapsed state
      */
     constructor(mapContainer: HTMLElement, ctx: UIContext, config?: LegendPanelConfig) {
-        super(mapContainer, 'np-poi-legend', 'Places', config);
+        super(mapContainer, 'np-poi-legend', 'Places', { position: 'bottomright', ...config });
         this._ctx = ctx;
         this._render();
     }

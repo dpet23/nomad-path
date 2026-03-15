@@ -7,10 +7,16 @@ import {
     BASEMAPS,
     createMap,
     fitToFeatures,
+    fitToPOI as engineFitToPOI,
     setBasemap as engineSetBasemap,
     waitForLoad,
 } from './core/MapEngine';
 import type { TravelMapConfig, TripData } from './data/types';
+import { AttributeLegend } from './ui/AttributeLegend';
+import { MobileMenu } from './ui/MobileMenu';
+import { POILegend } from './ui/POILegend';
+import { TrackLegend } from './ui/TrackLegend';
+import type { UIContext } from './ui/UIContext';
 
 export type { AttributeRange, AttributeRanges, TravelMapConfig, TripData, TripMetadata } from './data/types';
 export type { BasemapId, ColourAttribute };
@@ -24,10 +30,24 @@ export { BASEMAPS, TRANSPORT_MODE_COLOURS };
  * A fully initialised Nomad Path map instance.
  * Obtain one via {@link NomadPath.create}.
  */
+/** Internal UI component references. */
+/** References to the active legend UI components. */
+interface UIComponents {
+    trackLegend: TrackLegend;
+    attrLegend: AttributeLegend;
+    poiLegend: POILegend;
+    mobileMenu: MobileMenu;
+}
+
+/**
+ * A fully initialised Nomad Path map instance.
+ * Obtain one via {@link NomadPath.create}.
+ */
 export class NomadPath {
     private readonly _map: MaplibreMap;
     private readonly _layers: LayerManager;
     private readonly _trips: TripData[];
+    private _ui: UIComponents | null;
 
     /**
      * Private — use {@link NomadPath.create} to obtain an instance.
@@ -35,11 +55,13 @@ export class NomadPath {
      * @param map - initialised MapLibre map instance
      * @param layers - layer manager bound to the map
      * @param trips - loaded trip data
+     * @param ui - optional UI component references
      */
-    private constructor(map: MaplibreMap, layers: LayerManager, trips: TripData[]) {
+    private constructor(map: MaplibreMap, layers: LayerManager, trips: TripData[], ui: UIComponents | null) {
         this._map = map;
         this._layers = layers;
         this._trips = trips;
+        this._ui = ui;
     }
 
     /**
@@ -86,7 +108,31 @@ export class NomadPath {
             ]);
         }
 
-        return new NomadPath(map, layers, trips);
+        const instance = new NomadPath(map, layers, trips, null);
+
+        // Wire legend UI if the map container element is available.
+        const containerEl = map.getContainer();
+        const ctx: UIContext = {
+            map,
+            layers,
+            trips,
+            fitToTrack: (trackId: string) => instance.fitToTrack(trackId),
+            fitToPOI: (coords: [number, number], zoom?: number) => engineFitToPOI(map, coords, zoom),
+        };
+
+        const legendCfg = config.legends ?? {};
+        const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
+        const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
+            onVisibilityChange: () => {
+                attrLegend.updateRanges(layers.visibleIds);
+            },
+        });
+        const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
+        const mobileMenu = new MobileMenu(containerEl, [trackLegend, attrLegend, poiLegend]);
+
+        instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu };
+
+        return instance;
     }
 
     // ---------------------------------------------------------------------------
@@ -174,6 +220,13 @@ export class NomadPath {
     // ---------------------------------------------------------------------------
     // Viewport
     // ---------------------------------------------------------------------------
+
+    /** Fit the viewport to the track with the given ID. No-op if the ID is not found. */
+    fitToTrack(trackId: string): this {
+        const track = extractTracks(this._trips).find(t => deriveTrackId(t) === trackId);
+        if (track) fitToFeatures(this._map, [track]);
+        return this;
+    }
 
     /** Fit the viewport to all currently visible tracks, handling antimeridian crossings. */
     fitToTracks(padding = 40): this {
