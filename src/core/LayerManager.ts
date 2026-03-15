@@ -373,6 +373,11 @@ export class LayerManager {
         return this._maxDayIndex;
     }
 
+    /** The set of POI categories currently visible. */
+    get visiblePOICategories(): ReadonlySet<string> {
+        return this._visiblePOICategories;
+    }
+
     /** Show or hide all POIs belonging to the given category. */
     setPOICategoryVisible(category: string, visible: boolean): void {
         if (visible) {

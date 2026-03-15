@@ -155,6 +155,7 @@ export class NomadPath {
     setBasemap(basemapId: BasemapId): this {
         const prevAttribute = this._layers.colourAttribute;
         const prevVisibleIds = new Set(this._layers.visibleIds);
+        const prevVisiblePOICategories = new Set(this._layers.visiblePOICategories);
 
         // MapLibre 4 does not emit a 'style.load' event after setStyle(). We use
         // 'styledata' instead, but avoid isStyleLoaded() — it returns false until
@@ -188,6 +189,15 @@ export class NomadPath {
             if (prevAttribute !== 'day') {
                 this._layers.setColourAttribute(prevAttribute);
             }
+            // Restore POI category visibility state.
+            for (const category of this._layers.visiblePOICategories) {
+                if (!prevVisiblePOICategories.has(category)) {
+                    this._layers.setPOICategoryVisible(category, false);
+                }
+            }
+            // Recompute attribute ranges from the restored visible set so the
+            // colour scale stays consistent with the visible tracks.
+            this._ui?.attrLegend.updateRanges(this._layers.visibleIds);
         };
 
         this._map.once('styledata', onStyleData);
