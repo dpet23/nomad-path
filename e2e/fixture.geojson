@@ -8,7 +8,7 @@
     },
     "stats": {
       "trackCount": 3,
-      "waypointCount": 1,
+      "waypointCount": 2,
       "dayCount": 3,
       "transportModes": { "drive": 1, "walk": 1, "flight": 1 },
       "dateRange": { "start": "2024-01-01", "end": "2024-01-03" }
@@ -92,6 +92,19 @@
         "type": "poi",
         "name": "Test Hotel",
         "category": "accommodation"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [139.7100, 35.7000]
+      },
+      "properties": {
+        "type": "poi",
+        "name": "Mount Takao",
+        "category": "viewpoint",
+        "defaultVisible": false
       }
     }
   ]

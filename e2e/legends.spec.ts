@@ -124,6 +124,40 @@ test('POILegend: renders the fixture POI after expanding category', async ({ pag
     expect(await name.textContent()).toBe('Test Hotel');
 });
 
+test('POILegend: category with defaultVisible false starts hidden', async ({ page }) => {
+    await gotoMap(page);
+    // "viewpoint" category has defaultVisible: false in the fixture
+    const visible = await page.evaluate(() =>
+        (window as any).nomadMap.isPOICategoryVisible('viewpoint'),
+    );
+    expect(visible).toBe(false);
+});
+
+test('POILegend: category with defaultVisible true starts visible', async ({ page }) => {
+    await gotoMap(page);
+    const visible = await page.evaluate(() =>
+        (window as any).nomadMap.isPOICategoryVisible('accommodation'),
+    );
+    expect(visible).toBe(true);
+});
+
+test('POILegend: category checkbox unchecked for hidden category', async ({ page }) => {
+    await gotoMap(page);
+    // "viewpoint" starts hidden — its checkbox should be unchecked
+    // POI legend shows categories sorted; find the viewpoint category header
+    const checkboxes = page.locator('.np-poi-legend .np-category-header input[type="checkbox"]');
+    const count = await checkboxes.count();
+    let viewpointChecked: boolean | null = null;
+    for (let i = 0; i < count; i++) {
+        const header = page.locator('.np-poi-legend .np-category-header').nth(i);
+        const text = await header.textContent();
+        if (text?.toLowerCase().includes('viewpoint')) {
+            viewpointChecked = await checkboxes.nth(i).isChecked();
+        }
+    }
+    expect(viewpointChecked).toBe(false);
+});
+
 test('POILegend: zoom button fits map to POI', async ({ page }) => {
     await gotoMap(page);
     await page.locator('.np-category-header').first().click();
@@ -157,4 +191,53 @@ test('MobileMenu: hamburger visible and drawer opens on mobile viewport', async 
     await btn.click();
     await expect(page.locator('.np-mobile-drawer--open')).toBeVisible();
     await context.close();
+});
+
+// ---------------------------------------------------------------------------
+// Basemap switch — state preservation
+// ---------------------------------------------------------------------------
+
+/** Switch basemap and wait for track layer restoration. */
+async function switchBasemap(page: PwPage, basemapId: string) {
+    await page.evaluate(id => (window as any).nomadMap.setBasemap(id), basemapId);
+    await page.waitForFunction(
+        () => !!(window as any)._map.getLayer('np-tracks-layer'),
+        { timeout: 15_000 },
+    );
+    // Give the styledata handler time to run
+    await page.waitForTimeout(200);
+}
+
+test('setBasemap: POI category visibility preserved after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Hide accommodation category
+    await page.evaluate(() => (window as any).nomadMap._layers.setPOICategoryVisible('accommodation', false));
+    await switchBasemap(page, 'blueMarble');
+    const visible = await page.evaluate(() =>
+        (window as any).nomadMap.isPOICategoryVisible('accommodation'),
+    );
+    expect(visible).toBe(false);
+});
+
+test('setBasemap: hidden-by-default POI category stays hidden after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // viewpoint starts hidden by defaultVisible: false
+    await switchBasemap(page, 'blueMarble');
+    const visible = await page.evaluate(() =>
+        (window as any).nomadMap.isPOICategoryVisible('viewpoint'),
+    );
+    expect(visible).toBe(false);
+});
+
+test('setBasemap: attribute range label reflects visible tracks after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Switch to speed attribute so range label is visible
+    await page.selectOption('.np-attr-select', 'speed');
+    const labelBefore = await page.locator('.np-range-label').textContent();
+    // Switch basemap and wait for restoration
+    await switchBasemap(page, 'blueMarble');
+    const labelAfter = await page.locator('.np-range-label').textContent();
+    // Label should still show speed range (not disappear or show "no data")
+    expect(labelAfter).toMatch(/Speed/);
+    expect(labelAfter).toBe(labelBefore);
 });

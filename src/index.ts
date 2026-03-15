@@ -221,6 +221,11 @@ export class NomadPath {
         return this._layers.isTrackVisible(trackId);
     }
 
+    /** Return true if the given POI category is currently visible. */
+    isPOICategoryVisible(category: string): boolean {
+        return this._layers.isPOICategoryVisible(category);
+    }
+
     // ---------------------------------------------------------------------------
     // Colour attribute
     // ---------------------------------------------------------------------------

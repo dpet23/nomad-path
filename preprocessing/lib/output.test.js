@@ -20,8 +20,9 @@ const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures');
  * @param {string[]} gpxPaths
  * @param {string[]} kmlPaths
  * @param {string[]} waypointPaths
+ * @param {Record<string, { defaultVisible?: boolean }>} [poiCategoryConfig]
  */
-function runPipeline(gpxPaths = [], kmlPaths = [], waypointPaths = []) {
+function runPipeline(gpxPaths = [], kmlPaths = [], waypointPaths = [], poiCategoryConfig = {}) {
     const allTracks = [];
     const allWaypoints = [];
 
@@ -41,7 +42,7 @@ function runPipeline(gpxPaths = [], kmlPaths = [], waypointPaths = []) {
     }
 
     const grouped = groupTracks(allTracks);
-    return buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName: 'Test Trip' });
+    return buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName: 'Test Trip', poiCategoryConfig });
 }
 
 // ---------------------------------------------------------------------------
@@ -174,6 +175,26 @@ describe('buildGeoJSON -- POI features', () => {
     it('sets poi properties', () => {
         expect(pois[0].properties.name).toBe('Hotel Gracery Shinjuku');
         expect(pois[0].properties.category).toBe('accommodation');
+    });
+
+    it('defaultVisible is true when no poi_categories config is provided', () => {
+        expect(pois[0].properties.defaultVisible).toBe(true);
+    });
+
+    it('defaultVisible is false when category is configured as hidden', () => {
+        const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
+            accommodation: { defaultVisible: false },
+        });
+        const poi = result.features.find(f => f.properties.type === 'poi' && f.properties.category === 'accommodation');
+        expect(poi.properties.defaultVisible).toBe(false);
+    });
+
+    it('defaultVisible is true for categories not in poi_categories config', () => {
+        const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
+            other: { defaultVisible: false },
+        });
+        const poi = result.features.find(f => f.properties.type === 'poi' && f.properties.category === 'accommodation');
+        expect(poi.properties.defaultVisible).toBe(true);
     });
 });
 

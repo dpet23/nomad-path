@@ -230,8 +230,10 @@ export class LayerManager {
         this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
         // Respect the defaultVisible flag set during preprocessing.
         this._visibleIds = new Set(tracks.filter(t => t.properties.defaultVisible !== false).map(deriveTrackId));
-        // All POI categories start visible (defaultVisible support deferred to preprocessing).
-        this._visiblePOICategories = new Set(pois.map(p => p.properties.category));
+        // Initialise visible POI categories respecting the defaultVisible flag from preprocessing.
+        this._visiblePOICategories = new Set(
+            pois.filter(p => p.properties.defaultVisible !== false).map(p => p.properties.category),
+        );
 
         const { featureCollection, maxDayIndex } = buildSegmentFeatures(tracks);
         this._maxDayIndex = maxDayIndex;
