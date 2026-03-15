@@ -77,7 +77,7 @@ export class POILegend extends BasePanel {
 
         const header = document.createElement('div');
         header.className = 'np-category-header np-category-header--collapsed';
-        header.innerHTML = '<span class="np-day-header__toggle">\u25BC</span>' + `<span>${group.category}</span>`;
+        header.innerHTML = `<span class="np-toggle">\u25BC</span><span>${group.category}</span>`;
         header.addEventListener('click', () => {
             wrapper.classList.toggle('np-category-group--collapsed');
             header.classList.toggle('np-category-header--collapsed');

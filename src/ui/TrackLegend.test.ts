@@ -88,18 +88,18 @@ describe('groupTracksByDay', () => {
         expect(groups[1].tracks).toHaveLength(1);
     });
 
-    it('sorts groups chronologically by day key', () => {
+    it('preserves group insertion order', () => {
         const tracks = [makeTrack(DAY_2, 'C'), makeTrack(DAY_1, 'A')];
         const groups = groupTracksByDay(tracks);
-        expect(groups[0].day).toBe(DAY_1);
-        expect(groups[1].day).toBe(DAY_2);
+        expect(groups[0].day).toBe(DAY_2);
+        expect(groups[1].day).toBe(DAY_1);
     });
 
-    it('sorts tracks within a group by name', () => {
+    it('preserves track insertion order within a group', () => {
         const tracks = [makeTrack(DAY_1, 'Zebra'), makeTrack(DAY_1, 'Alpha')];
         const groups = groupTracksByDay(tracks);
-        expect(groups[0].tracks[0].properties.name).toBe('Alpha');
-        expect(groups[0].tracks[1].properties.name).toBe('Zebra');
+        expect(groups[0].tracks[0].properties.name).toBe('Zebra');
+        expect(groups[0].tracks[1].properties.name).toBe('Alpha');
     });
 
     it('labels regular days as "Day N — Mon DD"', () => {
@@ -114,12 +114,11 @@ describe('groupTracksByDay', () => {
         expect(groups[0].label).toContain('Mar');
     });
 
-    it('interleaves flight days chronologically with regular days', () => {
+    it('preserves insertion order for flight days mixed with regular days', () => {
         const tracks = [makeTrack(DAY_1, 'A'), makeTrack(FLIGHT_DAY, 'SYD-NRT'), makeTrack(DAY_2, 'B')];
         const groups = groupTracksByDay(tracks);
-        // flight-2024-03-14 sorts before 2024-03-15
-        expect(groups[0].day).toBe(FLIGHT_DAY);
-        expect(groups[1].day).toBe(DAY_1);
+        expect(groups[0].day).toBe(DAY_1);
+        expect(groups[1].day).toBe(FLIGHT_DAY);
         expect(groups[2].day).toBe(DAY_2);
     });
 });
@@ -129,6 +128,7 @@ describe('groupTracksByDay', () => {
 // ---------------------------------------------------------------------------
 
 const CHECKBOX_SEL = '.np-track-row__checkbox';
+const DAY_GROUP_COLLAPSED = 'np-day-group--collapsed';
 
 describe('TrackLegend', () => {
     it('renders a panel with day groups', () => {
@@ -223,15 +223,32 @@ describe('TrackLegend', () => {
         expect(c.querySelectorAll('.np-track-row')).toHaveLength(1);
     });
 
-    it('clicking day header collapses the group', () => {
+    it('day groups start collapsed and toggle on header click', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
         const { ctx } = mockCtx([trip]);
         new TrackLegend(c, ctx);
         const header = c.querySelector('.np-day-header') as HTMLElement;
-        header.click();
         const group = c.querySelector('.np-day-group');
-        expect(group?.classList.contains('np-day-group--collapsed')).toBe(true);
+        expect(group?.classList.contains(DAY_GROUP_COLLAPSED)).toBe(true);
+        header.click();
+        expect(group?.classList.contains(DAY_GROUP_COLLAPSED)).toBe(false);
+        header.click();
+        expect(group?.classList.contains(DAY_GROUP_COLLAPSED)).toBe(true);
+    });
+
+    it('zoom button is disabled for hidden tracks and enabled on check', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A')]);
+        const { ctx } = mockCtx([trip]);
+        (ctx.layers.isTrackVisible as ReturnType<typeof vi.fn>).mockReturnValue(false);
+        new TrackLegend(c, ctx);
+        const btn = c.querySelector('.np-track-row__action') as HTMLButtonElement;
+        expect(btn.disabled).toBe(true);
+        const checkbox = c.querySelector(CHECKBOX_SEL) as HTMLInputElement;
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('change'));
+        expect(btn.disabled).toBe(false);
     });
 
     it('accepts position config', () => {

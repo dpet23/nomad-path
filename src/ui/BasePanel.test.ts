@@ -83,6 +83,12 @@ describe('BasePanel', () => {
         expect(panel.root.classList.contains(COLLAPSED_CLASS)).toBe(false);
     });
 
+    it('header contains an .np-toggle arrow element', () => {
+        const c = setup();
+        new BasePanel(c, TEST_CLASS, 'Test');
+        expect(c.querySelector('.np-panel__header .np-toggle')).not.toBeNull();
+    });
+
     it('clicking the header toggles collapse', () => {
         const c = setup();
         const panel = new BasePanel(c, TEST_CLASS, 'Test');

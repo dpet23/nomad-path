@@ -29,7 +29,7 @@ export class BasePanel {
 
         const header = document.createElement('div');
         header.className = 'np-panel__header';
-        header.innerHTML = `<span>${title}</span><span class="np-panel__toggle">\u25BC</span>`;
+        header.innerHTML = `<span>${title}</span><span class="np-toggle">\u25BC</span>`;
         header.addEventListener('click', () => this.toggle());
         this.root.appendChild(header);
 

@@ -51,16 +51,11 @@ export function groupTracksByDay(tracks: TrackFeature[]): DayGroup[] {
         }
     }
 
-    const sortKey = (day: string): string => {
-        const m = day.match(/^flight-(\d{4}-\d{2}-\d{2})/);
-        return m ? m[1] : day;
-    };
-    const days = [...byDay.keys()].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+    const days = [...byDay.keys()];
     let dayNum = 0;
 
     return days.map(day => {
         const grouped = byDay.get(day)!;
-        grouped.sort((a, b) => a.properties.name.localeCompare(b.properties.name));
 
         dayNum++;
         const prefix = isFlightDay(day) ? 'Flight' : `Day ${dayNum}`;
@@ -139,11 +134,11 @@ export class TrackLegend extends BasePanel {
     /** Render a collapsible day-group section. */
     private _renderDayGroup(group: DayGroup): void {
         const wrapper = document.createElement('div');
-        wrapper.className = 'np-day-group';
+        wrapper.className = 'np-day-group np-day-group--collapsed';
 
         const header = document.createElement('div');
-        header.className = 'np-day-header';
-        header.innerHTML = `<span class="np-day-header__toggle">\u25BC</span><span>${group.label}</span>`;
+        header.className = 'np-day-header np-day-header--collapsed';
+        header.innerHTML = `<span class="np-toggle">\u25BC</span><span>${group.label}</span>`;
         header.addEventListener('click', () => {
             wrapper.classList.toggle('np-day-group--collapsed');
             header.classList.toggle('np-day-header--collapsed');
@@ -171,10 +166,6 @@ export class TrackLegend extends BasePanel {
         checkbox.type = 'checkbox';
         checkbox.className = 'np-track-row__checkbox';
         checkbox.checked = visible;
-        checkbox.addEventListener('change', () => {
-            this._ctx.layers.setTrackVisible(trackId, checkbox.checked);
-            this._callbacks.onVisibilityChange?.(trackId, checkbox.checked);
-        });
         this._checkboxes.set(trackId, checkbox);
         row.appendChild(checkbox);
 
@@ -193,6 +184,12 @@ export class TrackLegend extends BasePanel {
         zoomBtn.className = 'np-track-row__action';
         zoomBtn.title = 'Zoom to track';
         zoomBtn.textContent = '\u{1F50D}';
+        zoomBtn.disabled = !visible;
+        checkbox.addEventListener('change', () => {
+            this._ctx.layers.setTrackVisible(trackId, checkbox.checked);
+            zoomBtn.disabled = !checkbox.checked;
+            this._callbacks.onVisibilityChange?.(trackId, checkbox.checked);
+        });
         zoomBtn.addEventListener('click', e => {
             e.stopPropagation();
             this._ctx.fitToTrack(trackId);

@@ -43,6 +43,8 @@ test('TrackLegend: renders a row per track', async ({ page }) => {
 
 test('TrackLegend: unchecking a track hides it', async ({ page }) => {
     await gotoMap(page);
+    // Groups start collapsed — expand the first one
+    await page.locator('.np-track-legend .np-day-header').first().click();
     // Tokyo Drive is visible; find its checkbox and uncheck it
     const checkbox = page.locator('.np-track-legend .np-track-row__checkbox').first();
     await checkbox.uncheck();
@@ -54,6 +56,8 @@ test('TrackLegend: unchecking a track hides it', async ({ page }) => {
 
 test('TrackLegend: zoom button fits map to track', async ({ page }) => {
     await gotoMap(page);
+    // Groups start collapsed — expand the first one
+    await page.locator('.np-track-legend .np-day-header').first().click();
     const zoomBtn = page.locator('.np-track-legend .np-track-row__action').first();
     await zoomBtn.click();
     await waitForSettle(page);
@@ -65,11 +69,12 @@ test('TrackLegend: zoom button fits map to track', async ({ page }) => {
     expect(center.lng).toBeLessThan(150);
 });
 
-test('TrackLegend: clicking day header collapses the group', async ({ page }) => {
+test('TrackLegend: day groups start collapsed and header click toggles', async ({ page }) => {
     await gotoMap(page);
-    const header = page.locator('.np-track-legend .np-day-header').first();
-    await header.click();
-    await expect(page.locator('.np-track-legend .np-day-group--collapsed').first()).toBeVisible();
+    const firstGroup = page.locator('.np-track-legend .np-day-group').first();
+    await expect(firstGroup).toHaveClass(/np-day-group--collapsed/);
+    await page.locator('.np-track-legend .np-day-header').first().click();
+    await expect(firstGroup).not.toHaveClass(/np-day-group--collapsed/);
 });
 
 // ---------------------------------------------------------------------------
