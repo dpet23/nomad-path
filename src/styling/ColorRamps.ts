@@ -6,8 +6,20 @@ import type { AttributeRanges } from '../data/types';
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Registry of all supported colour attributes.
+ * Add a new entry here to extend — the ColourAttribute type is derived automatically.
+ */
+export const COLOUR_ATTRIBUTE_REGISTRY = {
+    day: { label: 'Day' },
+    speed: { label: 'Speed' },
+    elevation: { label: 'Elevation' },
+    sunAngle: { label: 'Sun angle' },
+    transportMode: { label: 'Transport mode' },
+} as const;
+
 /** Supported colour visualisation modes for track layers. */
-export type ColourAttribute = 'day' | 'speed' | 'elevation' | 'sunAngle' | 'transportMode';
+export type ColourAttribute = keyof typeof COLOUR_ATTRIBUTE_REGISTRY;
 
 // MapLibre's ExpressionSpecification is a complex discriminated union that
 // TypeScript cannot verify from manually-built array literals. We cast via

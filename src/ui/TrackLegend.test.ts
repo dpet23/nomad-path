@@ -37,17 +37,28 @@ const makeTrip = (tracks: TrackFeature[]): TripData => ({
     features: tracks,
 });
 
-/** Create a minimal UIContext mock. */
-function mockCtx(trips: TripData[]): UIContext {
+/** Spy references returned alongside the UIContext mock for assertion use. */
+interface MockSpies {
+    setTrackVisible: ReturnType<typeof vi.fn>;
+    fitToTrack: ReturnType<typeof vi.fn>;
+}
+
+/** Create a minimal UIContext mock, returning the context and spy references. */
+function mockCtx(trips: TripData[]): { ctx: UIContext; spies: MockSpies } {
+    const setTrackVisible = vi.fn();
+    const fitToTrack = vi.fn();
     return {
-        map: {} as UIContext['map'],
-        layers: {
-            isTrackVisible: vi.fn().mockReturnValue(true),
-            setTrackVisible: vi.fn(),
-        } as unknown as UIContext['layers'],
-        trips,
-        fitToTrack: vi.fn(),
-        fitToPOI: vi.fn(),
+        ctx: {
+            map: {} as UIContext['map'],
+            layers: {
+                isTrackVisible: vi.fn().mockReturnValue(true),
+                setTrackVisible,
+            } as unknown as UIContext['layers'],
+            trips,
+            fitToTrack,
+            fitToPOI: vi.fn(),
+        },
+        spies: { setTrackVisible, fitToTrack },
     };
 }
 
@@ -123,7 +134,8 @@ describe('TrackLegend', () => {
     it('renders a panel with day groups', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_2, 'B')]);
-        new TrackLegend(c, mockCtx([trip]));
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx);
         const groups = c.querySelectorAll('.np-day-group');
         expect(groups).toHaveLength(2);
     });
@@ -131,7 +143,8 @@ describe('TrackLegend', () => {
     it('renders a checkbox per track', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_1, 'B')]);
-        new TrackLegend(c, mockCtx([trip]));
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx);
         const checkboxes = c.querySelectorAll(CHECKBOX_SEL);
         expect(checkboxes).toHaveLength(2);
     });
@@ -139,7 +152,8 @@ describe('TrackLegend', () => {
     it('renders track names', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'Morning Drive')]);
-        new TrackLegend(c, mockCtx([trip]));
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx);
         const name = c.querySelector('.np-track-row__name');
         expect(name?.textContent).toBe('Morning Drive');
     });
@@ -147,7 +161,8 @@ describe('TrackLegend', () => {
     it('renders transport mode emoji', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A', { transportMode: 'walk' })]);
-        new TrackLegend(c, mockCtx([trip]));
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx);
         const mode = c.querySelector('.np-track-row__mode');
         expect(mode?.textContent).toBe('\u{1F6B6}');
     });
@@ -155,20 +170,20 @@ describe('TrackLegend', () => {
     it('calls setTrackVisible when checkbox is toggled', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
-        const ctx = mockCtx([trip]);
+        const { ctx, spies } = mockCtx([trip]);
         new TrackLegend(c, ctx);
         const checkbox = c.querySelector(CHECKBOX_SEL) as HTMLInputElement;
         checkbox.checked = false;
         checkbox.dispatchEvent(new Event('change'));
-        const spy = ctx.layers.setTrackVisible as ReturnType<typeof vi.fn>;
-        expect(spy).toHaveBeenCalledWith(`${DAY_1}::A`, false);
+        expect(spies.setTrackVisible).toHaveBeenCalledWith(`${DAY_1}::A`, false);
     });
 
     it('fires onVisibilityChange callback', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
         const onChange = vi.fn();
-        new TrackLegend(c, mockCtx([trip]), undefined, { onVisibilityChange: onChange });
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx, undefined, { onVisibilityChange: onChange });
         const checkbox = c.querySelector(CHECKBOX_SEL) as HTMLInputElement;
         checkbox.checked = false;
         checkbox.dispatchEvent(new Event('change'));
@@ -178,20 +193,20 @@ describe('TrackLegend', () => {
     it('fires onZoomToTrack when zoom button is clicked', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
-        const ctx = mockCtx([trip]);
+        const { ctx, spies } = mockCtx([trip]);
         const onZoom = vi.fn();
         new TrackLegend(c, ctx, undefined, { onZoomToTrack: onZoom });
         const btn = c.querySelector('.np-track-row__action') as HTMLElement;
         btn.click();
-        const spy = ctx.fitToTrack as ReturnType<typeof vi.fn>;
-        expect(spy).toHaveBeenCalledWith(`${DAY_1}::A`);
+        expect(spies.fitToTrack).toHaveBeenCalledWith(`${DAY_1}::A`);
         expect(onZoom).toHaveBeenCalledWith(`${DAY_1}::A`);
     });
 
     it('setCheckboxState updates checkbox checked state', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
-        const legend = new TrackLegend(c, mockCtx([trip]));
+        const { ctx } = mockCtx([trip]);
+        const legend = new TrackLegend(c, ctx);
         const checkbox = c.querySelector(CHECKBOX_SEL) as HTMLInputElement;
         expect(checkbox.checked).toBe(true);
         legend.setCheckboxState(`${DAY_1}::A`, false);
@@ -201,7 +216,8 @@ describe('TrackLegend', () => {
     it('update() rebuilds the legend', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
-        const legend = new TrackLegend(c, mockCtx([trip]));
+        const { ctx } = mockCtx([trip]);
+        const legend = new TrackLegend(c, ctx);
         expect(c.querySelectorAll('.np-track-row')).toHaveLength(1);
         legend.update();
         expect(c.querySelectorAll('.np-track-row')).toHaveLength(1);
@@ -210,7 +226,8 @@ describe('TrackLegend', () => {
     it('clicking day header collapses the group', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
-        new TrackLegend(c, mockCtx([trip]));
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx);
         const header = c.querySelector('.np-day-header') as HTMLElement;
         header.click();
         const group = c.querySelector('.np-day-group');
@@ -220,7 +237,8 @@ describe('TrackLegend', () => {
     it('accepts position config', () => {
         const c = setup();
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
-        new TrackLegend(c, mockCtx([trip]), { position: 'bottomleft' });
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx, { position: 'bottomleft' });
         expect(c.querySelector('.np-panel--bottomleft')).not.toBeNull();
     });
 });

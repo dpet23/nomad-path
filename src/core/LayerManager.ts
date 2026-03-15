@@ -357,4 +357,9 @@ export class LayerManager {
     get ranges(): Readonly<AttributeRanges> {
         return this._ranges;
     }
+
+    /** The highest day index in the loaded data (used for colour scale endpoints). */
+    get maxDayIndex(): number {
+        return this._maxDayIndex;
+    }
 }
