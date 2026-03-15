@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { TripData } from '../data/types';
+import type { TrackFeature, TripData } from '../data/types';
 import { COLOUR_ATTRIBUTE_REGISTRY } from '../styling/ColorRamps';
 import { AttributeLegend } from './AttributeLegend';
 import type { UIContext } from './UIContext';
@@ -11,14 +11,35 @@ import type { UIContext } from './UIContext';
 
 const SELECT_SEL = '.np-attr-select';
 const CANVAS_SEL = '.np-colour-bar canvas';
+const RANGE_LABEL_SEL = '.np-range-label';
+const DAY = '2024-03-15';
 
-const makeTrip = (ranges = {}): TripData => ({
+/** Build a minimal TrackFeature fixture with the given elevations. */
+function makeTrack(name: string, elevations: number[], visible = true): TrackFeature {
+    return {
+        type: 'Feature',
+        geometry: {
+            type: 'LineString',
+            coordinates: [
+                [0, 0],
+                [1, 1],
+            ],
+        },
+        properties: {
+            type: 'track',
+            name,
+            day: DAY,
+            defaultVisible: visible,
+            transportMode: 'drive',
+            elevations,
+        },
+    };
+}
+
+const makeTrip = (tracks: TrackFeature[] = []): TripData => ({
     type: 'FeatureCollection',
-    metadata: {
-        tripName: 'Test',
-        attributeRanges: ranges,
-    },
-    features: [],
+    metadata: { tripName: 'Test', attributeRanges: {} },
+    features: tracks,
 });
 
 /** Spy references returned alongside the UIContext mock for assertion use. */
@@ -28,7 +49,7 @@ interface MockSpies {
 }
 
 /** Create a minimal UIContext mock, returning the context and spy references. */
-function mockCtx(trips: TripData[] = []): { ctx: UIContext; spies: MockSpies } {
+function mockCtx(trips: TripData[] = [], visibleIds = new Set<string>()): { ctx: UIContext; spies: MockSpies } {
     const setColourAttribute = vi.fn();
     const updateRanges = vi.fn();
     return {
@@ -39,12 +60,16 @@ function mockCtx(trips: TripData[] = []): { ctx: UIContext; spies: MockSpies } {
                 setTrackVisible: vi.fn(),
                 setColourAttribute,
                 updateRanges,
+                get visibleIds() {
+                    return visibleIds;
+                },
                 get maxDayIndex() {
                     return 0;
                 },
             } as unknown as UIContext['layers'],
             trips,
             fitToTrack: vi.fn(),
+            fitToTrackGroup: vi.fn(),
             fitToPOI: vi.fn(),
         },
         spies: { setColourAttribute, updateRanges },
@@ -122,16 +147,36 @@ describe('AttributeLegend', () => {
         expect(spies.setColourAttribute).toHaveBeenCalledWith('speed');
     });
 
-    it('shows range label for elevation when ranges present', () => {
+    it('shows range label for elevation derived from visible track data', () => {
         const c = setup();
-        const { ctx } = mockCtx([makeTrip({ elevation: { min: 0, max: 847, unit: 'm' } })]);
+        const track = makeTrack('A', [0, 847]);
+        const trip = makeTrip([track]);
+        const visibleIds = new Set([`${DAY}::A`]);
+        const { ctx } = mockCtx([trip], visibleIds);
         new AttributeLegend(c, ctx);
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
         select.value = 'elevation';
         select.dispatchEvent(new Event('change'));
-        const label = c.querySelector('.np-range-label');
+        const label = c.querySelector(RANGE_LABEL_SEL);
         expect(label?.textContent).toMatch(/Elevation/);
         expect(label?.textContent).toMatch(/847/);
+    });
+
+    it('initial ranges exclude tracks hidden at load time', () => {
+        // Hidden track has elevation up to 9999 — should not appear in the label.
+        const c = setup();
+        const visibleTrack = makeTrack('Visible', [0, 100]);
+        const hiddenTrack = makeTrack('Hidden', [0, 9999], false);
+        const trip = makeTrip([visibleTrack, hiddenTrack]);
+        const visibleIds = new Set([`${DAY}::Visible`]);
+        const { ctx } = mockCtx([trip], visibleIds);
+        new AttributeLegend(c, ctx);
+        const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
+        select.value = 'elevation';
+        select.dispatchEvent(new Event('change'));
+        const label = c.querySelector(RANGE_LABEL_SEL);
+        expect(label?.textContent).toMatch(/100/);
+        expect(label?.textContent).not.toMatch(/9999/);
     });
 
     it('shows "no data" label for elevation when ranges absent', () => {
@@ -141,7 +186,7 @@ describe('AttributeLegend', () => {
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
         select.value = 'elevation';
         select.dispatchEvent(new Event('change'));
-        const label = c.querySelector('.np-range-label');
+        const label = c.querySelector(RANGE_LABEL_SEL);
         expect(label?.textContent).toBe('Elevation: no data');
     });
 

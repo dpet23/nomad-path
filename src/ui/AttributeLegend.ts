@@ -38,7 +38,7 @@ export class AttributeLegend extends BasePanel {
     constructor(mapContainer: HTMLElement, ctx: UIContext, config?: LegendPanelConfig) {
         super(mapContainer, 'np-attr-legend', 'Colour', { position: 'bottomleft', ...config });
         this._ctx = ctx;
-        this._ranges = this._mergedRanges();
+        this._ranges = computeVisibleRanges(ctx.trips, ctx.layers.visibleIds);
         this._render();
     }
 
@@ -57,29 +57,6 @@ export class AttributeLegend extends BasePanel {
     /** Return the currently selected colour attribute. */
     get attribute(): ColourAttribute {
         return this._attribute;
-    }
-
-    /** Build a merged AttributeRanges from all trips (used on initial load). */
-    private _mergedRanges(): AttributeRanges {
-        const merged: AttributeRanges = {};
-        for (const trip of this._ctx.trips) {
-            const r = trip.metadata.attributeRanges;
-            for (const key of Object.keys(r) as (keyof AttributeRanges)[]) {
-                const entry = r[key];
-                if (!entry) continue;
-                const existing = merged[key];
-                if (!existing) {
-                    merged[key] = { ...entry };
-                } else {
-                    merged[key] = {
-                        min: Math.min(existing.min, entry.min),
-                        max: Math.max(existing.max, entry.max),
-                        unit: entry.unit,
-                    };
-                }
-            }
-        }
-        return merged;
     }
 
     /** Build the initial panel DOM. */
