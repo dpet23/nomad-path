@@ -77,7 +77,44 @@ export class POILegend extends BasePanel {
 
         const header = document.createElement('div');
         header.className = 'np-category-header np-category-header--collapsed';
-        header.innerHTML = `<span class="np-toggle">\u25BC</span><span>${group.category}</span>`;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'np-track-row__checkbox';
+        checkbox.checked = this._ctx.layers.isPOICategoryVisible(group.category);
+        checkbox.addEventListener('click', e => e.stopPropagation());
+        checkbox.addEventListener('change', () => {
+            this._ctx.layers.setPOICategoryVisible(group.category, checkbox.checked);
+        });
+        header.appendChild(checkbox);
+
+        const toggle = document.createElement('span');
+        toggle.className = 'np-toggle';
+        toggle.textContent = '\u25BC';
+        header.appendChild(toggle);
+
+        const labelEl = document.createElement('span');
+        labelEl.textContent = group.category;
+        header.appendChild(labelEl);
+
+        const zoomBtn = document.createElement('button');
+        zoomBtn.className = 'np-track-row__action';
+        zoomBtn.title = 'Zoom to category';
+        zoomBtn.textContent = '\u{1F50D}';
+        zoomBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            const lngs = group.pois.map(p => p.geometry.coordinates[0]);
+            const lats = group.pois.map(p => p.geometry.coordinates[1]);
+            this._ctx.map.fitBounds(
+                [
+                    [Math.min(...lngs), Math.min(...lats)],
+                    [Math.max(...lngs), Math.max(...lats)],
+                ],
+                { padding: 80, maxZoom: 15 },
+            );
+        });
+        header.appendChild(zoomBtn);
+
         header.addEventListener('click', () => {
             wrapper.classList.toggle('np-category-group--collapsed');
             header.classList.toggle('np-category-header--collapsed');

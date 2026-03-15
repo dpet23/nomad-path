@@ -8,6 +8,8 @@ import type { UIContext } from './UIContext';
 // Fixtures
 // ---------------------------------------------------------------------------
 
+const CAT_CHECKBOX_SEL = '.np-category-header input[type="checkbox"]';
+
 const makePOI = (category: string, name: string, label?: string): POIFeature => ({
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [151.2, -33.8] },
@@ -23,20 +25,28 @@ const makeTrip = (pois: POIFeature[]): TripData => ({
 /** Spy references returned alongside the UIContext mock for assertion use. */
 interface MockSpies {
     fitToPOI: ReturnType<typeof vi.fn>;
+    setPOICategoryVisible: ReturnType<typeof vi.fn>;
+    fitBounds: ReturnType<typeof vi.fn>;
 }
 
 /** Create a minimal UIContext mock, returning the context and spy references. */
-function mockCtx(trips: TripData[]): { ctx: UIContext; spies: MockSpies } {
+function mockCtx(trips: TripData[], categoryVisible = true): { ctx: UIContext; spies: MockSpies } {
     const fitToPOI = vi.fn();
+    const setPOICategoryVisible = vi.fn();
+    const fitBounds = vi.fn();
     return {
         ctx: {
-            map: {} as UIContext['map'],
-            layers: {} as UIContext['layers'],
+            map: { fitBounds } as unknown as UIContext['map'],
+            layers: {
+                isPOICategoryVisible: vi.fn().mockReturnValue(categoryVisible),
+                setPOICategoryVisible,
+            } as unknown as UIContext['layers'],
             trips,
             fitToTrack: vi.fn(),
+            fitToTrackGroup: vi.fn(),
             fitToPOI,
         },
-        spies: { fitToPOI },
+        spies: { fitToPOI, setPOICategoryVisible, fitBounds },
     };
 }
 
@@ -139,14 +149,25 @@ describe('POILegend', () => {
         expect(c.querySelector('.np-track-row__mode')).toBeNull();
     });
 
-    it('calls fitToPOI when zoom button is clicked', () => {
+    it('calls fitToPOI when POI row zoom button is clicked', () => {
         const c = setup();
         const trip = makeTrip([makePOI('hotel', 'A')]);
         const { ctx, spies } = mockCtx([trip]);
         new POILegend(c, ctx);
-        const btn = c.querySelector('.np-track-row__action') as HTMLElement;
+        // The POI row zoom button is inside .np-track-row (not the header)
+        const btn = c.querySelector('.np-track-row .np-track-row__action') as HTMLElement;
         btn.click();
         expect(spies.fitToPOI).toHaveBeenCalledWith([151.2, -33.8], 15);
+    });
+
+    it('calls map.fitBounds when category header zoom button is clicked', () => {
+        const c = setup();
+        const trip = makeTrip([makePOI('hotel', 'A'), makePOI('hotel', 'B', undefined)]);
+        const { ctx, spies } = mockCtx([trip]);
+        new POILegend(c, ctx);
+        const btn = c.querySelector('.np-category-header .np-track-row__action') as HTMLElement;
+        btn.click();
+        expect(spies.fitBounds).toHaveBeenCalled();
     });
 
     it('clicking category header toggles collapse', () => {
@@ -174,5 +195,44 @@ describe('POILegend', () => {
         const { ctx } = mockCtx([makeTrip([])]);
         new POILegend(c, ctx, { position: 'bottomright' });
         expect(c.querySelector('.np-panel--bottomright')).not.toBeNull();
+    });
+
+    // --- POI category visibility (these tests drive the implementation) ---
+
+    it('category header has a visibility checkbox', () => {
+        const c = setup();
+        const trip = makeTrip([makePOI('hotel', 'A')]);
+        const { ctx } = mockCtx([trip]);
+        new POILegend(c, ctx);
+        expect(c.querySelector(CAT_CHECKBOX_SEL)).not.toBeNull();
+    });
+
+    it('category checkbox is checked when category is visible', () => {
+        const c = setup();
+        const trip = makeTrip([makePOI('hotel', 'A')]);
+        const { ctx } = mockCtx([trip], true); // visible = true
+        new POILegend(c, ctx);
+        const cb = c.querySelector(CAT_CHECKBOX_SEL) as HTMLInputElement;
+        expect(cb.checked).toBe(true);
+    });
+
+    it('category checkbox is unchecked when category is hidden', () => {
+        const c = setup();
+        const trip = makeTrip([makePOI('hotel', 'A')]);
+        const { ctx } = mockCtx([trip], false); // visible = false
+        new POILegend(c, ctx);
+        const cb = c.querySelector(CAT_CHECKBOX_SEL) as HTMLInputElement;
+        expect(cb.checked).toBe(false);
+    });
+
+    it('toggling category checkbox calls setPOICategoryVisible', () => {
+        const c = setup();
+        const trip = makeTrip([makePOI('hotel', 'A')]);
+        const { ctx, spies } = mockCtx([trip]);
+        new POILegend(c, ctx);
+        const cb = c.querySelector(CAT_CHECKBOX_SEL) as HTMLInputElement;
+        cb.checked = false;
+        cb.dispatchEvent(new Event('change'));
+        expect(spies.setPOICategoryVisible).toHaveBeenCalledWith('hotel', false);
     });
 });

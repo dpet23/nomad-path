@@ -177,6 +177,11 @@ function buildVisibilityFilter(visibleIds: Set<string>): FilterSpecification {
     return ['in', ['get', 'trackId'], ['literal', [...visibleIds]]] as unknown as FilterSpecification;
 }
 
+/** Build a MapLibre filter expression showing only features whose category is visible. */
+function buildPOICategoryFilter(visibleCategories: Set<string>): FilterSpecification {
+    return ['in', ['get', 'category'], ['literal', [...visibleCategories]]] as unknown as FilterSpecification;
+}
+
 // ---------------------------------------------------------------------------
 // LayerManager
 // ---------------------------------------------------------------------------
@@ -191,6 +196,7 @@ function buildVisibilityFilter(visibleIds: Set<string>): FilterSpecification {
 export class LayerManager {
     private readonly _map: MaplibreMap;
     private _visibleIds = new Set<string>();
+    private _visiblePOICategories = new Set<string>();
     private _colourAttribute: ColourAttribute = 'day';
     private _ranges: AttributeRanges = {};
     private _maxDayIndex = 0;
@@ -224,6 +230,8 @@ export class LayerManager {
         this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
         // Respect the defaultVisible flag set during preprocessing.
         this._visibleIds = new Set(tracks.filter(t => t.properties.defaultVisible !== false).map(deriveTrackId));
+        // All POI categories start visible (defaultVisible support deferred to preprocessing).
+        this._visiblePOICategories = new Set(pois.map(p => p.properties.category));
 
         const { featureCollection, maxDayIndex } = buildSegmentFeatures(tracks);
         this._maxDayIndex = maxDayIndex;
@@ -267,6 +275,7 @@ export class LayerManager {
             id: POI_LAYER,
             type: 'circle',
             source: POI_SOURCE,
+            filter: buildPOICategoryFilter(this._visiblePOICategories),
             paint: {
                 'circle-radius': 12,
                 'circle-color': '#FF4081',
@@ -281,6 +290,7 @@ export class LayerManager {
             id: POI_LABEL_LAYER,
             type: 'symbol',
             source: POI_LABEL_SOURCE,
+            filter: buildPOICategoryFilter(this._visiblePOICategories),
             layout: {
                 'text-field': ['get', 'name'],
                 // Explicitly match openfreemap's available fonts; the MapLibre default
@@ -361,5 +371,22 @@ export class LayerManager {
     /** The highest day index in the loaded data (used for colour scale endpoints). */
     get maxDayIndex(): number {
         return this._maxDayIndex;
+    }
+
+    /** Show or hide all POIs belonging to the given category. */
+    setPOICategoryVisible(category: string, visible: boolean): void {
+        if (visible) {
+            this._visiblePOICategories.add(category);
+        } else {
+            this._visiblePOICategories.delete(category);
+        }
+        const filter = buildPOICategoryFilter(this._visiblePOICategories);
+        if (this._map.getLayer(POI_LAYER)) this._map.setFilter(POI_LAYER, filter);
+        if (this._map.getLayer(POI_LABEL_LAYER)) this._map.setFilter(POI_LABEL_LAYER, filter);
+    }
+
+    /** Return true if the given POI category is currently visible. */
+    isPOICategoryVisible(category: string): boolean {
+        return this._visiblePOICategories.has(category);
     }
 }
