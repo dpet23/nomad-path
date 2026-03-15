@@ -18,25 +18,44 @@ export type MaplibreExpression = ExpressionSpecification | string;
 const expr = (e: unknown): MaplibreExpression => e as MaplibreExpression;
 
 // ---------------------------------------------------------------------------
-// Transport mode colours (exported — usable by UI and colour expressions)
+// Transport modes — single registry for colour, emoji, and label
 // ---------------------------------------------------------------------------
 
+/** Display properties for a single transport mode. */
+export interface TransportModeInfo {
+    colour: string;
+    emoji: string;
+    label: string;
+}
+
 /**
- * Canonical colour map for transport modes.
- * Keys match the transportMode strings from TrackProperties.
- * The fallback colour is used for unknown/unlisted modes.
+ * Canonical registry of transport modes.
+ * Add new modes here — colour, emoji, and label are all co-located.
  */
-export const TRANSPORT_MODE_COLOURS: Record<string, string> = {
-    walk: '#4CAF50',
-    drive: '#2196F3',
-    flight: '#F44336',
-    boat: '#00BCD4',
-    cycling: '#FF9800',
-    skiing: '#9C27B0',
+export const TRANSPORT_MODES: Record<string, TransportModeInfo> = {
+    walk: { colour: '#4CAF50', emoji: '\u{1F6B6}', label: 'Walk' },
+    drive: { colour: '#2196F3', emoji: '\u{1F697}', label: 'Drive' },
+    flight: { colour: '#F44336', emoji: '\u{2708}\uFE0F', label: 'Flight' },
+    boat: { colour: '#00BCD4', emoji: '\u{26F5}', label: 'Boat' },
+    cycling: { colour: '#FF9800', emoji: '\u{1F6B2}', label: 'Cycling' },
+    skiing: { colour: '#9C27B0', emoji: '\u{26F7}\uFE0F', label: 'Skiing' },
 };
 
+/** Fallback display for unrecognised transport modes. */
+export const TRANSPORT_MODE_FALLBACK_INFO: TransportModeInfo = {
+    colour: '#9E9E9E',
+    emoji: '\u{1F4CD}',
+    label: 'Other',
+};
+
+// Derived maps for backwards compatibility and MapLibre expressions.
+/** Colour map derived from TRANSPORT_MODES. */
+export const TRANSPORT_MODE_COLOURS: Record<string, string> = Object.fromEntries(
+    Object.entries(TRANSPORT_MODES).map(([k, v]) => [k, v.colour]),
+);
+
 /** Fallback colour for unrecognised transport modes. */
-export const TRANSPORT_MODE_FALLBACK = '#9E9E9E';
+export const TRANSPORT_MODE_FALLBACK = TRANSPORT_MODE_FALLBACK_INFO.colour;
 
 /** Colour used for missing / null attribute data. */
 export const MISSING_COLOUR = '#9E9E9E';
