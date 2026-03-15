@@ -11,19 +11,19 @@
         #error { display: none; color: red; padding: 1rem; font-family: monospace; }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
-    <link rel="stylesheet" href="../dist/nomad-path.css" />
+    <link rel="stylesheet" href="/dist/nomad-path.css" />
 </head>
 <body>
 <div id="map"></div>
 <div id="error"></div>
 
 <script type="module">
-import { NomadPath } from '../dist/nomad-path.js';
+import { NomadPath } from '/dist/nomad-path.js';
 
 try {
     const nomadMap = await NomadPath.create({
         container: 'map',
-        dataUrls: ['./fixture.geojson'],
+        dataUrls: ['/e2e/fixture.geojson'],
         defaultBasemap: 'osm',
         initialBounds: 'auto',
     });

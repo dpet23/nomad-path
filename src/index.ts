@@ -189,10 +189,15 @@ export class NomadPath {
             if (prevAttribute !== 'day') {
                 this._layers.setColourAttribute(prevAttribute);
             }
-            // Restore POI category visibility state.
+            // Restore exact previous POI category visibility (bidirectional).
             for (const category of this._layers.visiblePOICategories) {
                 if (!prevVisiblePOICategories.has(category)) {
                     this._layers.setPOICategoryVisible(category, false);
+                }
+            }
+            for (const category of prevVisiblePOICategories) {
+                if (!this._layers.visiblePOICategories.has(category)) {
+                    this._layers.setPOICategoryVisible(category, true);
                 }
             }
             // Recompute attribute ranges from the restored visible set so the

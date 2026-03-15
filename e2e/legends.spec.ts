@@ -2,13 +2,36 @@
  * E2E tests for NomadPath legend UI components.
  *
  * Uses the same fixture and test harness as map.spec.ts.
- * Fixture tracks: "Tokyo Drive" (visible), "Sydney Walk" (hidden), "Helsinki Flight" (visible)
- * Fixture POI: "Test Hotel" in category "accommodation"
+ *
+ * Fixture tracks (in day order):
+ *   Day 0 — Tokyo Drive    (defaultVisible: true,  drive, speeds 30-60 km/h, elevations 10-20 m)
+ *   Day 1 — Sydney Walk    (defaultVisible: false, walk,  speeds 3-7 km/h,   elevations 1-3 m)
+ *   Day 2 — Helsinki Flight(defaultVisible: true,  flight,speeds 200-800 km/h,elevations 5000-10000 m)
+ *
+ * Attribute ranges are NON-OVERLAPPING so any leaked hidden track is detectable by value:
+ *   Visible-only speed:     30-800 km/h  (Sydney Walk would change min to 3)
+ *   Visible-only elevation: 10-10000 m   (Sydney Walk would change min to 1)
+ *
+ * Fixture POIs (in category order):
+ *   accommodation — "Test Hotel"   (defaultVisible: true)
+ *   viewpoint     — "Mount Takao"  (defaultVisible: false)
  */
 
 import { expect, test } from '@playwright/test';
 
 const TEST_PAGE = '/e2e/test.html';
+
+// Track IDs derived from day::name
+const TRACK_TOKYO   = '2024-01-01::Tokyo Drive';
+const TRACK_SYDNEY  = '2024-01-02::Sydney Walk';
+const TRACK_HELSINKI = '2024-01-03::Helsinki Flight';
+
+// Expected range labels derived from fixture attribute arrays (visible tracks only at load)
+const SPEED_LABEL_VISIBLE    = 'Speed: 30-800 km/h';        // Tokyo 30-60 + Helsinki 200-800
+const SPEED_LABEL_TOKYO_ONLY = 'Speed: 30-60 km/h';         // after hiding Helsinki
+const SPEED_LABEL_ALL        = 'Speed: 3-800 km/h';         // after showing Sydney Walk too
+const ELEV_LABEL_VISIBLE     = 'Elevation: 10-10000 m';     // Tokyo 10-20 + Helsinki 5000-10000
+const ELEV_LABEL_TOKYO_ONLY  = 'Elevation: 10-20 m';        // after hiding Helsinki
 
 type PwPage = import('@playwright/test').Page;
 
@@ -92,12 +115,76 @@ test('AttributeLegend: dropdown has one option per colour attribute', async ({ p
     expect(await options.count()).toBe(5);
 });
 
-test('AttributeLegend: selecting speed shows range label', async ({ page }) => {
+test('AttributeLegend: speed label shows range of visible tracks only', async ({ page }) => {
     await gotoMap(page);
     await page.selectOption('.np-attr-select', 'speed');
-    const label = page.locator('.np-range-label');
-    const text = await label.textContent();
-    expect(text).toMatch(/Speed/);
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_VISIBLE);
+});
+
+test('AttributeLegend: speed layer ranges exclude hidden tracks on initial load', async ({ page }) => {
+    // The map paint property must use dynamic (visible-only) ranges, not the static
+    // merged-metadata ranges that include Sydney Walk (min=3 km/h).
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
+    expect(min).toBe(30); // Tokyo min — if 3, Sydney Walk leaked into the layer expression
+});
+
+test('AttributeLegend: elevation label shows range of visible tracks only', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'elevation');
+    expect(await page.locator('.np-range-label').textContent()).toBe(ELEV_LABEL_VISIBLE);
+});
+
+test('AttributeLegend: elevation layer ranges exclude hidden tracks on initial load', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'elevation');
+    const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.elevation?.min);
+    expect(min).toBe(10); // Tokyo min — if 1, Sydney Walk leaked into the layer expression
+});
+
+test('AttributeLegend: hiding a track via checkbox narrows the range label', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Expand Helsinki Flight's day group (third day header) and uncheck it
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
+});
+
+test('AttributeLegend: hiding a track via checkbox narrows the layer ranges', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    const max = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.max);
+    expect(max).toBe(60); // Helsinki max 800 removed — only Tokyo 30-60 km/h remains
+});
+
+test('AttributeLegend: hiding a track via checkbox narrows the elevation range label', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'elevation');
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe(ELEV_LABEL_TOKYO_ONLY);
+});
+
+test('AttributeLegend: showing a hidden track via checkbox widens the range label', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Expand Sydney Walk's day group (second day header) and check it
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_ALL);
+});
+
+test('AttributeLegend: showing a hidden track via checkbox widens the layer ranges', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
+    const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
+    expect(min).toBe(3); // Sydney Walk 3-7 km/h is now included
 });
 
 test('AttributeLegend: selecting transportMode shows mode list', async ({ page }) => {
@@ -195,49 +282,151 @@ test('MobileMenu: hamburger visible and drawer opens on mobile viewport', async 
 
 // ---------------------------------------------------------------------------
 // Basemap switch — state preservation
+// Full state space:
+//   Track visibility:   defaultTrue/no-op, defaultFalse/no-op,
+//                       defaultTrue/user-hides, defaultFalse/user-shows
+//   POI category:       same 4 cells
+//   Attribute ranges:   correct values preserved across switch
+// All user interactions go through the UI (checkbox clicks), not internal API.
 // ---------------------------------------------------------------------------
 
-/** Switch basemap and wait for track layer restoration. */
+/** Switch basemap and wait for track layer and POI layer restoration. */
 async function switchBasemap(page: PwPage, basemapId: string) {
     await page.evaluate(id => (window as any).nomadMap.setBasemap(id), basemapId);
     await page.waitForFunction(
-        () => !!(window as any)._map.getLayer('np-tracks-layer'),
+        () =>
+            !!(window as any)._map.getLayer('np-tracks-layer') &&
+            !!(window as any)._map.getLayer('np-pois-layer'),
         { timeout: 15_000 },
     );
-    // Give the styledata handler time to run
-    await page.waitForTimeout(200);
+    // Allow the synchronous onStyleData restoration handler to finish
+    await page.waitForTimeout(300);
 }
 
-test('setBasemap: POI category visibility preserved after basemap switch', async ({ page }) => {
+// --- Track visibility × basemap switch ---
+
+test('setBasemap: defaultVisible true track stays visible (no user interaction)', async ({ page }) => {
     await gotoMap(page);
-    // Hide accommodation category
-    await page.evaluate(() => (window as any).nomadMap._layers.setPOICategoryVisible('accommodation', false));
     await switchBasemap(page, 'blueMarble');
-    const visible = await page.evaluate(() =>
-        (window as any).nomadMap.isPOICategoryVisible('accommodation'),
-    );
-    expect(visible).toBe(false);
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_TOKYO)).toBe(true);
 });
 
-test('setBasemap: hidden-by-default POI category stays hidden after basemap switch', async ({ page }) => {
+test('setBasemap: defaultVisible false track stays hidden (no user interaction)', async ({ page }) => {
     await gotoMap(page);
-    // viewpoint starts hidden by defaultVisible: false
     await switchBasemap(page, 'blueMarble');
-    const visible = await page.evaluate(() =>
-        (window as any).nomadMap.isPOICategoryVisible('viewpoint'),
-    );
-    expect(visible).toBe(false);
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_SYDNEY)).toBe(false);
 });
 
-test('setBasemap: attribute range label reflects visible tracks after basemap switch', async ({ page }) => {
+test('setBasemap: user-hidden track stays hidden after basemap switch', async ({ page }) => {
     await gotoMap(page);
-    // Switch to speed attribute so range label is visible
+    // Hide Helsinki Flight via UI: expand its day group then uncheck
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_HELSINKI)).toBe(false);
+});
+
+test('setBasemap: user-shown track stays visible after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Show Sydney Walk via UI: expand its day group then check
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_SYDNEY)).toBe(true);
+});
+
+// --- POI category visibility × basemap switch ---
+
+test('setBasemap: defaultVisible true POI category stays visible (no user interaction)', async ({ page }) => {
+    await gotoMap(page);
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.evaluate(() => (window as any).nomadMap.isPOICategoryVisible('accommodation'))).toBe(true);
+});
+
+test('setBasemap: defaultVisible false POI category stays hidden (no user interaction)', async ({ page }) => {
+    await gotoMap(page);
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.evaluate(() => (window as any).nomadMap.isPOICategoryVisible('viewpoint'))).toBe(false);
+});
+
+test('setBasemap: user-hidden POI category stays hidden after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Uncheck accommodation via UI (first category header)
+    await page.locator('.np-poi-legend .np-category-header').nth(0).locator('input[type="checkbox"]').uncheck();
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.evaluate(() => (window as any).nomadMap.isPOICategoryVisible('accommodation'))).toBe(false);
+});
+
+test('setBasemap: user-shown POI category stays visible after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Check viewpoint via UI (second category header, starts unchecked)
+    await page.locator('.np-poi-legend .np-category-header').nth(1).locator('input[type="checkbox"]').check();
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.evaluate(() => (window as any).nomadMap.isPOICategoryVisible('viewpoint'))).toBe(true);
+});
+
+// --- Attribute ranges × basemap switch ---
+
+test('setBasemap: speed range preserved for default visible tracks', async ({ page }) => {
+    await gotoMap(page);
     await page.selectOption('.np-attr-select', 'speed');
-    const labelBefore = await page.locator('.np-range-label').textContent();
-    // Switch basemap and wait for restoration
     await switchBasemap(page, 'blueMarble');
-    const labelAfter = await page.locator('.np-range-label').textContent();
-    // Label should still show speed range (not disappear or show "no data")
-    expect(labelAfter).toMatch(/Speed/);
-    expect(labelAfter).toBe(labelBefore);
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_VISIBLE);
+});
+
+test('setBasemap: speed layer ranges preserved for default visible tracks', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await switchBasemap(page, 'blueMarble');
+    const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
+    expect(min).toBe(30); // Sydney Walk must stay excluded
+});
+
+test('setBasemap: elevation range preserved for default visible tracks', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'elevation');
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.locator('.np-range-label').textContent()).toBe(ELEV_LABEL_VISIBLE);
+});
+
+test('setBasemap: user-hidden track remains excluded from range after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Hide Helsinki Flight via UI
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
+});
+
+test('setBasemap: user-hidden track excluded from layer ranges after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    await switchBasemap(page, 'blueMarble');
+    const max = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.max);
+    expect(max).toBe(60); // Helsinki 200-800 removed — only Tokyo 30-60 km/h remains
+});
+
+test('setBasemap: user-shown track remains included in range after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Show Sydney Walk via UI
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_ALL);
+    await switchBasemap(page, 'blueMarble');
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_ALL);
+});
+
+test('setBasemap: user-shown track included in layer ranges after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
+    await switchBasemap(page, 'blueMarble');
+    const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
+    expect(min).toBe(3); // Sydney Walk 3-7 km/h is included after being shown
 });

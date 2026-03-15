@@ -39,6 +39,7 @@ export class AttributeLegend extends BasePanel {
         super(mapContainer, 'np-attr-legend', 'Colour', { position: 'bottomleft', ...config });
         this._ctx = ctx;
         this._ranges = computeVisibleRanges(ctx.trips, ctx.layers.visibleIds);
+        ctx.layers.updateRanges(this._ranges);
         this._render();
     }
 
