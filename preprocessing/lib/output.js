@@ -126,7 +126,13 @@ export function buildGeoJSON({ tracks, waypoints, tripName }) {
     const elevRange = { min: Infinity, max: -Infinity };
     const speedRange = { min: Infinity, max: -Infinity };
 
-    const trackFeatures = tracks.map(track => {
+    const sortedTracks = [...tracks].sort((a, b) => {
+        const keyA = a.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? a.day;
+        const keyB = b.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? b.day;
+        return keyA.localeCompare(keyB);
+    });
+
+    const trackFeatures = sortedTracks.map(track => {
         updateRange(elevRange, track.points.map(p => p.elevation));
         updateRange(speedRange, track.points.map(p => p.speedKmh));
         return trackToFeature(track);

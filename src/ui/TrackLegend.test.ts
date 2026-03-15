@@ -121,6 +121,14 @@ describe('groupTracksByDay', () => {
         expect(groups[1].day).toBe(FLIGHT_DAY);
         expect(groups[2].day).toBe(DAY_2);
     });
+
+    it('flight days between ground days do not increment the ground day counter', () => {
+        const tracks = [makeTrack(DAY_1, 'A'), makeTrack(FLIGHT_DAY, 'SYD-NRT'), makeTrack(DAY_2, 'B')];
+        const groups = groupTracksByDay(tracks);
+        expect(groups[0].label).toMatch(/^Day 1/);
+        expect(groups[1].label).toMatch(/^Flight/);
+        expect(groups[2].label).toMatch(/^Day 2/);
+    });
 });
 
 // ---------------------------------------------------------------------------

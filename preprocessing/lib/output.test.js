@@ -251,6 +251,57 @@ describe('buildGeoJSON -- stats', () => {
 // Attribute ranges
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Track ordering
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- track ordering', () => {
+    /** Build a minimal GroupedTrack with the given day key and name. */
+    function makeTrack(day, name) {
+        return {
+            name,
+            sourceFile: 'test.gpx',
+            transportMode: 'drive',
+            day,
+            group: null,
+            defaultVisible: true,
+            points: [
+                { lon: 0, lat: 0, elevation: 10, speedKmh: 30, time: null, sunAngle: null },
+                { lon: 1, lat: 1, elevation: 10, speedKmh: 30, time: null, sunAngle: null },
+            ],
+        };
+    }
+
+    it('emits track features in chronological order regardless of input order', () => {
+        const tracks = [
+            makeTrack('2024-09-13', 'C'),
+            makeTrack('2024-09-11', 'A'),
+            makeTrack('2024-09-12', 'B'),
+        ];
+        const result = buildGeoJSON({ tracks, waypoints: [], tripName: 'Test' });
+        const names = result.features
+            .filter(f => f.properties.type === 'track')
+            .map(f => f.properties.name);
+        expect(names).toEqual(['A', 'B', 'C']);
+    });
+
+    it('sorts flight-day keys by embedded date', () => {
+        const tracks = [
+            makeTrack('flight-2024-03-16-nrt-lax', 'Late Flight'),
+            makeTrack('flight-2024-03-14-syd-nrt', 'Early Flight'),
+        ];
+        const result = buildGeoJSON({ tracks, waypoints: [], tripName: 'Test' });
+        const names = result.features
+            .filter(f => f.properties.type === 'track')
+            .map(f => f.properties.name);
+        expect(names).toEqual(['Early Flight', 'Late Flight']);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Attribute ranges
+// ---------------------------------------------------------------------------
+
 describe('buildGeoJSON -- attribute ranges', () => {
     const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
     const { attributeRanges } = result.metadata;

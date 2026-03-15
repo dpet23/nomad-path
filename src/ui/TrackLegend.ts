@@ -57,7 +57,7 @@ export function groupTracksByDay(tracks: TrackFeature[]): DayGroup[] {
     return days.map(day => {
         const grouped = byDay.get(day)!;
 
-        dayNum++;
+        if (!isFlightDay(day)) dayNum++;
         const prefix = isFlightDay(day) ? 'Flight' : `Day ${dayNum}`;
         const label = `${prefix} \u2014 ${formatDayLabel(day)}`;
 
