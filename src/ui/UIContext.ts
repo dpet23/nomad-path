@@ -12,5 +12,6 @@ export interface UIContext {
     readonly layers: LayerManager;
     readonly trips: TripData[];
     fitToTrack(trackId: string): void;
+    fitToTrackGroup(trackIds: string[]): void;
     fitToPOI(coords: [number, number], zoom?: number): void;
 }

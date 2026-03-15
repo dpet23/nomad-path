@@ -133,12 +133,58 @@ export class TrackLegend extends BasePanel {
 
     /** Render a collapsible day-group section. */
     private _renderDayGroup(group: DayGroup): void {
+        const trackIds = group.tracks.map(t => deriveTrackId(t));
+
         const wrapper = document.createElement('div');
         wrapper.className = 'np-day-group np-day-group--collapsed';
 
         const header = document.createElement('div');
         header.className = 'np-day-header np-day-header--collapsed';
-        header.innerHTML = `<span class="np-toggle">\u25BC</span><span>${group.label}</span>`;
+
+        // Group visibility checkbox — tristate
+        const groupCheckbox = document.createElement('input');
+        groupCheckbox.type = 'checkbox';
+        groupCheckbox.className = 'np-track-row__checkbox';
+        const updateGroupCheckbox = () => {
+            const visibleCount = trackIds.filter(id => this._ctx.layers.isTrackVisible(id)).length;
+            groupCheckbox.checked = visibleCount > 0;
+            groupCheckbox.indeterminate = visibleCount > 0 && visibleCount < trackIds.length;
+        };
+        updateGroupCheckbox();
+        groupCheckbox.addEventListener('click', e => e.stopPropagation());
+        groupCheckbox.addEventListener('change', () => {
+            for (const id of trackIds) {
+                this._ctx.layers.setTrackVisible(id, groupCheckbox.checked);
+                const cb = this._checkboxes.get(id);
+                if (cb) {
+                    cb.checked = groupCheckbox.checked;
+                    const btn = cb.closest('.np-track-row')?.querySelector<HTMLButtonElement>('.np-track-row__action');
+                    if (btn) btn.disabled = !groupCheckbox.checked;
+                }
+            }
+            this._callbacks.onVisibilityChange?.(trackIds[0] ?? '', groupCheckbox.checked);
+        });
+        header.appendChild(groupCheckbox);
+
+        const toggle = document.createElement('span');
+        toggle.className = 'np-toggle';
+        toggle.textContent = '\u25BC';
+        header.appendChild(toggle);
+
+        const label = document.createElement('span');
+        label.textContent = group.label;
+        header.appendChild(label);
+
+        const zoomBtn = document.createElement('button');
+        zoomBtn.className = 'np-track-row__action';
+        zoomBtn.title = 'Zoom to day';
+        zoomBtn.textContent = '\u{1F50D}';
+        zoomBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            this._ctx.fitToTrackGroup(trackIds);
+        });
+        header.appendChild(zoomBtn);
+
         header.addEventListener('click', () => {
             wrapper.classList.toggle('np-day-group--collapsed');
             header.classList.toggle('np-day-header--collapsed');
@@ -146,14 +192,14 @@ export class TrackLegend extends BasePanel {
         wrapper.appendChild(header);
 
         for (const track of group.tracks) {
-            this._renderTrackRow(wrapper, track);
+            this._renderTrackRow(wrapper, track, updateGroupCheckbox);
         }
 
         this.bodyEl.appendChild(wrapper);
     }
 
     /** Render a single track row with checkbox, name, mode emoji, and zoom button. */
-    private _renderTrackRow(parent: HTMLElement, track: TrackFeature): void {
+    private _renderTrackRow(parent: HTMLElement, track: TrackFeature, onGroupUpdate?: () => void): void {
         const trackId = deriveTrackId(track);
         const { name, transportMode } = track.properties;
         const visible = this._ctx.layers.isTrackVisible(trackId);
@@ -188,6 +234,7 @@ export class TrackLegend extends BasePanel {
         checkbox.addEventListener('change', () => {
             this._ctx.layers.setTrackVisible(trackId, checkbox.checked);
             zoomBtn.disabled = !checkbox.checked;
+            onGroupUpdate?.();
             this._callbacks.onVisibilityChange?.(trackId, checkbox.checked);
         });
         zoomBtn.addEventListener('click', e => {
