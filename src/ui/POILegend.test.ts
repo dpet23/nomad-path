@@ -9,6 +9,8 @@ import type { UIContext } from './UIContext';
 // ---------------------------------------------------------------------------
 
 const CAT_CHECKBOX_SEL = '.np-category-header input[type="checkbox"]';
+const CAT_GROUP_SEL = '.np-category-group';
+const CAT_GROUP_COLLAPSED_SEL = '.np-category-group--collapsed';
 
 const makePOI = (category: string, name: string, label?: string): POIFeature => ({
     type: 'Feature',
@@ -112,7 +114,7 @@ describe('POILegend', () => {
         const trip = makeTrip([makePOI('hotel', 'A'), makePOI('beach', 'B')]);
         const { ctx } = mockCtx([trip]);
         new POILegend(c, ctx);
-        expect(c.querySelectorAll('.np-category-group')).toHaveLength(2);
+        expect(c.querySelectorAll(CAT_GROUP_SEL)).toHaveLength(2);
     });
 
     it('renders groups collapsed by default', () => {
@@ -120,7 +122,7 @@ describe('POILegend', () => {
         const trip = makeTrip([makePOI('hotel', 'A')]);
         const { ctx } = mockCtx([trip]);
         new POILegend(c, ctx);
-        expect(c.querySelector('.np-category-group--collapsed')).not.toBeNull();
+        expect(c.querySelector(CAT_GROUP_COLLAPSED_SEL)).not.toBeNull();
     });
 
     it('renders POI names', () => {
@@ -177,7 +179,7 @@ describe('POILegend', () => {
         new POILegend(c, ctx);
         const header = c.querySelector('.np-category-header') as HTMLElement;
         header.click();
-        expect(c.querySelector('.np-category-group--collapsed')).toBeNull();
+        expect(c.querySelector(CAT_GROUP_COLLAPSED_SEL)).toBeNull();
     });
 
     it('update() rebuilds the legend', () => {
@@ -234,5 +236,49 @@ describe('POILegend', () => {
         cb.checked = false;
         cb.dispatchEvent(new Event('change'));
         expect(spies.setPOICategoryVisible).toHaveBeenCalledWith('hotel', false);
+    });
+
+    it('clicking category checkbox does not collapse the group', () => {
+        const c = setup();
+        const trip = makeTrip([makePOI('hotel', 'A')]);
+        const { ctx } = mockCtx([trip]);
+        new POILegend(c, ctx);
+        // First expand the group
+        const header = c.querySelector('.np-category-header') as HTMLElement;
+        header.click();
+        expect(c.querySelector(CAT_GROUP_COLLAPSED_SEL)).toBeNull();
+        // Clicking the checkbox should not re-collapse
+        const cb = c.querySelector(CAT_CHECKBOX_SEL) as HTMLElement;
+        cb.click();
+        expect(c.querySelector(CAT_GROUP_COLLAPSED_SEL)).toBeNull();
+    });
+
+    it('fitBounds is called with bounds spanning all POIs in the category', () => {
+        const c = setup();
+        // Two POIs at different coords — bounds must encompass both
+        const poiA = makePOI('beach', 'Bondi');
+        const poiB: typeof poiA = {
+            ...poiA,
+            geometry: { type: 'Point', coordinates: [160.0, -20.0] },
+        };
+        const trip = makeTrip([poiA, poiB]);
+        const { ctx, spies } = mockCtx([trip]);
+        new POILegend(c, ctx);
+        const btn = c.querySelector('.np-category-header .np-track-row__action') as HTMLElement;
+        btn.click();
+        const [sw, ne] = spies.fitBounds.mock.calls[0][0] as [[number, number], [number, number]];
+        // SW corner should use the smaller coords, NE the larger
+        expect(sw[0]).toBeLessThan(ne[0]); // lng min < lng max
+        expect(sw[1]).toBeLessThan(ne[1]); // lat min < lat max
+    });
+
+    it('update() does not duplicate category groups', () => {
+        const c = setup();
+        const trip = makeTrip([makePOI('hotel', 'A'), makePOI('beach', 'B')]);
+        const { ctx } = mockCtx([trip]);
+        const legend = new POILegend(c, ctx);
+        expect(c.querySelectorAll(CAT_GROUP_SEL)).toHaveLength(2);
+        legend.update();
+        expect(c.querySelectorAll(CAT_GROUP_SEL)).toHaveLength(2);
     });
 });

@@ -209,6 +209,48 @@ describe('AttributeLegend', () => {
         expect(legend.attribute).toBe('speed');
     });
 
+    it('updateRanges refreshes the range label when elevation is selected', () => {
+        // Start with a visible track, switch to elevation, then call updateRanges
+        // with a different visible set — the label must reflect the new data.
+        const c = setup();
+        const trackA = makeTrack('A', [0, 500]);
+        const trackB = makeTrack('B', [0, 1200]);
+        const trip = makeTrip([trackA, trackB]);
+        const visibleIds = new Set([`${DAY}::A`, `${DAY}::B`]);
+        const { ctx } = mockCtx([trip], visibleIds);
+        const legend = new AttributeLegend(c, ctx);
+
+        // Switch to elevation so the label is visible
+        const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
+        select.value = 'elevation';
+        select.dispatchEvent(new Event('change'));
+
+        // Now hide track B — updateRanges should drop the max from 1200 to 500
+        const onlyA = new Set([`${DAY}::A`]);
+        legend.updateRanges(onlyA);
+
+        const label = c.querySelector(RANGE_LABEL_SEL);
+        expect(label?.textContent).toMatch(/500/);
+        expect(label?.textContent).not.toMatch(/1200/);
+    });
+
+    it('updateRanges shows "no data" label when no tracks are visible', () => {
+        const c = setup();
+        const track = makeTrack('A', [0, 500]);
+        const trip = makeTrip([track]);
+        const visibleIds = new Set([`${DAY}::A`]);
+        const { ctx } = mockCtx([trip], visibleIds);
+        const legend = new AttributeLegend(c, ctx);
+
+        const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
+        select.value = 'elevation';
+        select.dispatchEvent(new Event('change'));
+
+        legend.updateRanges(new Set()); // nothing visible
+        const label = c.querySelector(RANGE_LABEL_SEL);
+        expect(label?.textContent).toBe('Elevation: no data');
+    });
+
     it('accepts position config', () => {
         const c = setup();
         const { ctx } = mockCtx();

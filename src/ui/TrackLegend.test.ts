@@ -46,14 +46,20 @@ interface MockSpies {
 
 /** Create a minimal UIContext mock, returning the context and spy references. */
 function mockCtx(trips: TripData[]): { ctx: UIContext; spies: MockSpies } {
-    const setTrackVisible = vi.fn();
+    // Visibility state mirrors what LayerManager would track so that
+    // isTrackVisible() reflects calls to setTrackVisible() in the same test.
+    const visibilityState = new Map<string, boolean>();
+    const setTrackVisible = vi.fn().mockImplementation((id: string, visible: boolean) => {
+        visibilityState.set(id, visible);
+    });
+    const isTrackVisible = vi.fn().mockImplementation((id: string) => visibilityState.get(id) ?? true);
     const fitToTrack = vi.fn();
     const fitToTrackGroup = vi.fn();
     return {
         ctx: {
             map: {} as UIContext['map'],
             layers: {
-                isTrackVisible: vi.fn().mockReturnValue(true),
+                isTrackVisible,
                 setTrackVisible,
             } as unknown as UIContext['layers'],
             trips,
@@ -141,8 +147,11 @@ describe('groupTracksByDay', () => {
 const CHECKBOX_SEL = '.np-track-row__checkbox';
 /** Targets track-row-level checkboxes, excluding the group header checkbox. */
 const TRACK_CHECKBOX_SEL = '.np-track-row .np-track-row__checkbox';
+/** Targets the group-level checkbox inside the day-group header. */
+const GROUP_CHECKBOX_SEL = `.np-day-header ${CHECKBOX_SEL}`;
 /** Targets track-row-level zoom buttons, excluding the group header zoom button. */
 const TRACK_ZOOM_SEL = '.np-track-row .np-track-row__action';
+const TRACK_ROW_SEL = '.np-track-row';
 const DAY_GROUP_COLLAPSED = 'np-day-group--collapsed';
 
 describe('TrackLegend', () => {
@@ -233,9 +242,9 @@ describe('TrackLegend', () => {
         const trip = makeTrip([makeTrack(DAY_1, 'A')]);
         const { ctx } = mockCtx([trip]);
         const legend = new TrackLegend(c, ctx);
-        expect(c.querySelectorAll('.np-track-row')).toHaveLength(1);
+        expect(c.querySelectorAll(TRACK_ROW_SEL)).toHaveLength(1);
         legend.update();
-        expect(c.querySelectorAll('.np-track-row')).toHaveLength(1);
+        expect(c.querySelectorAll(TRACK_ROW_SEL)).toHaveLength(1);
     });
 
     it('day groups start collapsed and toggle on header click', () => {
@@ -281,7 +290,7 @@ describe('TrackLegend', () => {
         const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_1, 'B')]);
         const { ctx, spies } = mockCtx([trip]);
         new TrackLegend(c, ctx);
-        const groupCheckbox = c.querySelector(`.np-day-header ${CHECKBOX_SEL}`) as HTMLInputElement;
+        const groupCheckbox = c.querySelector(GROUP_CHECKBOX_SEL) as HTMLInputElement;
         groupCheckbox.checked = false;
         groupCheckbox.dispatchEvent(new Event('change'));
         expect(spies.setTrackVisible).toHaveBeenCalledWith(`${DAY_1}::A`, false);
@@ -304,5 +313,64 @@ describe('TrackLegend', () => {
         const { ctx } = mockCtx([trip]);
         new TrackLegend(c, ctx, { position: 'bottomleft' });
         expect(c.querySelector('.np-panel--bottomleft')).not.toBeNull();
+    });
+
+    it('group checkbox is checked when all tracks in group are visible', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_1, 'B')]);
+        const { ctx } = mockCtx([trip]);
+        // default mock returns true for every track
+        new TrackLegend(c, ctx);
+        const groupCb = c.querySelector(GROUP_CHECKBOX_SEL) as HTMLInputElement;
+        expect(groupCb.checked).toBe(true);
+        expect(groupCb.indeterminate).toBe(false);
+    });
+
+    it('group checkbox is unchecked when no tracks in group are visible', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_1, 'B')]);
+        const { ctx } = mockCtx([trip]);
+        (ctx.layers.isTrackVisible as ReturnType<typeof vi.fn>).mockReturnValue(false);
+        new TrackLegend(c, ctx);
+        const groupCb = c.querySelector(GROUP_CHECKBOX_SEL) as HTMLInputElement;
+        expect(groupCb.checked).toBe(false);
+        expect(groupCb.indeterminate).toBe(false);
+    });
+
+    it('group checkbox is indeterminate when only some tracks in group are visible', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_1, 'B')]);
+        const { ctx } = mockCtx([trip]);
+        // A is visible, B is not
+        (ctx.layers.isTrackVisible as ReturnType<typeof vi.fn>).mockImplementation(
+            (id: string) => id === `${DAY_1}::A`,
+        );
+        new TrackLegend(c, ctx);
+        const groupCb = c.querySelector(GROUP_CHECKBOX_SEL) as HTMLInputElement;
+        expect(groupCb.indeterminate).toBe(true);
+    });
+
+    it('toggling an individual track updates the group checkbox to indeterminate', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_1, 'B')]);
+        const { ctx } = mockCtx([trip]);
+        new TrackLegend(c, ctx);
+        // Hide track A — now one of two tracks is visible
+        const trackCheckboxes = Array.from(c.querySelectorAll<HTMLInputElement>(TRACK_CHECKBOX_SEL));
+        const cbA = trackCheckboxes[0];
+        cbA.checked = false;
+        cbA.dispatchEvent(new Event('change'));
+        const groupCb = c.querySelector(GROUP_CHECKBOX_SEL) as HTMLInputElement;
+        expect(groupCb.indeterminate).toBe(true);
+    });
+
+    it('update() does not duplicate rows', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A'), makeTrack(DAY_1, 'B')]);
+        const { ctx } = mockCtx([trip]);
+        const legend = new TrackLegend(c, ctx);
+        expect(c.querySelectorAll(TRACK_ROW_SEL)).toHaveLength(2);
+        legend.update();
+        expect(c.querySelectorAll(TRACK_ROW_SEL)).toHaveLength(2);
     });
 });
