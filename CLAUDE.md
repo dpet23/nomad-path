@@ -13,8 +13,9 @@ See `PROJECT_SPEC.md` for full requirements. This file records implementation st
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 5 complete (branch `epic/watch`, not yet merged to master). Starting Epic 6.
+- Epic 5 complete and merged to master. Starting Epic 6.
 - 240 unit tests + 66 Playwright e2e tests, all passing
+- Epic 5 additions: `preprocessing/watch.js` (file watcher + serve), `copy:demo`/`copy:e2e`/`clean` scripts, serve scoped to `./e2e` for tests, `e2e/helpers.ts` with shared `TEST_PAGE`/`gotoMap` fast-fail
 - Epic 4 additions: TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls, CSS injection, BasePanel, ColorRamps extraction, dynamic attribute ranges, POI category visibility + defaultVisible from yaml, setBasemap state restoration (tracks + colour attribute + ranges + POI categories), native MapControls (fit-to-tracks button top-left, basemap select top-right)
 - Bugs fixed in Epic 4: setBasemap() discarded dynamic ranges (AttributeLegend constructor didn't sync LayerManager._ranges); setBasemap() POI category restoration was one-directional; serve.json trailingSlash broke test.html relative paths (fixed with absolute paths)
 - Bugs fixed in Epic 3: basemap switch layer restoration, fitToTracks visibility filter, initial bounds visibility filter, POI circles not rendering on OSM, POI labels not rendering (wrong glyph URL path + missing text-font)
@@ -80,7 +81,8 @@ Expected label constants (write from memory, not from running code):
 - **MapLibre 4.7.1**: does NOT emit `style.load` after `setStyle()`. Use `styledata` event + check for source absence + try/catch on `addLayers`. `isStyleLoaded()` also unreliable (depends on tile loading). See `src/index.ts setBasemap()`.
 - **MapLibre GeoJSON + symbol layers**: Adding a symbol layer to the same source as a circle layer gates circle tile delivery on glyph loading. Always use a SEPARATE source for label/symbol layers.
 - **Playwright headless**: `idle` event never fires with OSM basemap (tile fetches stay pending). `querySourceFeatures` unreliable; use `source.serialize().data.features` for data checks. Use `waitForFunction` polling `queryRenderedFeatures` for render checks. `isMoving()` is reliable; `isStyleLoaded()` is not.
-- **serve.json trailingSlash**: `serve.json` has `trailingSlash: true` (needed for demo routing). This redirects `/e2e/test.html` → `/e2e/test` → `/e2e/test/`. Browser base URL becomes `/e2e/test/`, so relative paths like `../dist/` resolve to `/e2e/dist/` (404). Fix: always use ABSOLUTE paths in `e2e/test.html`: `/dist/nomad-path.js`, `/dist/nomad-path.css`, `/e2e/fixture.geojson`.
+- **serve.json trailingSlash**: `serve.json` has `trailingSlash: true` (needed for demo routing). e2e tests use `serve ./e2e` (scoped, not `serve .`) so this no longer affects e2e. `e2e/test.html` uses absolute paths (`/dist/nomad-path.js`, `/fixture.geojson`) which resolve correctly from the `e2e/` root.
+- **e2e helpers**: shared `e2e/helpers.ts` exports `TEST_PAGE = '/test.html'` and `gotoMap()`. `gotoMap` checks `response.status() === 200` immediately (fails fast on wrong path) then waits up to 1s for `nomadMapReady`. `playwright.config.ts` imports nothing from helpers — `webServer.url` is just `BASE_URL` (server-up check only).
 - **Locator ambiguity**: `.np-day-group .np-track-row__checkbox` matches BOTH the group-level checkbox (in `.np-day-header`) AND track-row checkboxes. Always use `.np-track-row .np-track-row__checkbox` for track-level only.
 
 ## npm Scripts
