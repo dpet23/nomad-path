@@ -7,12 +7,13 @@ See `PROJECT_SPEC.md` for full requirements. This file records implementation st
 - [x] Epic 2: Preprocessing pipeline (parsers, enrichment, grouping, output) — 127 unit tests
 - [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 26 e2e tests
 - [x] Epic 4: UI components (TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls) — 240 unit tests + 66 e2e tests
-- [ ] Epic 5: Testing — close e2e and unit test gaps identified in Epic 4 retrospective
-- [ ] Epic 6: Cleanup & polish — UX improvements, preprocessing fixes, performance
+- [ ] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
+- [ ] Epic 6: Testing — close e2e and unit test gaps identified in Epic 4 retrospective
+- [ ] Epic 7: Cleanup & polish — UX improvements, preprocessing fixes, performance
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 4 complete (branch `epic/ui`, not yet merged to master). Starting Epic 5.
+- Epic 4 complete and merged to master. Starting Epic 5 (watch mode).
 - 240 unit tests + 66 Playwright e2e tests, all passing
 - Epic 4 additions: TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls, CSS injection, BasePanel, ColorRamps extraction, dynamic attribute ranges, POI category visibility + defaultVisible from yaml, setBasemap state restoration (tracks + colour attribute + ranges + POI categories), native MapControls (fit-to-tracks button top-left, basemap select top-right)
 - Bugs fixed in Epic 4: setBasemap() discarded dynamic ranges (AttributeLegend constructor didn't sync LayerManager._ranges); setBasemap() POI category restoration was one-directional; serve.json trailingSlash broke test.html relative paths (fixed with absolute paths)
