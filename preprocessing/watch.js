@@ -9,11 +9,22 @@ const USAGE = `
 Usage: npm run watch -- -i <dir> [-n <name>]
 
 Builds demo/trip-data.geojson once, then rebuilds whenever files in <dir> change.
-Starts a local dev server. Open http://localhost:3000/ to view the map.
+Starts a local dev server. Open the printed URL to view the map.
 
 Options:
   -i, --input  <dir>   Directory to watch for GPS files [required]
   -n, --name   <name>  Trip name in GeoJSON metadata
+
+To keep running after disconnecting from a remote session:
+
+  nohup npm run watch -- -i <dir> > watch.log 2>&1 &
+  echo $!   # note the PID to kill it later
+
+Or with tmux:
+
+  tmux new -s watch
+  npm run watch -- -i <dir>
+  # Ctrl+B then D to detach; reconnect with: tmux attach -t watch
 `.trim();
 
 let values;

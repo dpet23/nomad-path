@@ -7,13 +7,13 @@ See `PROJECT_SPEC.md` for full requirements. This file records implementation st
 - [x] Epic 2: Preprocessing pipeline (parsers, enrichment, grouping, output) — 127 unit tests
 - [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 26 e2e tests
 - [x] Epic 4: UI components (TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls) — 240 unit tests + 66 e2e tests
-- [ ] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
+- [x] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
 - [ ] Epic 6: Testing — close e2e and unit test gaps identified in Epic 4 retrospective
 - [ ] Epic 7: Cleanup & polish — UX improvements, preprocessing fixes, performance
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 4 complete and merged to master. Starting Epic 5 (watch mode).
+- Epic 5 complete (branch `epic/watch`, not yet merged to master). Starting Epic 6.
 - 240 unit tests + 66 Playwright e2e tests, all passing
 - Epic 4 additions: TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls, CSS injection, BasePanel, ColorRamps extraction, dynamic attribute ranges, POI category visibility + defaultVisible from yaml, setBasemap state restoration (tracks + colour attribute + ranges + POI categories), native MapControls (fit-to-tracks button top-left, basemap select top-right)
 - Bugs fixed in Epic 4: setBasemap() discarded dynamic ranges (AttributeLegend constructor didn't sync LayerManager._ranges); setBasemap() POI category restoration was one-directional; serve.json trailingSlash broke test.html relative paths (fixed with absolute paths)
@@ -90,8 +90,9 @@ build:data         node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-
 test:unit          vitest run  (fast, no coverage report)
 test:coverage      npm run test:unit -- --coverage  (unit + coverage gate, used in pre-commit)
 test:e2e:install   playwright install chromium  (one-time per machine)
-demo               build:lib + npx serve .  (requires demo/trip-data.geojson from build:data)
-test:e2e           build:lib + playwright test --project=chromium
+demo               build:lib + copy:demo + npx serve ./demo  (requires demo/trip-data.geojson from build:data)
+watch              build:lib + copy:demo + node preprocessing/watch.js -i <dir> [-n <name>]
+test:e2e           build:lib + copy:e2e + playwright test --project=chromium
 test:e2e:all       build:lib + playwright test  (chromium + firefox + webkit)
 test:e2e -- --grep "pattern"   run specific tests by name
 dev / lint / lint:fix / format / typecheck / test:watch / clean
