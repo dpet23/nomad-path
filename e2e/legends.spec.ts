@@ -18,8 +18,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-
-const TEST_PAGE = '/e2e/test.html';
+import { gotoMap } from './helpers';
 
 // Track IDs derived from day::name
 const TRACK_TOKYO   = '2024-01-01::Tokyo Drive';
@@ -34,14 +33,6 @@ const ELEV_LABEL_VISIBLE     = 'Elevation: 10-10000 m';     // Tokyo 10-20 + Hel
 const ELEV_LABEL_TOKYO_ONLY  = 'Elevation: 10-20 m';        // after hiding Helsinki
 
 type PwPage = import('@playwright/test').Page;
-
-/** Navigate and wait for NomadPath to be ready. */
-async function gotoMap(page: PwPage) {
-    await page.goto(TEST_PAGE);
-    await page.waitForFunction(() => (window as any).nomadMapReady === true, { timeout: 30_000 });
-    const error = await page.evaluate(() => (window as any).nomadMapError);
-    expect(error).toBeUndefined();
-}
 
 /** Wait for any map animation to settle. */
 async function waitForSettle(page: PwPage) {

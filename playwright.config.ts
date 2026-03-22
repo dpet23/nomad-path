@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+const BASE_URL = 'http://localhost:3000';
 
 export default defineConfig({
     testDir: 'e2e',
@@ -7,7 +8,7 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 0,
     reporter: 'html',
     use: {
-        baseURL: 'http://localhost:3000',
+        baseURL: BASE_URL,
         trace: 'on-first-retry',
     },
     timeout: 30_000, // Map tile loading can be slow
@@ -15,9 +16,9 @@ export default defineConfig({
         timeout: 10_000,
     },
     webServer: {
-        command: 'npx serve . -l 3000 --no-clipboard',
-        url: 'http://localhost:3000',
-        reuseExistingServer: !process.env.CI,
+        command: 'npx serve ./e2e -l 3000 --no-clipboard',
+        url: BASE_URL,
+        reuseExistingServer: false,
         timeout: 60_000,
     },
     projects: [
