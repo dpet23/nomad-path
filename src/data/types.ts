@@ -131,4 +131,6 @@ export interface POIProperties {
     type: 'poi';
     category: string;
     label?: string;
+    /** Whether this POI's category is shown at map load. Defaults to true when absent. */
+    defaultVisible?: boolean;
 }

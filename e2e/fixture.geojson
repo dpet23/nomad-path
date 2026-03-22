@@ -3,12 +3,12 @@
   "metadata": {
     "tripName": "E2E Test Trip",
     "attributeRanges": {
-      "elevation": { "min": 10, "max": 50, "unit": "m" },
-      "speed": { "min": 10, "max": 60, "unit": "km/h" }
+      "elevation": { "min": 1, "max": 10000, "unit": "m" },
+      "speed": { "min": 3, "max": 800, "unit": "km/h" }
     },
     "stats": {
       "trackCount": 3,
-      "waypointCount": 1,
+      "waypointCount": 2,
       "dayCount": 3,
       "transportModes": { "drive": 1, "walk": 1, "flight": 1 },
       "dateRange": { "start": "2024-01-01", "end": "2024-01-03" }
@@ -32,7 +32,7 @@
         "transportMode": "drive",
         "defaultVisible": true,
         "group": null,
-        "elevations": [10, 30, 50],
+        "elevations": [10, 15, 20],
         "speeds": [30, 45, 60],
         "sunAngles": [180, 180, 180]
       }
@@ -54,8 +54,8 @@
         "transportMode": "walk",
         "defaultVisible": false,
         "group": "hidden-group",
-        "elevations": [20, 25, 30],
-        "speeds": [10, 12, 11],
+        "elevations": [1, 2, 3],
+        "speeds": [3, 5, 7],
         "sunAngles": [200, 205, 210]
       }
     },
@@ -77,8 +77,8 @@
         "defaultVisible": true,
         "excludeFromAutoBounds": true,
         "group": "flights",
-        "elevations": [100, 5000, 100],
-        "speeds": [100, 800, 100],
+        "elevations": [5000, 7500, 10000],
+        "speeds": [200, 500, 800],
         "sunAngles": [10, 10, 10]
       }
     },
@@ -92,6 +92,19 @@
         "type": "poi",
         "name": "Test Hotel",
         "category": "accommodation"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [139.7100, 35.7000]
+      },
+      "properties": {
+        "type": "poi",
+        "name": "Mount Takao",
+        "category": "viewpoint",
+        "defaultVisible": false
       }
     }
   ]

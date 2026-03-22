@@ -95,13 +95,16 @@ function trackToFeature(track) {
  * Convert a raw waypoint into a GeoJSON Point Feature.
  *
  * @param {RawWaypoint} waypoint
+ * @param {Record<string, { defaultVisible?: boolean }>} poiCategoryConfig
  * @returns {import('../../src/data/types.js').POIFeature}
  */
-function waypointToFeature(waypoint) {
+function waypointToFeature(waypoint, poiCategoryConfig) {
+    const defaultVisible = poiCategoryConfig[waypoint.category]?.defaultVisible ?? true;
     return point([waypoint.lon, waypoint.lat], {
         name: waypoint.name,
         type: 'poi',
         category: waypoint.category,
+        defaultVisible,
     });
 }
 
@@ -120,19 +123,26 @@ function waypointToFeature(waypoint) {
  * @param {GroupedTrack[]} opts.tracks
  * @param {RawWaypoint[]} opts.waypoints
  * @param {string} opts.tripName
+ * @param {Record<string, { defaultVisible?: boolean }>} [opts.poiCategoryConfig]
  * @returns {import('../../src/data/types.js').TripData}
  */
-export function buildGeoJSON({ tracks, waypoints, tripName }) {
+export function buildGeoJSON({ tracks, waypoints, tripName, poiCategoryConfig = {} }) {
     const elevRange = { min: Infinity, max: -Infinity };
     const speedRange = { min: Infinity, max: -Infinity };
 
-    const trackFeatures = tracks.map(track => {
+    const sortedTracks = [...tracks].sort((a, b) => {
+        const keyA = a.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? a.day;
+        const keyB = b.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? b.day;
+        return keyA.localeCompare(keyB);
+    });
+
+    const trackFeatures = sortedTracks.map(track => {
         updateRange(elevRange, track.points.map(p => p.elevation));
         updateRange(speedRange, track.points.map(p => p.speedKmh));
         return trackToFeature(track);
     });
 
-    const poiFeatures = waypoints.map(waypointToFeature);
+    const poiFeatures = waypoints.map(w => waypointToFeature(w, poiCategoryConfig));
 
     const attributeRanges = {};
     if (isFinite(elevRange.min)) {

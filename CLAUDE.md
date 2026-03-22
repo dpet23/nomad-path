@@ -6,16 +6,17 @@ See `PROJECT_SPEC.md` for full requirements. This file records implementation st
 - [x] Epic 1: Project setup
 - [x] Epic 2: Preprocessing pipeline (parsers, enrichment, grouping, output) — 127 unit tests
 - [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 26 e2e tests
-- [ ] Epic 4: UI components (TrackLegend, AttributeLegend, POI markers, mobile menu)
-- [ ] Epic 5: Integration & polish
+- [x] Epic 4: UI components (TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls) — 240 unit tests + 66 e2e tests
+- [ ] Epic 5: Testing — close e2e and unit test gaps identified in Epic 4 retrospective
+- [ ] Epic 6: Cleanup & polish — UX improvements, preprocessing fixes, performance
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 3 complete and manually verified. Starting Epic 4.
-- 127 unit tests + 26 Playwright e2e tests, all passing
+- Epic 4 complete (branch `epic/ui`, not yet merged to master). Starting Epic 5.
+- 240 unit tests + 66 Playwright e2e tests, all passing
+- Epic 4 additions: TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls, CSS injection, BasePanel, ColorRamps extraction, dynamic attribute ranges, POI category visibility + defaultVisible from yaml, setBasemap state restoration (tracks + colour attribute + ranges + POI categories), native MapControls (fit-to-tracks button top-left, basemap select top-right)
+- Bugs fixed in Epic 4: setBasemap() discarded dynamic ranges (AttributeLegend constructor didn't sync LayerManager._ranges); setBasemap() POI category restoration was one-directional; serve.json trailingSlash broke test.html relative paths (fixed with absolute paths)
 - Bugs fixed in Epic 3: basemap switch layer restoration, fitToTracks visibility filter, initial bounds visibility filter, POI circles not rendering on OSM, POI labels not rendering (wrong glyph URL path + missing text-font)
-- POI root cause: MapLibre gates GeoJSON tile delivery on glyph loading when a symbol layer shares the source. Fix: `np-pois` (circles) and `np-pois-labels-src` (labels) are now separate sources.
-- openfreemap font server: use `/fonts/` path (not `/glyphs/`) and `Noto Sans Regular` (not the MapLibre default "Open Sans Regular" which openfreemap doesn't serve)
 
 ## Key Deviations from Spec
 - Public API class is `NomadPath` (not `TravelMap` — spec name is outdated)
@@ -30,14 +31,14 @@ src/styling/    ColorRamps, SymbolLibrary (pure functions)
 src/index.ts    Public API (NomadPath.create)
 preprocessing/  Node.js GPX/KML → trip-data.geojson pipeline
 demo/           index.html demo page (npx serve .)
-e2e/            Playwright tests (fixture.geojson, test.html, map.spec.ts)
+e2e/            Playwright tests (fixture.geojson, test.html, map.spec.ts, legends.spec.ts)
 ```
 
 ## Rendering Architecture
 - Per-segment: each track → 2-point LineString features with all attributes embedded
 - Antimeridian: segments with |dLon| > 180 split at ±180° in `buildSegmentFeatures`
 - Day rainbow: `interpolate-hcl` with stops at 1/3 (green) and 2/3 (cyan) — forces forward 270° arc
-- Flight day keys: `flight-YYYY-MM-DD-name-slug` — embed date for chronological sorting in Epic 4 legend
+- Flight day keys: `flight-YYYY-MM-DD-name-slug` — embed date for chronological sorting in legend
 
 ## Group / Visibility System
 Named immediate subfolders define track groups. Optional `nomadpath.yaml` at input root:
@@ -48,9 +49,26 @@ groups:
 ```
 Generate template: `npm run build:data -- -i <dir> --init`
 
-## Dynamic Attribute Ranges (deferred to Epic 4)
-On visibility toggle, recompute elevation/speed min/max from visible tracks in GeoJSON source.
-Show "Elevation: 0–847m · based on visible tracks" in attribute legend.
+## Dynamic Attribute Ranges
+On visibility toggle, recompute elevation/speed min/max from visible tracks only.
+`AttributeLegend.updateRanges(visibleIds)` calls `computeVisibleRanges()`, updates label, calls `ctx.layers.updateRanges()` to sync MapLibre paint property.
+CRITICAL: `AttributeLegend` constructor must call `ctx.layers.updateRanges(this._ranges)` immediately after computing ranges — otherwise `LayerManager._ranges` stays at static merged-metadata until first toggle.
+
+## Two-Layer Observable State (testing lesson)
+Range LABEL and map PAINT PROPERTY are separate state. Tests that only check the legend label pass even when map colours are wrong. Always test BOTH:
+- Label: text content of `.np-attr-range`
+- Layer ranges: `(window as any).nomadMap._layers._ranges?.speed?.min` (TypeScript private = JS runtime public)
+
+## e2e Fixture Design
+`e2e/fixture.geojson` uses NON-OVERLAPPING attribute ranges per track so any hidden-track leakage is detectable by exact value:
+- Tokyo Drive (visible): speed [30,45,60] km/h, elevation [10,15,20] m
+- Sydney Walk (defaultVisible: false): speed [3,5,7] km/h, elevation [1,2,3] m
+- Helsinki Flight (visible): speed [200,500,800] km/h, elevation [5000,7500,10000] m
+- POI: "Mount Takao" viewpoint, defaultVisible: false
+Expected label constants (write from memory, not from running code):
+  `SPEED_LABEL_VISIBLE = 'Speed: 30-800 km/h'` (Tokyo+Helsinki only)
+  `SPEED_LABEL_ALL     = 'Speed: 3-800 km/h'`  (all 3 tracks)
+  `SPEED_LABEL_TOKYO   = 'Speed: 30-60 km/h'`  (Tokyo only)
 
 ## Toolchain Gotchas
 - **ESLint**: v8.57, legacy `.eslintrc.json` format. `eslint-plugin-prefer-arrow-functions` removed (ESLint 9+ only)
@@ -61,6 +79,8 @@ Show "Elevation: 0–847m · based on visible tracks" in attribute legend.
 - **MapLibre 4.7.1**: does NOT emit `style.load` after `setStyle()`. Use `styledata` event + check for source absence + try/catch on `addLayers`. `isStyleLoaded()` also unreliable (depends on tile loading). See `src/index.ts setBasemap()`.
 - **MapLibre GeoJSON + symbol layers**: Adding a symbol layer to the same source as a circle layer gates circle tile delivery on glyph loading. Always use a SEPARATE source for label/symbol layers.
 - **Playwright headless**: `idle` event never fires with OSM basemap (tile fetches stay pending). `querySourceFeatures` unreliable; use `source.serialize().data.features` for data checks. Use `waitForFunction` polling `queryRenderedFeatures` for render checks. `isMoving()` is reliable; `isStyleLoaded()` is not.
+- **serve.json trailingSlash**: `serve.json` has `trailingSlash: true` (needed for demo routing). This redirects `/e2e/test.html` → `/e2e/test` → `/e2e/test/`. Browser base URL becomes `/e2e/test/`, so relative paths like `../dist/` resolve to `/e2e/dist/` (404). Fix: always use ABSOLUTE paths in `e2e/test.html`: `/dist/nomad-path.js`, `/dist/nomad-path.css`, `/e2e/fixture.geojson`.
+- **Locator ambiguity**: `.np-day-group .np-track-row__checkbox` matches BOTH the group-level checkbox (in `.np-day-header`) AND track-row checkboxes. Always use `.np-track-row .np-track-row__checkbox` for track-level only.
 
 ## npm Scripts
 ```

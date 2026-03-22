@@ -7,10 +7,17 @@ import {
     BASEMAPS,
     createMap,
     fitToFeatures,
+    fitToPOI as engineFitToPOI,
     setBasemap as engineSetBasemap,
     waitForLoad,
 } from './core/MapEngine';
 import type { TravelMapConfig, TripData } from './data/types';
+import { AttributeLegend } from './ui/AttributeLegend';
+import { MapControls } from './ui/MapControls';
+import { MobileMenu } from './ui/MobileMenu';
+import { POILegend } from './ui/POILegend';
+import { TrackLegend } from './ui/TrackLegend';
+import type { UIContext } from './ui/UIContext';
 
 export type { AttributeRange, AttributeRanges, TravelMapConfig, TripData, TripMetadata } from './data/types';
 export type { BasemapId, ColourAttribute };
@@ -24,10 +31,25 @@ export { BASEMAPS, TRANSPORT_MODE_COLOURS };
  * A fully initialised Nomad Path map instance.
  * Obtain one via {@link NomadPath.create}.
  */
+/** Internal UI component references. */
+/** References to the active legend UI components. */
+interface UIComponents {
+    trackLegend: TrackLegend;
+    attrLegend: AttributeLegend;
+    poiLegend: POILegend;
+    mobileMenu: MobileMenu;
+    mapControls: MapControls;
+}
+
+/**
+ * A fully initialised Nomad Path map instance.
+ * Obtain one via {@link NomadPath.create}.
+ */
 export class NomadPath {
     private readonly _map: MaplibreMap;
     private readonly _layers: LayerManager;
     private readonly _trips: TripData[];
+    private _ui: UIComponents | null;
 
     /**
      * Private — use {@link NomadPath.create} to obtain an instance.
@@ -35,11 +57,13 @@ export class NomadPath {
      * @param map - initialised MapLibre map instance
      * @param layers - layer manager bound to the map
      * @param trips - loaded trip data
+     * @param ui - optional UI component references
      */
-    private constructor(map: MaplibreMap, layers: LayerManager, trips: TripData[]) {
+    private constructor(map: MaplibreMap, layers: LayerManager, trips: TripData[], ui: UIComponents | null) {
         this._map = map;
         this._layers = layers;
         this._trips = trips;
+        this._ui = ui;
     }
 
     /**
@@ -86,7 +110,38 @@ export class NomadPath {
             ]);
         }
 
-        return new NomadPath(map, layers, trips);
+        const instance = new NomadPath(map, layers, trips, null);
+
+        // Wire legend UI if the map container element is available.
+        const containerEl = map.getContainer();
+        const ctx: UIContext = {
+            map,
+            layers,
+            trips,
+            fitToTrack: (trackId: string) => instance.fitToTrack(trackId),
+            fitToTrackGroup: (trackIds: string[]) => instance.fitToTrackGroup(trackIds),
+            fitToPOI: (coords: [number, number], zoom?: number) => engineFitToPOI(map, coords, zoom),
+        };
+
+        const legendCfg = config.legends ?? {};
+        const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
+        const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
+            onVisibilityChange: () => {
+                attrLegend.updateRanges(layers.visibleIds);
+            },
+        });
+        const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
+        const mobileMenu = new MobileMenu(containerEl, [trackLegend, attrLegend, poiLegend]);
+        const mapControls = new MapControls(
+            containerEl,
+            () => instance.fitToTracks(),
+            id => instance.setBasemap(id),
+            basemapId,
+        );
+
+        instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu, mapControls };
+
+        return instance;
     }
 
     // ---------------------------------------------------------------------------
@@ -100,6 +155,7 @@ export class NomadPath {
     setBasemap(basemapId: BasemapId): this {
         const prevAttribute = this._layers.colourAttribute;
         const prevVisibleIds = new Set(this._layers.visibleIds);
+        const prevVisiblePOICategories = new Set(this._layers.visiblePOICategories);
 
         // MapLibre 4 does not emit a 'style.load' event after setStyle(). We use
         // 'styledata' instead, but avoid isStyleLoaded() — it returns false until
@@ -133,6 +189,20 @@ export class NomadPath {
             if (prevAttribute !== 'day') {
                 this._layers.setColourAttribute(prevAttribute);
             }
+            // Restore exact previous POI category visibility (bidirectional).
+            for (const category of this._layers.visiblePOICategories) {
+                if (!prevVisiblePOICategories.has(category)) {
+                    this._layers.setPOICategoryVisible(category, false);
+                }
+            }
+            for (const category of prevVisiblePOICategories) {
+                if (!this._layers.visiblePOICategories.has(category)) {
+                    this._layers.setPOICategoryVisible(category, true);
+                }
+            }
+            // Recompute attribute ranges from the restored visible set so the
+            // colour scale stays consistent with the visible tracks.
+            this._ui?.attrLegend.updateRanges(this._layers.visibleIds);
         };
 
         this._map.once('styledata', onStyleData);
@@ -156,6 +226,11 @@ export class NomadPath {
         return this._layers.isTrackVisible(trackId);
     }
 
+    /** Return true if the given POI category is currently visible. */
+    isPOICategoryVisible(category: string): boolean {
+        return this._layers.isPOICategoryVisible(category);
+    }
+
     // ---------------------------------------------------------------------------
     // Colour attribute
     // ---------------------------------------------------------------------------
@@ -174,6 +249,21 @@ export class NomadPath {
     // ---------------------------------------------------------------------------
     // Viewport
     // ---------------------------------------------------------------------------
+
+    /** Fit the viewport to the track with the given ID. No-op if the ID is not found. */
+    fitToTrack(trackId: string): this {
+        const track = extractTracks(this._trips).find(t => deriveTrackId(t) === trackId);
+        if (track) fitToFeatures(this._map, [track]);
+        return this;
+    }
+
+    /** Fit the viewport to all tracks matching the given IDs. No-op if none are found. */
+    fitToTrackGroup(trackIds: string[]): this {
+        const ids = new Set(trackIds);
+        const tracks = extractTracks(this._trips).filter(t => ids.has(deriveTrackId(t)));
+        if (tracks.length > 0) fitToFeatures(this._map, tracks);
+        return this;
+    }
 
     /** Fit the viewport to all currently visible tracks, handling antimeridian crossings. */
     fitToTracks(padding = 40): this {

@@ -16,6 +16,7 @@ export default defineConfig({
                 // covered by Playwright e2e tests instead of unit tests.
                 'src/index.ts',
                 'src/core/MapEngine.ts',
+                'src/core/LayerManager.ts',
                 'src/data/types.ts',
                 'preprocessing/build-trip-data.js',
             ],

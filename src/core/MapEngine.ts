@@ -10,6 +10,8 @@ import maplibregl, { type Map, type StyleSpecification } from 'maplibre-gl';
 export type BasemapId = 'osm' | 'blueMarble';
 
 interface BasemapConfig {
+    /** Human-readable label shown in the basemap selector UI. */
+    label: string;
     /** MapLibre style URL or inline style object. */
     style: string | StyleSpecification;
     minZoom: number;
@@ -52,12 +54,14 @@ function buildBlueMarbleStyle(): StyleSpecification {
 
 export const BASEMAPS: Record<BasemapId, BasemapConfig> = {
     osm: {
+        label: 'OpenStreetMap',
         style: 'https://tiles.openfreemap.org/styles/bright',
         minZoom: 0,
         maxZoom: 20,
         attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     },
     blueMarble: {
+        label: 'Blue Marble',
         style: buildBlueMarbleStyle(),
         minZoom: 0,
         maxZoom: 8,
@@ -160,4 +164,15 @@ export function fitToFeatures(map: Map, features: Feature[], padding = 40): void
         ],
         { padding },
     );
+}
+
+/**
+ * Fly the map to a single POI coordinate.
+ *
+ * @param map - MapLibre map instance
+ * @param coords - [longitude, latitude] of the POI
+ * @param zoom - target zoom level (default 14)
+ */
+export function fitToPOI(map: Map, coords: [number, number], zoom = 14): void {
+    map.flyTo({ center: coords, zoom });
 }

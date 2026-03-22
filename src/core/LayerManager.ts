@@ -2,14 +2,11 @@ import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, Map as MaplibreMap } from 'maplibre-gl';
 
 import type { AttributeRanges, POIFeature, TrackFeature, TripData } from '../data/types';
+import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/** Supported colour visualisation modes for track layers. */
-export type ColourAttribute = 'day' | 'speed' | 'elevation' | 'sunAngle' | 'transportMode';
+// Re-export for consumers that imported from LayerManager previously.
+export type { ColourAttribute, MaplibreExpression };
 
 /** Properties stored on each segment feature (2-point LineString). */
 interface SegmentProperties {
@@ -35,26 +32,8 @@ const POI_LAYER = 'np-pois-layer';
 const POI_LABEL_SOURCE = 'np-pois-labels-src';
 const POI_LABEL_LAYER = 'np-pois-labels';
 
-// ---------------------------------------------------------------------------
-// Transport mode colours (exported — usable by UI and colour expressions)
-// ---------------------------------------------------------------------------
-
-/**
- * Canonical colour map for transport modes.
- * Keys match the transportMode strings from TrackProperties.
- * The fallback colour is used for unknown/unlisted modes.
- */
-export const TRANSPORT_MODE_COLOURS: Record<string, string> = {
-    walk: '#4CAF50',
-    drive: '#2196F3',
-    flight: '#F44336',
-    boat: '#00BCD4',
-    cycling: '#FF9800',
-    skiing: '#9C27B0',
-};
-
-/** Fallback colour for unrecognised transport modes. */
-export const TRANSPORT_MODE_FALLBACK = '#9E9E9E';
+// Re-export transport mode colours for consumers that imported from here.
+export { TRANSPORT_MODE_COLOURS, TRANSPORT_MODE_FALLBACK } from '../styling/ColorRamps';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -190,122 +169,17 @@ export function buildSegmentFeatures(tracks: TrackFeature[]): SegmentBuildResult
 }
 
 // ---------------------------------------------------------------------------
-// Colour expressions
-// ---------------------------------------------------------------------------
-
-const MISSING_COLOUR = '#9E9E9E';
-
-// Rainbow spectrum: red (hue 0) at day 0, violet (hue 270) at the last day.
-// Uses interpolate-hcl for perceptual uniformity across the hue range.
-// Intermediate stops at 1/3 (green) and 2/3 (cyan) force HCL to take the
-// 270° forward arc through yellow→green→cyan→blue rather than the short
-// 90° backward path through magenta.
-const DAY_COLOUR_START = 'hsl(0, 85%, 52%)'; // red
-const DAY_COLOUR_MID1 = 'hsl(100, 72%, 38%)'; // green
-const DAY_COLOUR_MID2 = 'hsl(200, 78%, 46%)'; // cyan-blue
-const DAY_COLOUR_END = 'hsl(270, 85%, 52%)'; // violet
-
-// MapLibre's ExpressionSpecification is a complex discriminated union that
-// TypeScript cannot verify from manually-built array literals. We cast via
-// unknown — the runtime values are valid MapLibre expressions.
-type MaplibreExpression = ExpressionSpecification | string;
-
-/** Cast an unknown array literal to a MapLibre expression. */
-const expr = (e: unknown): MaplibreExpression => e as MaplibreExpression;
-
-/**
- * Build a MapLibre paint expression for the given colour attribute.
- *
- * @param attribute - which attribute to visualise
- * @param ranges - global min/max ranges from the GeoJSON metadata
- * @param maxDayIndex - highest day index in the data (for spectrum endpoints)
- */
-export function buildColourExpression(
-    attribute: ColourAttribute,
-    ranges: AttributeRanges,
-    maxDayIndex: number,
-): MaplibreExpression {
-    switch (attribute) {
-        case 'day':
-            // Single day: all red. Multi-day: spread across hue spectrum.
-            if (maxDayIndex === 0) return DAY_COLOUR_START;
-            return expr([
-                'interpolate-hcl',
-                ['linear'],
-                ['get', 'dayIndex'],
-                0,
-                DAY_COLOUR_START,
-                maxDayIndex * (1 / 3),
-                DAY_COLOUR_MID1,
-                maxDayIndex * (2 / 3),
-                DAY_COLOUR_MID2,
-                maxDayIndex,
-                DAY_COLOUR_END,
-            ]);
-
-        case 'transportMode':
-            return expr([
-                'match',
-                ['get', 'transportMode'],
-                ...Object.entries(TRANSPORT_MODE_COLOURS).flat(),
-                TRANSPORT_MODE_FALLBACK,
-            ]);
-
-        case 'speed': {
-            const r = ranges.speed;
-            if (!r) return MISSING_COLOUR;
-            const mid = (r.min + r.max) / 2;
-            return expr([
-                'case',
-                ['==', ['get', 'speedValue'], null],
-                MISSING_COLOUR,
-                ['interpolate', ['linear'], ['get', 'speedValue'], r.min, '#4CAF50', mid, '#FFEB3B', r.max, '#F44336'],
-            ]);
-        }
-
-        case 'elevation': {
-            const r = ranges.elevation;
-            if (!r) return MISSING_COLOUR;
-            const mid = (r.min + r.max) / 2;
-            return expr([
-                'case',
-                ['==', ['get', 'elevValue'], null],
-                MISSING_COLOUR,
-                ['interpolate', ['linear'], ['get', 'elevValue'], r.min, '#2E7D32', mid, '#FDD835', r.max, '#FFFFFF'],
-            ]);
-        }
-
-        case 'sunAngle':
-            return expr([
-                'case',
-                ['==', ['get', 'sunValue'], null],
-                MISSING_COLOUR,
-                [
-                    'interpolate',
-                    ['linear'],
-                    ['get', 'sunValue'],
-                    0,
-                    '#1A237E', // solar midnight
-                    90,
-                    '#FF6F00', // sunrise
-                    180,
-                    '#FDD835', // solar noon
-                    270,
-                    '#FF6F00', // sunset
-                    360,
-                    '#1A237E', // solar midnight (end)
-                ],
-            ]);
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Visibility filter
 // ---------------------------------------------------------------------------
 
 /** Build a MapLibre filter expression matching features whose trackId is in the visible set. */
 function buildVisibilityFilter(visibleIds: Set<string>): FilterSpecification {
     return ['in', ['get', 'trackId'], ['literal', [...visibleIds]]] as unknown as FilterSpecification;
+}
+
+/** Build a MapLibre filter expression showing only features whose category is visible. */
+function buildPOICategoryFilter(visibleCategories: Set<string>): FilterSpecification {
+    return ['in', ['get', 'category'], ['literal', [...visibleCategories]]] as unknown as FilterSpecification;
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +196,7 @@ function buildVisibilityFilter(visibleIds: Set<string>): FilterSpecification {
 export class LayerManager {
     private readonly _map: MaplibreMap;
     private _visibleIds = new Set<string>();
+    private _visiblePOICategories = new Set<string>();
     private _colourAttribute: ColourAttribute = 'day';
     private _ranges: AttributeRanges = {};
     private _maxDayIndex = 0;
@@ -355,6 +230,10 @@ export class LayerManager {
         this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
         // Respect the defaultVisible flag set during preprocessing.
         this._visibleIds = new Set(tracks.filter(t => t.properties.defaultVisible !== false).map(deriveTrackId));
+        // Initialise visible POI categories respecting the defaultVisible flag from preprocessing.
+        this._visiblePOICategories = new Set(
+            pois.filter(p => p.properties.defaultVisible !== false).map(p => p.properties.category),
+        );
 
         const { featureCollection, maxDayIndex } = buildSegmentFeatures(tracks);
         this._maxDayIndex = maxDayIndex;
@@ -398,6 +277,7 @@ export class LayerManager {
             id: POI_LAYER,
             type: 'circle',
             source: POI_SOURCE,
+            filter: buildPOICategoryFilter(this._visiblePOICategories),
             paint: {
                 'circle-radius': 12,
                 'circle-color': '#FF4081',
@@ -412,6 +292,7 @@ export class LayerManager {
             id: POI_LABEL_LAYER,
             type: 'symbol',
             source: POI_LABEL_SOURCE,
+            filter: buildPOICategoryFilter(this._visiblePOICategories),
             layout: {
                 'text-field': ['get', 'name'],
                 // Explicitly match openfreemap's available fonts; the MapLibre default
@@ -468,5 +349,51 @@ export class LayerManager {
     /** The currently active colour attribute. */
     get colourAttribute(): ColourAttribute {
         return this._colourAttribute;
+    }
+
+    /**
+     * Update the attribute ranges used for colour interpolation and re-apply
+     * the current colour expression. Call this after visibility changes to
+     * reflect dynamic ranges (e.g. "Elevation: 0–847m · visible tracks").
+     */
+    updateRanges(ranges: AttributeRanges): void {
+        this._ranges = ranges;
+        this._map.setPaintProperty(
+            TRACK_LAYER,
+            'line-color',
+            buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
+        );
+    }
+
+    /** The current attribute ranges (for legend display). */
+    get ranges(): Readonly<AttributeRanges> {
+        return this._ranges;
+    }
+
+    /** The highest day index in the loaded data (used for colour scale endpoints). */
+    get maxDayIndex(): number {
+        return this._maxDayIndex;
+    }
+
+    /** The set of POI categories currently visible. */
+    get visiblePOICategories(): ReadonlySet<string> {
+        return this._visiblePOICategories;
+    }
+
+    /** Show or hide all POIs belonging to the given category. */
+    setPOICategoryVisible(category: string, visible: boolean): void {
+        if (visible) {
+            this._visiblePOICategories.add(category);
+        } else {
+            this._visiblePOICategories.delete(category);
+        }
+        const filter = buildPOICategoryFilter(this._visiblePOICategories);
+        if (this._map.getLayer(POI_LAYER)) this._map.setFilter(POI_LAYER, filter);
+        if (this._map.getLayer(POI_LABEL_LAYER)) this._map.setFilter(POI_LABEL_LAYER, filter);
+    }
+
+    /** Return true if the given POI category is currently visible. */
+    isPOICategoryVisible(category: string): boolean {
+        return this._visiblePOICategories.has(category);
     }
 }

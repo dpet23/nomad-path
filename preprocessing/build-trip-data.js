@@ -86,6 +86,11 @@ if (values.init) {
 
 groups:
 ${groupEntries}
+
+# POI category visibility at map load. Category names come from waypoint <type> tags.
+# poi_categories:
+#   accommodation:
+#     defaultVisible: false
 `;
 
     writeFileSync(configPath, template);
@@ -100,16 +105,21 @@ ${groupEntries}
 
 /**
  * @typedef {{ defaultVisible?: boolean, excludeFromAutoBounds?: boolean }} GroupConfig
+ * @typedef {{ defaultVisible?: boolean }} POICategoryConfig
  */
 
 /** @type {Record<string, GroupConfig>} */
 let groupConfig = {};
+
+/** @type {Record<string, POICategoryConfig>} */
+let poiCategoryConfig = {};
 
 const configPath = join(inputDir, 'nomadpath.yaml');
 try {
     const raw = readFileSync(configPath, 'utf8');
     const parsed = parseYAML(raw);
     groupConfig = parsed?.groups ?? {};
+    poiCategoryConfig = parsed?.poi_categories ?? {};
 } catch (err) {
     if (err.code !== 'ENOENT') {
         console.error(`Warning: failed to load nomadpath.yaml: ${err.message}`);
@@ -209,7 +219,7 @@ if (allTracks.length === 0) {
 }
 
 const grouped = groupTracks(allTracks);
-const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName });
+const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName, poiCategoryConfig });
 
 writeFileSync(outputFile, JSON.stringify(geojson));
 

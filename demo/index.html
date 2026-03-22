@@ -11,17 +11,8 @@
         #toolbar {
             display: flex; align-items: center; gap: 12px;
             padding: 8px 14px; background: #1a1a2e; color: #eee; flex-shrink: 0;
-            flex-wrap: wrap;
         }
-        #toolbar h1 { font-size: 1rem; font-weight: 600; margin-right: 4px; }
-
-        #toolbar label { font-size: 0.8rem; color: #aaa; }
-        #toolbar select, #toolbar button {
-            font-size: 0.82rem; padding: 4px 8px; border-radius: 4px;
-            border: 1px solid #444; background: #2a2a4a; color: #eee; cursor: pointer;
-        }
-        #toolbar button:hover { background: #3a3a6a; }
-        #toolbar .sep { width: 1px; background: #444; height: 22px; }
+        #toolbar h1 { font-size: 1rem; font-weight: 600; }
 
         #map { flex: 1; }
 
@@ -36,28 +27,6 @@
 <body>
 <div id="toolbar">
     <h1>Nomad Path</h1>
-    <div class="sep"></div>
-
-    <label>Colour by</label>
-    <select id="colour-select">
-        <option value="day">Day</option>
-        <option value="speed">Speed</option>
-        <option value="elevation">Elevation</option>
-        <option value="sunAngle">Sun angle</option>
-        <option value="transportMode">Transport mode</option>
-    </select>
-
-    <div class="sep"></div>
-
-    <label>Basemap</label>
-    <select id="basemap-select">
-        <option value="osm">OpenStreetMap</option>
-        <option value="blueMarble">Blue Marble (NASA)</option>
-    </select>
-
-    <div class="sep"></div>
-
-    <button id="fit-btn">Fit to tracks</button>
 </div>
 
 <div id="map"></div>
@@ -65,6 +34,7 @@
 
 <!-- MapLibre CSS (needed for map controls) -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="../dist/nomad-path.css" />
 
 <script type="module">
 // ---------------------------------------------------------------------------
@@ -110,23 +80,6 @@ try {
     console.error(err);
 }
 
-// ---------------------------------------------------------------------------
-// Controls
-// ---------------------------------------------------------------------------
-document.getElementById('colour-select').addEventListener('change', e => {
-    nomadMap?.setColourAttribute(e.target.value);
-});
-
-document.getElementById('basemap-select').addEventListener('change', e => {
-    show('Switching basemap…');
-    nomadMap?.setBasemap(e.target.value);
-    // Hide status after style loads (give it a moment)
-    setTimeout(hide, 1500);
-});
-
-document.getElementById('fit-btn').addEventListener('click', () => {
-    nomadMap?.fitToTracks();
-});
 </script>
 </body>
 </html>
