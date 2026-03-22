@@ -21,12 +21,11 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { gotoMap } from './helpers';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const TEST_PAGE = '/e2e/test.html';
 
 const TRACK_A_ID = '2024-01-01::Tokyo Drive';
 const TRACK_B_ID = '2024-01-02::Sydney Walk';
@@ -40,15 +39,6 @@ const TOKYO_MAX_LAT = 40.0; // Helsinki (60°N) is well above this
 const SYDNEY_MAX_LAT = -33.0; // Any latitude below this means Sydney is included
 
 type PwPage = import('@playwright/test').Page;
-
-/** Navigate and wait for the NomadPath instance to be fully ready. */
-async function gotoMap(page: PwPage) {
-    await page.goto(TEST_PAGE);
-    await page.waitForFunction(() => (window as any).nomadMapReady === true, { timeout: 30_000 });
-    // Confirm no init error
-    const error = await page.evaluate(() => (window as any).nomadMapError);
-    expect(error).toBeUndefined();
-}
 
 /**
  * Wait for any in-progress camera animation (fitBounds, flyTo, etc.) to settle.

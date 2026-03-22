@@ -23,7 +23,7 @@ import { NomadPath } from '/dist/nomad-path.js';
 try {
     const nomadMap = await NomadPath.create({
         container: 'map',
-        dataUrls: ['/e2e/fixture.geojson'],
+        dataUrls: ['/fixture.geojson'],
         defaultBasemap: 'osm',
         initialBounds: 'auto',
     });

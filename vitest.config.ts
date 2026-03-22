@@ -19,6 +19,7 @@ export default defineConfig({
                 'src/core/LayerManager.ts',
                 'src/data/types.ts',
                 'preprocessing/build-trip-data.js',
+                'preprocessing/watch.js',
             ],
             thresholds: {
                 // Thresholds reflect the current state of unit-testable code.
