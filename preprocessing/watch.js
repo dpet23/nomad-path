@@ -2,17 +2,16 @@
 import chokidar from 'chokidar';
 import { execFileSync, spawn } from 'child_process';
 import { parseArgs } from 'util';
-import { resolve, join } from 'path';
+import { resolve } from 'path';
 
 const USAGE = `
-Usage: npm run watch -- -i <dir> [-o <file>] [-n <name>]
+Usage: npm run watch -- -i <dir> [-n <name>]
 
-Builds trip-data.geojson once, then rebuilds whenever files in <dir> change.
-Starts a local dev server serving the project root.
+Builds demo/trip-data.geojson once, then rebuilds whenever files in <dir> change.
+Starts a local dev server. Open http://localhost:3000/ to view the map.
 
 Options:
   -i, --input  <dir>   Directory to watch for GPS files [required]
-  -o, --output <file>  Output path (default: <input>/trip-data.geojson)
   -n, --name   <name>  Trip name in GeoJSON metadata
 `.trim();
 
@@ -20,9 +19,8 @@ let values;
 try {
     ({ values } = parseArgs({
         options: {
-            input:  { type: 'string', short: 'i' },
-            output: { type: 'string', short: 'o' },
-            name:   { type: 'string', short: 'n' },
+            input: { type: 'string', short: 'i' },
+            name:  { type: 'string', short: 'n' },
         },
     }));
 } catch {
@@ -36,9 +34,8 @@ if (!values.input) {
 }
 
 const INPUT  = resolve(values.input);
-const OUTPUT = values.output ? resolve(values.output) : join(INPUT, 'trip-data.geojson');
+const OUTPUT = resolve('demo/trip-data.geojson');
 
-// Build args to forward to build-trip-data.js (same semantics)
 const buildArgs = ['preprocessing/build-trip-data.js', '-i', INPUT, '-o', OUTPUT];
 if (values.name) buildArgs.push('-n', values.name);
 
@@ -52,15 +49,12 @@ function build() {
     }
 }
 
-// Start serve
-const serve = spawn('npx', ['serve', '.'], { stdio: 'inherit', shell: false });
+const serve = spawn('npx', ['serve', './demo'], { stdio: 'inherit', shell: false });
 process.on('SIGINT',  () => { serve.kill(); process.exit(0); });
 process.on('SIGTERM', () => { serve.kill(); process.exit(0); });
 
-// Initial build
 build();
 
-// Watch
 chokidar
     .watch(INPUT, {
         ignoreInitial: true,
