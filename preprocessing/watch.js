@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import chokidar from 'chokidar';
 import { execFileSync, spawn } from 'child_process';
+import { statSync } from 'fs';
 import { parseArgs } from 'util';
 import { resolve } from 'path';
 
@@ -36,6 +37,13 @@ if (!values.input) {
 const INPUT  = resolve(values.input);
 const OUTPUT = resolve('demo/trip-data.geojson');
 
+try {
+    if (!statSync(INPUT).isDirectory()) throw new Error();
+} catch {
+    console.error(`Error: input path is not a directory: ${INPUT}`);
+    process.exit(1);
+}
+
 const buildArgs = ['preprocessing/build-trip-data.js', '-i', INPUT, '-o', OUTPUT];
 if (values.name) buildArgs.push('-n', values.name);
 
@@ -49,9 +57,16 @@ function build() {
     }
 }
 
+let exiting = false;
 const serve = spawn('npx', ['serve', './demo'], { stdio: 'inherit', shell: false });
-process.on('SIGINT',  () => { serve.kill(); process.exit(0); });
-process.on('SIGTERM', () => { serve.kill(); process.exit(0); });
+serve.on('exit', (code) => {
+    if (!exiting) {
+        console.error(`[watch] Server exited unexpectedly (code ${code}) — shutting down`);
+        process.exit(1);
+    }
+});
+process.on('SIGINT',  () => { exiting = true; serve.kill(); process.exit(0); });
+process.on('SIGTERM', () => { exiting = true; serve.kill(); process.exit(0); });
 
 build();
 
