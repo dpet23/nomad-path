@@ -14,7 +14,7 @@ export const COLOUR_ATTRIBUTE_REGISTRY = {
     day: { label: 'Day' },
     speed: { label: 'Speed' },
     elevation: { label: 'Elevation' },
-    sunAngle: { label: 'Sun angle' },
+    sunAngle: { label: 'Daylight' },
     transportMode: { label: 'Transport mode' },
 } as const;
 
@@ -45,18 +45,17 @@ export interface TransportModeInfo {
  * Add new modes here — colour, emoji, and label are all co-located.
  */
 export const TRANSPORT_MODES: Record<string, TransportModeInfo> = {
-    walk: { colour: '#4CAF50', emoji: '\u{1F6B6}', label: 'Walk' },
-    drive: { colour: '#2196F3', emoji: '\u{1F697}', label: 'Drive' },
-    flight: { colour: '#F44336', emoji: '\u{2708}\uFE0F', label: 'Flight' },
-    boat: { colour: '#00BCD4', emoji: '\u{26F5}', label: 'Boat' },
-    cycling: { colour: '#FF9800', emoji: '\u{1F6B2}', label: 'Cycling' },
-    skiing: { colour: '#9C27B0', emoji: '\u{26F7}\uFE0F', label: 'Skiing' },
+    drive: { colour: '#E2560F', emoji: '\u{1F697}', label: 'Drive' },
+    walk: { colour: '#1D9E75', emoji: '\u{1F6B6}', label: 'Walk' },
+    publicTransport: { colour: '#7F77DD', emoji: '\u{1F68C}', label: 'Public transport' },
+    boat: { colour: '#378ADD', emoji: '\u{26F5}', label: 'Boat' },
+    flight: { colour: '#D4537E', emoji: '\u{2708}\uFE0F', label: 'Flight' },
 };
 
 /** Fallback display for unrecognised transport modes. */
 export const TRANSPORT_MODE_FALLBACK_INFO: TransportModeInfo = {
-    colour: '#9E9E9E',
-    emoji: '\u{1F4CD}',
+    colour: '#B4B2A9',
+    emoji: '\u{2753}',
     label: 'Other',
 };
 
@@ -156,11 +155,17 @@ export function getColourStops(attribute: ColourAttribute, ranges: AttributeRang
 
         case 'sunAngle':
             return [
-                [0, SUN_MIDNIGHT],
-                [0.25, SUN_HORIZON],
-                [0.5, SUN_NOON],
-                [0.75, SUN_HORIZON],
-                [1, SUN_MIDNIGHT],
+                [0, '#1A1040'], // Midnight, −90°
+                [0.2, '#2D2A80'], // Deep night, −45°
+                [0.23, '#4A5BB8'], // Civil twilight, −6°
+                [0.25, '#E86520'], // Sunrise, 0°
+                [0.35, '#F5B020'], // Low morning sun, +20°
+                [0.5, '#FFF176'], // Noon, +90°
+                [0.65, '#F5B020'], // Low afternoon sun, +20°
+                [0.75, '#E86520'], // Sunset, 0°
+                [0.77, '#4A5BB8'], // Civil twilight, −6°
+                [0.8, '#2D2A80'], // Deep night, −45°
+                [1.0, '#1A1040'], // Midnight, −90°
             ];
 
         case 'transportMode': {

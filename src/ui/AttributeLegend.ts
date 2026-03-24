@@ -155,18 +155,18 @@ export class AttributeLegend extends BasePanel {
         switch (this._attribute) {
             case 'speed':
                 this._rangeLabel.textContent = r.speed
-                    ? `Speed: ${r.speed.min.toFixed(0)}-${r.speed.max.toFixed(0)} ${r.speed.unit ?? 'km/h'}`
+                    ? `Speed: ${r.speed.min.toFixed(0)} to ${r.speed.max.toFixed(0)} ${r.speed.unit ?? 'km/h'}`
                     : 'Speed: no data';
                 break;
             case 'elevation': {
                 const e = r.elevation;
                 this._rangeLabel.textContent = e
-                    ? `Elevation: ${e.min.toFixed(0)}-${e.max.toFixed(0)} ${e.unit ?? 'm'}`
+                    ? `Elevation: ${e.min.toFixed(0)} to ${e.max.toFixed(0)} ${e.unit ?? 'm'}`
                     : 'Elevation: no data';
                 break;
             }
             case 'sunAngle':
-                this._rangeLabel.textContent = 'Sun angle: 0-360 degrees';
+                this._rangeLabel.textContent = 'Daylight: morning → noon → evening';
                 break;
             case 'day':
             case 'transportMode':

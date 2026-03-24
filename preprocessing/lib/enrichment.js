@@ -64,35 +64,38 @@ export function computeSunAngle(lat, lon, date) {
     const sunrise = times.sunrise?.getTime();
     const sunset = times.sunset?.getTime();
 
-    // Polar edge-cases: suncalc returns NaN or missing dates.
-    // Return NaN as a null-sentinel; callers check isFinite().
     if (!sunrise || !isFinite(sunrise) || !sunset || !isFinite(sunset)) {
         return NaN;
     }
 
+    const pos = getPosition(date, lat, lon);
+    if (!pos || !isFinite(pos.altitude)) return NaN;
+
+    const altitudeDeg = pos.altitude * (180 / Math.PI);
     const solarNoon = (sunrise + sunset) / 2;
     const t = date.getTime();
 
-    let angle;
-    if (t <= sunrise) {
-        // Pre-dawn: midnight→sunrise maps to 0°→90°
-        const midnight = solarNoon - 12 * 3_600_000;
-        const span = sunrise - midnight;
-        angle = span > 0 ? 90 * ((t - midnight) / span) : 0;
-    } else if (t <= solarNoon) {
-        // Morning: sunrise→noon maps to 90°→180°
-        angle = 90 + 90 * ((t - sunrise) / (solarNoon - sunrise));
-    } else if (t <= sunset) {
-        // Afternoon: noon→sunset maps to 180°→270°
-        angle = 180 + 90 * ((t - solarNoon) / (sunset - solarNoon));
-    } else {
-        // Post-dusk: sunset→midnight maps to 270°→360°
-        const midnight = solarNoon + 12 * 3_600_000;
-        const span = midnight - sunset;
-        angle = span > 0 ? 270 + 90 * ((t - sunset) / span) : 270;
+    // Perceptual twilight thresholds mapped to clock positions
+    const stops = [
+        [-90, t <= solarNoon ? 0   : 360],  // midnight
+        [-18, t <= solarNoon ? 18  : 342],  // astronomical twilight
+        [-12, t <= solarNoon ? 32  : 328],  // nautical twilight
+        [ -6, t <= solarNoon ? 45  : 315],  // civil twilight
+        [  0, t <= solarNoon ? 90  : 270],  // horizon
+        [  6, t <= solarNoon ? 108 : 252],  // low daylight
+        [ 90, 180],                          // noon
+    ];
+
+    for (let i = 1; i < stops.length; i++) {
+        const [a0, t0] = stops[i - 1];
+        const [a1, t1] = stops[i];
+        if (altitudeDeg <= a1) {
+            const f = (altitudeDeg - a0) / (a1 - a0);
+            return Math.round(t0 + f * (t1 - t0));
+        }
     }
 
-    return Math.round(Math.max(0, Math.min(360, angle)));
+    return 180;
 }
 
 // ---------------------------------------------------------------------------
