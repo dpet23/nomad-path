@@ -1,6 +1,6 @@
 {
   "name": "nomad-path",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A TypeScript library for visualising GPS travel data on interactive web maps",
   "type": "module",
   "main": "dist/nomad-path.js",
@@ -15,7 +15,7 @@
     "build:lib": "rollup -c && node -e \"require('fs').cpSync('src/ui/nomad-path.css','dist/nomad-path.css')\"",
     "build:data": "node preprocessing/build-trip-data.js",
     "copy:demo": "node -e \"const fs=require('fs');fs.mkdirSync('demo/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'demo/dist/'+f));\"",
-    "copy:e2e":  "node -e \"const fs=require('fs');fs.mkdirSync('e2e/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'e2e/dist/'+f));\"",
+    "copy:e2e": "node -e \"const fs=require('fs');fs.mkdirSync('e2e/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'e2e/dist/'+f));\"",
     "lint": "eslint src --ext .ts",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier --write 'src/**/*.{ts,css}'",

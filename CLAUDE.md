@@ -108,5 +108,21 @@ E2e tests run at the end of each epic via `npm run test:e2e`.
 - FlightAware KML: `gx:Track` format, detected by `<Document><name>` starting with "FlightAware"
 - OsmAnd activities: car, passenger, Public transport, Snorkel, Horseback, Zipline, Driving, Hiking, Walking
 
+## Release Process
+
+Version is tracked in `package.json` only (single source of truth). Tag-then-bump order: the tag marks what was released, the bump prepares for the next cycle.
+
+```bash
+# 1. Tag the current version as released
+git tag v$(node -p "require('./package.json').version")
+
+# 2. Bump package.json for next development cycle
+npm version minor --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "Bump version to $(node -p "require('./package.json').version")"
+```
+
+Note: a `scripts/release.js` that automates these two steps is planned but not yet added.
+
 ## Commit Style
 - No `Co-Authored-By` trailers
