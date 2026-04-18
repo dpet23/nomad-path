@@ -87,7 +87,8 @@ Expected label constants (write from memory, not from running code):
 
 ## npm Scripts
 See [docs/developer.md](docs/developer.md) for full descriptions.
-Scripts: `build:lib` / `build:data` / `dev` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:watch` / `test:e2e` / `test:e2e:all` / `test:e2e:install` / `clean`
+Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:watch` / `test:e2e` / `test:e2e:browsers` / `test:e2e:install` / `clean`
+Private (composition only): `_copy:demo` / `_copy:e2e` / `_build:e2e`
 Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
 E2e tests run at the end of each epic via `npm run test:e2e`.
 

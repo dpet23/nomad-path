@@ -1,4 +1,4 @@
-<!-- Claude: Keep npm script descriptions in sync with package.json. Update test counts in "Testing Strategy" when new tests are added. Update the pre-commit hook description if .husky/pre-commit changes. Update release steps if scripts/release.js is added. -->
+<!-- Claude: Keep npm script descriptions in sync with package.json. Update test counts in "Testing Strategy" when new tests are added. Update the pre-commit hook description if .husky/pre-commit changes. Update release steps if scripts/release.js is added. When adding new build output directories, update BOTH .gitignore AND the clean script in package.json — they must stay in sync. -->
 
 # Developer Guide
 
@@ -20,32 +20,34 @@ For the preprocessing pipeline, see [preprocessing.md](preprocessing.md).
   ```
 
   Browsers are installed globally at `~/.cache/ms-playwright/`, not in `node_modules`.
-  The `clean` script only removes `dist/` and does not affect Playwright binaries.
+  The `clean` script does not affect Playwright binaries.
 
 ---
 
 ## npm Scripts
 
-<!-- Claude: This table is the source of truth for script descriptions. Update when package.json scripts change. -->
+<!-- Claude: This table is the source of truth for script descriptions. Update when package.json scripts change. Scripts prefixed with _ are private composition helpers — not for direct use. -->
+
+Scripts prefixed with `_` are internal composition helpers — they exist only to be called by other scripts.
 
 | Script | What it does |
 |--------|-------------|
-| `build:lib` | Rollup bundle → `dist/nomad-path.js` |
+| `build:lib` | Rollup bundle → `dist/nomad-path.js` + CSS |
 | `build:data` | Run preprocessing CLI: `npm run build:data -- -i <dir> [-o <file>] [-n <name>]` |
-| `dev` | Rollup in watch mode (rebuilds on source change) |
-| `demo` | `build:lib` + copy to demo + `npx serve ./demo` (requires `demo/trip-data.geojson`) |
-| `watch` | `build:lib` + copy to demo + file watcher for incremental builds |
-| `typecheck` | TypeScript type-check without emitting |
+| `build:demo` | `build:lib` + copy to `demo/dist/` (prepares demo without serving) |
+| `demo` | `build:demo` + `npx serve ./demo` (requires `demo/trip-data.geojson`) |
+| `watch` | `build:demo` + file watcher for incremental GPS builds |
 | `lint` | ESLint |
 | `lint:fix` | ESLint with auto-fix |
 | `format` | Prettier |
+| `typecheck` | TypeScript type-check without emitting |
 | `test:unit` | Vitest run (fast, no coverage report) |
 | `test:coverage` | Unit tests + coverage gate (used in pre-commit) |
 | `test:watch` | Vitest in watch mode |
 | `test:e2e` | `build:lib` + copy to e2e + Playwright (Chromium only) |
-| `test:e2e:all` | Same but Chromium + Firefox + WebKit |
+| `test:e2e:browsers` | Same but Chromium + Firefox + WebKit |
 | `test:e2e:install` | Install Playwright browsers (one-time) |
-| `clean` | Remove `dist/` |
+| `clean` | Remove all generated dirs: `dist/`, `demo/dist/`, `e2e/dist/`, `coverage/`, `playwright-report/`, `test-results/` |
 
 Run a subset of e2e tests by name:
 
