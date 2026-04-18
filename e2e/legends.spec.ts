@@ -26,11 +26,11 @@ const TRACK_SYDNEY  = '2024-01-02::Sydney Walk';
 const TRACK_HELSINKI = '2024-01-03::Helsinki Flight';
 
 // Expected range labels derived from fixture attribute arrays (visible tracks only at load)
-const SPEED_LABEL_VISIBLE    = 'Speed: 30-800 km/h';        // Tokyo 30-60 + Helsinki 200-800
-const SPEED_LABEL_TOKYO_ONLY = 'Speed: 30-60 km/h';         // after hiding Helsinki
-const SPEED_LABEL_ALL        = 'Speed: 3-800 km/h';         // after showing Sydney Walk too
-const ELEV_LABEL_VISIBLE     = 'Elevation: 10-10000 m';     // Tokyo 10-20 + Helsinki 5000-10000
-const ELEV_LABEL_TOKYO_ONLY  = 'Elevation: 10-20 m';        // after hiding Helsinki
+const SPEED_LABEL_VISIBLE    = 'Speed: 30 to 800 km/h';     // Tokyo 30-60 + Helsinki 200-800
+const SPEED_LABEL_TOKYO_ONLY = 'Speed: 30 to 60 km/h';      // after hiding Helsinki
+const SPEED_LABEL_ALL        = 'Speed: 3 to 800 km/h';      // after showing Sydney Walk too
+const ELEV_LABEL_VISIBLE     = 'Elevation: 10 to 10000 m';  // Tokyo 10-20 + Helsinki 5000-10000
+const ELEV_LABEL_TOKYO_ONLY  = 'Elevation: 10 to 20 m';     // after hiding Helsinki
 
 type PwPage = import('@playwright/test').Page;
 

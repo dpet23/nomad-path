@@ -68,9 +68,9 @@ Range LABEL and map PAINT PROPERTY are separate state. Tests that only check the
 - Helsinki Flight (visible): speed [200,500,800] km/h, elevation [5000,7500,10000] m
 - POI: "Mount Takao" viewpoint, defaultVisible: false
 Expected label constants (write from memory, not from running code):
-  `SPEED_LABEL_VISIBLE = 'Speed: 30-800 km/h'` (Tokyo+Helsinki only)
-  `SPEED_LABEL_ALL     = 'Speed: 3-800 km/h'`  (all 3 tracks)
-  `SPEED_LABEL_TOKYO   = 'Speed: 30-60 km/h'`  (Tokyo only)
+  `SPEED_LABEL_VISIBLE = 'Speed: 30 to 800 km/h'` (Tokyo+Helsinki only)
+  `SPEED_LABEL_ALL     = 'Speed: 3 to 800 km/h'`  (all 3 tracks)
+  `SPEED_LABEL_TOKYO   = 'Speed: 30 to 60 km/h'`  (Tokyo only)
 
 ## Toolchain Gotchas
 - **ESLint**: v8.57, legacy `.eslintrc.json` format. `eslint-plugin-prefer-arrow-functions` removed (ESLint 9+ only)

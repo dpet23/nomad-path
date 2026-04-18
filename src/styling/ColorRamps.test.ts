@@ -110,11 +110,11 @@ describe('getColourStops', () => {
         expect(stops).toHaveLength(3);
     });
 
-    it('returns 5 stops for sunAngle (symmetric cycle)', () => {
+    it('returns 11 stops for sunAngle (symmetric cycle)', () => {
         const stops = getColourStops('sunAngle', ranges, 0);
-        expect(stops).toHaveLength(5);
+        expect(stops).toHaveLength(11);
         // First and last should be the same colour (midnight)
-        expect(stops[0][1]).toBe(stops[4][1]);
+        expect(stops[0][1]).toBe(stops[10][1]);
     });
 
     it('returns one stop per transport mode', () => {
