@@ -53,7 +53,7 @@ npm run build:data -- -i ./trips/japan-2024/tracks
 npm run build:data -- -i ./trips/japan-2024/tracks -n "Japan 2024" -o ./public/japan.geojson
 ```
 
-See [preprocessing.md](preprocessing.md) for file naming conventions, transport mode detection,
+See [docs/preprocessing.md](docs/preprocessing.md) for file naming conventions, transport mode detection,
 and GPX extension support.
 
 
@@ -230,5 +230,5 @@ npm run test:e2e   # Playwright end-to-end
 
 ## Further Reading
 
-- [architecture.md](architecture.md) — how the rendering pipeline works
-- [preprocessing.md](preprocessing.md) — GPS file conventions and data pipeline details
+- [docs/architecture.md](docs/architecture.md) — how the rendering pipeline works
+- [docs/preprocessing.md](docs/preprocessing.md) — GPS file conventions and data pipeline details
