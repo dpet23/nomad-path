@@ -1,3 +1,5 @@
+<!-- Claude: Keep in sync with src/core/ (DataLoader.ts, MapEngine.ts, LayerManager.ts) and src/styling/ColorRamps.ts. Sections most prone to staleness: "Colour expressions" table (update if new colour attributes are added to LayerManager.ts), "Layer overview" diagram (update if public API methods change or new UI components are added to src/ui/), "Basemap switching" (MapLibre version-specific behaviour — verify against CLAUDE.md Toolchain Gotchas if MapLibre is upgraded). -->
+
 # Architecture
 
 This document describes the internal design of the Nomad Path library — useful if you need
@@ -101,6 +103,8 @@ The `TRANSPORT_MODE_COLOURS` record is exported from the library so UI component
 ---
 
 ## Basemap switching
+
+<!-- Claude: MapLibre 4.7.1 does NOT emit style.load after setStyle(). The event used is styledata. Verify against src/index.ts setBasemap() if MapLibre is upgraded. -->
 
 MapLibre's `setStyle()` wipes all user-added sources and layers. To handle this:
 

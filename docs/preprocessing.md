@@ -1,3 +1,5 @@
+<!-- Claude: Keep in sync with preprocessing/lib/parsers.js, enrichment.js, grouping.js, output.js, and preprocessing/build-trip-data.js. Sections most prone to staleness: "Transport mode detection" (priority order and OsmAnd activity mapping in parsers.js), "Sun angle enrichment" (stored value range — confirmed 0-360 from enrichment.js lines 47-51), "Output format" (JSON schema — update if new properties are added to output.js). -->
+
 # Preprocessing Pipeline
 
 The preprocessor converts raw GPS files into a single `trip-data.geojson` that the browser loads

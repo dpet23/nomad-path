@@ -86,19 +86,8 @@ Expected label constants (write from memory, not from running code):
 - **Locator ambiguity**: `.np-day-group .np-track-row__checkbox` matches BOTH the group-level checkbox (in `.np-day-header`) AND track-row checkboxes. Always use `.np-track-row .np-track-row__checkbox` for track-level only.
 
 ## npm Scripts
-```
-build:lib          rollup -c  →  dist/nomad-path.js
-build:data         node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>]
-test:unit          vitest run  (fast, no coverage report)
-test:coverage      npm run test:unit -- --coverage  (unit + coverage gate, used in pre-commit)
-test:e2e:install   playwright install chromium  (one-time per machine)
-demo               build:lib + copy:demo + npx serve ./demo  (requires demo/trip-data.geojson from build:data)
-watch              build:lib + copy:demo + node preprocessing/watch.js -i <dir> [-n <name>]
-test:e2e           build:lib + copy:e2e + playwright test --project=chromium
-test:e2e:all       build:lib + playwright test  (chromium + firefox + webkit)
-test:e2e -- --grep "pattern"   run specific tests by name
-dev / lint / lint:fix / format / typecheck / test:watch / clean
-```
+See [docs/developer.md](docs/developer.md) for full descriptions.
+Scripts: `build:lib` / `build:data` / `dev` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:watch` / `test:e2e` / `test:e2e:all` / `test:e2e:install` / `clean`
 Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
 E2e tests run at the end of each epic via `npm run test:e2e`.
 
@@ -109,20 +98,8 @@ E2e tests run at the end of each epic via `npm run test:e2e`.
 - OsmAnd activities: car, passenger, Public transport, Snorkel, Horseback, Zipline, Driving, Hiking, Walking
 
 ## Release Process
-
-Version is tracked in `package.json` only (single source of truth). Tag-then-bump order: the tag marks what was released, the bump prepares for the next cycle.
-
-```bash
-# 1. Tag the current version as released
-git tag v$(node -p "require('./package.json').version")
-
-# 2. Bump package.json for next development cycle
-npm version minor --no-git-tag-version
-git add package.json package-lock.json
-git commit -m "Bump version to $(node -p "require('./package.json').version")"
-```
-
-Note: a `scripts/release.js` that automates these two steps is planned but not yet added.
+Tag-then-bump. See [docs/developer.md](docs/developer.md#release-process) for the full commands.
 
 ## Commit Style
 - No `Co-Authored-By` trailers
+See [docs/developer.md](docs/developer.md#commit-style) for full guidelines.
