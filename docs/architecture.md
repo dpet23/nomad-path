@@ -28,7 +28,17 @@ way they do.
               │  addLayers()        │
               │  setTrackVisible()  │
               │  setColourAttribute()│
+              │  updateRanges()     │
               └────────────────────┘
+
+UI components (mounted by NomadPath.create, rendered as HTML overlays):
+
+    ┌─────────────┐  ┌──────────────────┐  ┌────────────┐
+    │ TrackLegend │  │ AttributeLegend  │  │ POILegend  │
+    └─────────────┘  └──────────────────┘  └────────────┘
+    ┌─────────────┐  ┌──────────────────┐
+    │ MobileMenu  │  │  MapControls     │
+    └─────────────┘  └──────────────────┘
 ```
 
 ---
@@ -83,7 +93,7 @@ All colour expressions are MapLibre `line-color` paint property expressions. The
 | `elevation` | `case` + `interpolate` | Dark green → Yellow → White. Grey for null (no elevation). |
 | `sunAngle` | `case` + `interpolate` | Night blue → Orange (sunrise/sunset) → Noon yellow. Grey for null (no timestamp). |
 
-`sunAngle` is in degrees **solar altitude** (−90 to +90): negative = below horizon, 0 = horizon, 90 = zenith. The colour expression maps this to a full day cycle (mapped to 0–360° internally by the preprocessor).
+`sunAngle` is a **solar day angle (0–360°)** computed by the preprocessor: 0 = solar midnight, 90 = sunrise, 180 = solar noon, 270 = sunset. The paint expression interpolates directly over this 0–360 range. Points without timestamps get `null`.
 
 The `TRANSPORT_MODE_COLOURS` record is exported from the library so UI components can display matching colour swatches without hardcoding.
 
@@ -96,7 +106,8 @@ MapLibre's `setStyle()` wipes all user-added sources and layers. To handle this:
 
 1. Before switching: capture `colourAttribute` and `visibleIds` snapshot
 2. Call `engineSetBasemap()` which updates style, min/max zoom
-3. Listen to `style.load` event: re-call `addLayers()`, then restore visibility and colour state
+3. Listen to the `styledata` event: re-call `addLayers()`, then restore visibility and colour state. (MapLibre 4.7.1 does not emit `style.load` after `setStyle()`.)
+
 
 This means there's a brief moment where tracks disappear while the new style loads — acceptable for a basemap switch. The zoom is clamped to the new basemap's limits before switching (e.g. NASA Blue Marble max zoom 8).
 

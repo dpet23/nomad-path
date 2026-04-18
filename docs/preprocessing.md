@@ -181,14 +181,17 @@ The POI **category** is set by:
 
 ## Sun angle enrichment
 
-For each track point with a timestamp and coordinates, the solar altitude angle is computed using
-the `suncalc` library. The angle is stored as degrees in the range −90 to +90:
+For each track point with a timestamp and coordinates, a **solar day angle (0–360°)** is computed
+using the `suncalc` library and stored in the `sunAngles` parallel array:
 
-- **−90** = solar midnight (sun directly below)
-- **0** = on the horizon (sunrise / sunset)
-- **+90** = solar noon (sun directly overhead)
+- **0** = solar midnight (start of day)
+- **90** = sunrise
+- **180** = solar noon
+- **270** = sunset
+- **360** = solar midnight (end of day)
 
-This allows the `sunAngle` colour mode to show golden-hour orange, mid-day yellow, and night blue.
+Pre-dawn night (0–90) and post-dusk night (270–360) are distinguishable, which allows the
+`sunAngle` colour mode to show golden-hour orange, mid-day yellow, and night blue.
 Points without timestamps get `null` in the `sunAngles` array.
 
 
