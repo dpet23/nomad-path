@@ -129,4 +129,76 @@ describe('enrichTrack -- sun angle', () => {
             expect(point.sunAngle).toBeNull();
         }
     });
+
+    it('returns null sunAngle for polar location during polar day (Svalbard, June 21)', () => {
+        // Svalbard: 78°N, 15°E — sun never sets in June, suncalc returns undefined sunrise/sunset
+        const track = {
+            name: 'Polar Walk',
+            sourceFile: 'polar.gpx',
+            transportMode: 'walk',
+            points: [
+                { lon: 15.0, lat: 78.0, time: Date.parse('2024-06-21T12:00:00Z') },
+                { lon: 15.1, lat: 78.0, time: Date.parse('2024-06-21T12:30:00Z') },
+            ],
+        };
+        const enriched = enrichTrack(track);
+        for (const pt of enriched.points) {
+            expect(pt.sunAngle).toBeNull();
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// enrichTrack -- speed edge cases
+// ---------------------------------------------------------------------------
+
+describe('enrichTrack -- speed edge cases', () => {
+    it('returns no Haversine speed when consecutive points share the same timestamp', () => {
+        const track = {
+            name: 'test',
+            sourceFile: 'test.gpx',
+            transportMode: 'drive',
+            points: [
+                { lon: 139.69, lat: 35.69, time: Date.parse('2024-03-15T08:00:00Z') },
+                { lon: 139.70, lat: 35.70, time: Date.parse('2024-03-15T08:00:00Z') }, // same time
+                { lon: 139.71, lat: 35.71, time: Date.parse('2024-03-15T08:05:00Z') },
+            ],
+        };
+        const enriched = enrichTrack(track);
+        // dtSec = 0 → computeSpeedKmh returns null → no speedKmh assigned
+        expect(enriched.points[1].speedKmh).toBeUndefined();
+        // Point 2 has 5 minutes elapsed → speed computed via Haversine
+        expect(enriched.points[2].speedKmh).toBeDefined();
+        expect(enriched.points[2].speedKmh).toBeGreaterThan(0);
+    });
+
+    it('returns no Haversine speed when timestamp goes backward', () => {
+        const track = {
+            name: 'test',
+            sourceFile: 'test.gpx',
+            transportMode: 'drive',
+            points: [
+                { lon: 139.70, lat: 35.70, time: Date.parse('2024-03-15T08:05:00Z') },
+                { lon: 139.69, lat: 35.69, time: Date.parse('2024-03-15T08:00:00Z') }, // earlier
+            ],
+        };
+        const enriched = enrichTrack(track);
+        // dtSec < 0 → computeSpeedKmh returns null → no speedKmh assigned
+        expect(enriched.points[1].speedKmh).toBeUndefined();
+    });
+
+    it('preserves an extension speed of exactly 0 km/h', () => {
+        const track = {
+            name: 'test',
+            sourceFile: 'test.gpx',
+            transportMode: 'drive',
+            points: [
+                { lon: 139.69, lat: 35.69, speedKmh: 0 },
+                { lon: 139.70, lat: 35.70, speedKmh: 0 },
+            ],
+        };
+        const enriched = enrichTrack(track);
+        expect(enriched.points[0].speedKmh).toBe(0);
+        expect(enriched.points[1].speedKmh).toBe(0);
+    });
 });

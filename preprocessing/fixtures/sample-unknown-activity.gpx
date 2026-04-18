@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
+     version="1.1" creator="OsmAnd">
+  <metadata>
+    <extensions>
+      <osmand:activity>Snorkeling</osmand:activity>
+    </extensions>
+  </metadata>
+  <trk>
+    <name>Reef Snorkel</name>
+    <trkseg>
+      <trkpt lat="-17.7134" lon="168.3273">
+        <time>2025-01-10T09:00:00Z</time>
+      </trkpt>
+      <trkpt lat="-17.7140" lon="168.3280">
+        <time>2025-01-10T09:05:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

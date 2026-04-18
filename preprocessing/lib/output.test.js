@@ -320,6 +320,89 @@ describe('buildGeoJSON -- track ordering', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Empty input
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- empty input', () => {
+    const result = buildGeoJSON({ tracks: [], waypoints: [], tripName: 'Empty Trip' });
+
+    it('produces a valid FeatureCollection with no features', () => {
+        expect(result.type).toBe('FeatureCollection');
+        expect(result.features).toHaveLength(0);
+    });
+
+    it('stats have zero counts and no dateRange', () => {
+        const { stats } = result.metadata;
+        expect(stats.trackCount).toBe(0);
+        expect(stats.waypointCount).toBe(0);
+        expect(stats.dayCount).toBe(0);
+        expect(stats.dateRange).toBeUndefined();
+    });
+
+    it('attributeRanges is empty', () => {
+        expect(result.metadata.attributeRanges).toEqual({});
+    });
+});
+
+// ---------------------------------------------------------------------------
+// poiCategoryConfig edge cases
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- poiCategoryConfig edge cases', () => {
+    it('treats a null config entry as defaultVisible: true', () => {
+        const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
+            accommodation: null,
+        });
+        const poi = result.features.find(
+            f => f.properties.type === 'poi' && f.properties.category === 'accommodation',
+        );
+        expect(poi.properties.defaultVisible).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// excludeFromAutoBounds propagation
+// ---------------------------------------------------------------------------
+
+describe('buildGeoJSON -- excludeFromAutoBounds', () => {
+    function makeGroupedTrack(day, name, excludeFromAutoBounds) {
+        return {
+            name,
+            sourceFile: 'test.gpx',
+            transportMode: 'flight',
+            day,
+            group: 'flights-2025',
+            defaultVisible: false,
+            excludeFromAutoBounds,
+            points: [
+                { lon: 0, lat: 0, elevation: 5000, speedKmh: 800, time: null, sunAngle: null },
+                { lon: 10, lat: 5, elevation: 5000, speedKmh: 800, time: null, sunAngle: null },
+            ],
+        };
+    }
+
+    it('propagates excludeFromAutoBounds: true to feature properties', () => {
+        const result = buildGeoJSON({
+            tracks: [makeGroupedTrack('flight-2024-01-01-qf1', 'QF1', true)],
+            waypoints: [],
+            tripName: 'Test',
+        });
+        const track = result.features.find(f => f.properties.type === 'track');
+        expect(track.properties.excludeFromAutoBounds).toBe(true);
+    });
+
+    it('omits excludeFromAutoBounds from feature properties when false', () => {
+        const result = buildGeoJSON({
+            tracks: [makeGroupedTrack('flight-2024-01-01-qf2', 'QF2', false)],
+            waypoints: [],
+            tripName: 'Test',
+        });
+        const track = result.features.find(f => f.properties.type === 'track');
+        expect(track.properties.excludeFromAutoBounds).toBeUndefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Attribute ranges
 // ---------------------------------------------------------------------------
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
+     version="1.1" creator="OsmAnd">
+  <metadata>
+    <extensions>
+      <osmand:activity>driving</osmand:activity>
+    </extensions>
+  </metadata>
+  <trk>
+    <name>Road Trip Leg</name>
+    <trkseg>
+      <trkpt lat="-33.9461" lon="151.1772">
+        <time>2024-09-12T07:00:00Z</time>
+      </trkpt>
+      <trkpt lat="35.7647" lon="140.3864">
+        <time>2024-09-12T16:00:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
