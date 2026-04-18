@@ -63,6 +63,7 @@
     "lint-staged": "^15.0.0",
     "luxon": "^3.4.0",
     "prettier": "^3.1.0",
+    "serve": "^14.2.0",
     "rollup": "^4.0.0",
     "simplify-js": "^1.2.4",
     "suncalc": "^1.9.0",
