@@ -8,7 +8,10 @@ at runtime. It runs in Node.js and is never shipped to the browser.
 ## Running it
 
 ```bash
-# Minimal
+# Generate a config template (optional — only needed for custom group visibility)
+npm run build:data -- -i ./trips/japan-2024/tracks --init
+
+# Minimal — output goes to ./trips/japan-2024/tracks/trip-data.geojson
 npm run build:data -- -i ./trips/japan-2024/tracks
 
 # With explicit name and output path
@@ -50,11 +53,54 @@ Re-run the preprocessor whenever GPS files are added or changed.
 
 ---
 
+## Group visibility (nomadpath.yaml)
+
+Named immediate subdirectories form **groups**. By default all groups are visible on load.
+To change the default for a group, add a `nomadpath.yaml` file to the input directory.
+
+Generate a pre-filled template with `--init`:
+
+```bash
+npm run build:data -- -i ./trips/japan-2024/tracks --init
+# Writes nomadpath.yaml to the input directory and exits
+```
+
+Example `nomadpath.yaml`:
+
+```yaml
+# nomadpath.yaml — Nomad Path preprocessing configuration
+
+groups:
+  # Transport flight legs — hidden by default so the day-by-day view
+  # isn't dominated by flight arcs. Toggle on in the map legend to see them.
+  flights-2025:
+    defaultVisible: false
+```
+
+### Group options
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `defaultVisible` | boolean | `true` | Whether tracks in this group are visible when the map first loads |
+
+> **Tip:** Only immediate subdirectories form groups. Deeper nesting is fine for
+> organisation but the group is always determined by the first subfolder component.
+
+---
+
 ## GPX file conventions
 
-### File naming
+### Transport mode detection
 
-The filename drives **transport mode detection** when OsmAnd metadata isn't present:
+The parser infers transport mode from (in priority order):
+
+1. **`flights/`-prefixed subfolder in path** — any file under a subfolder whose name starts with `flights` is forced to `flight` mode
+2. **OsmAnd `<osmand:activity>` extension** — if you record with OsmAnd, the activity is stored in the GPX. Read from three locations (in priority order):
+   - `<metadata><extensions><osmand:activity>` — OsmAnd default location
+   - `<trk><osmand:activity>` — some OsmAnd versions
+   - `<trk><extensions><osmand:activity>` — OsmAnd alternative
+3. **KML `<Document><name>` starting with "FlightAware"** — FlightAware KML exports are detected automatically even if the file has been renamed
+4. **Filename keywords** — word-boundary aware (`\b`), so `festival.gpx` doesn't match `sail`:
 
 | Pattern in filename | Detected mode |
 |--------------------|---------------|
@@ -64,22 +110,13 @@ The filename drives **transport mode detection** when OsmAnd metadata isn't pres
 | `boat`, `sail`, `ferry`, `ship`, `kayak`, `canoe` | `boat` |
 | (anything else) | `drive` |
 
-Pattern matching is word-boundary aware (`\b`), so `festival.gpx` doesn't match `sail`.
-
-### OsmAnd metadata (takes priority over filename)
-
-If you record with OsmAnd, the activity is stored in the GPX as `<osmand:activity>`. This is read
-from three locations (in priority order):
-
-1. `<metadata><extensions><osmand:activity>` — OsmAnd default location
-2. `<trk><osmand:activity>` — some OsmAnd versions
-3. `<trk><extensions><osmand:activity>` — OsmAnd alternative
+5. **Fallback** — `drive`
 
 OsmAnd activity strings are mapped to canonical modes:
 
 | OsmAnd activity | Canonical mode |
 |----------------|----------------|
-| `driving` | `drive` |
+| `car`, `passenger`, `public transport` | `drive` |
 | `walking`, `hiking`, `running` | `walk` |
 | `cycling`, `biking` | `cycling` |
 | `boating`, `sailing` | `boat` |
@@ -169,6 +206,13 @@ The output is a GeoJSON `FeatureCollection` with embedded metadata:
     "attributeRanges": {
       "elevation": { "min": 0, "max": 1240, "unit": "m" },
       "speed":     { "min": 0, "max": 95,   "unit": "km/h" }
+    },
+    "stats": {
+      "trackCount": 42,
+      "waypointCount": 18,
+      "dayCount": 14,
+      "transportModes": { "drive": 28, "walk": 12, "flight": 2 },
+      "dateRange": { "start": "2024-03-15", "end": "2024-03-28" }
     }
   },
   "features": [
@@ -180,6 +224,7 @@ The output is a GeoJSON `FeatureCollection` with embedded metadata:
         "name": "Morning Drive",
         "day": "2024-03-15",
         "defaultVisible": true,
+        "group": null,
         "transportMode": "drive",
         "times":      [1710489600000, 1710489900000, ...],
         "elevations": [40, 42, 45, ...],
@@ -203,6 +248,9 @@ The output is a GeoJSON `FeatureCollection` with embedded metadata:
 **Parallel arrays** (`times`, `elevations`, `speeds`, `sunAngles`) align 1:1 with the LineString
 coordinate array. Any array that is entirely `null`/`undefined` is omitted from the output to keep
 file size down.
+
+The `group` property is the name of the immediate subdirectory the file belongs to, or `null` for
+root-level files.
 
 The `attributeRanges` in `metadata` are the global min/max values across **all tracks** in the
 file — used by the browser to set colour scale endpoints.
