@@ -1,6 +1,6 @@
 # Nomad Path — Claude Code Context
 
-See `PROJECT_SPEC.md` for full requirements. This file records implementation state and deviations.
+The original project specification is preserved in git history. This file records implementation state and deviations.
 
 ## Epic Progress
 - [x] Epic 1: Project setup

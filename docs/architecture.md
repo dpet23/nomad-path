@@ -181,3 +181,7 @@ return ['in', ['get', 'trackId'], ['literal', [...]]] as unknown as FilterSpecif
 ```
 
 This is intentional — the runtime values are valid MapLibre expressions, but TypeScript's type system can't verify array literal structure against the union.
+
+---
+
+The original pre-implementation project specification is preserved in git history as `PROJECT_SPEC.md`.
