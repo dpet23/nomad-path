@@ -104,4 +104,13 @@ describe('computeVisibleRanges', () => {
         const result = computeVisibleRanges([trip1, trip2], visible);
         expect(result.elevation).toEqual({ min: 5, max: 200, unit: 'm' });
     });
+
+    it('ignores stale IDs in visibleIds that do not match any loaded track', () => {
+        const trip = makeTrip([makeTrack(DAY_1, 'A', { elevations: [10, 20] })]);
+        // Include a valid ID and two stale/nonexistent ones
+        const visible = new Set([ID_A, 'stale::Ghost Track', '2099-01-01::Nonexistent']);
+        const result = computeVisibleRanges([trip], visible);
+        // Only track A contributes; stale IDs do not crash or distort results
+        expect(result.elevation).toEqual({ min: 10, max: 20, unit: 'm' });
+    });
 });

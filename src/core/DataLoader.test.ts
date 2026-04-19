@@ -144,4 +144,15 @@ describe('loadTripData', () => {
         vi.mocked(fetch).mockRejectedValue(new Error('Failed to fetch'));
         await expect(loadTripData(['https://example.com/trip.geojson'])).rejects.toThrow('Network error');
     });
+
+    it('rejects when response body is valid HTTP 200 but JSON parsing fails', async () => {
+        vi.mocked(fetch).mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => {
+                throw new SyntaxError('Unexpected token');
+            },
+        } as unknown as Response);
+        await expect(loadTripData(['https://example.com/bad-body.geojson'])).rejects.toThrow('Invalid JSON');
+    });
 });
