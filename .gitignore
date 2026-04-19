@@ -7,7 +7,7 @@ node_modules/
 # Build output
 dist/
 demo/dist/
-e2e/dist/
+test/integration/dist/
 coverage/
 
 # Environment
