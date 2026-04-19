@@ -51,6 +51,22 @@ describe('buildColourExpression', () => {
         expect(Array.isArray(result)).toBe(true);
         expect((result as unknown[])[0]).toBe('case');
     });
+
+    it('speed expression uses flat colour when min === max (no degenerate interpolation)', () => {
+        const equalRanges = { speed: { min: 50, max: 50, unit: 'km/h' } };
+        const result = buildColourExpression('speed', equalRanges, 0) as unknown[];
+        // Should be a case expression with no interpolation
+        expect(result[0]).toBe('case');
+        // The non-null branch should be a flat colour string, not an array
+        expect(typeof result[3]).toBe('string');
+    });
+
+    it('elevation expression uses flat colour when min === max (no degenerate interpolation)', () => {
+        const equalRanges = { elevation: { min: 100, max: 100, unit: 'm' } };
+        const result = buildColourExpression('elevation', equalRanges, 0) as unknown[];
+        expect(result[0]).toBe('case');
+        expect(typeof result[3]).toBe('string');
+    });
 });
 
 // ---------------------------------------------------------------------------

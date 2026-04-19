@@ -220,6 +220,7 @@ export function buildColourExpression(
         case 'speed': {
             const r = ranges.speed;
             if (!r) return MISSING_COLOUR;
+            if (r.min === r.max) return expr(['case', ['==', ['get', 'speedValue'], null], MISSING_COLOUR, SPEED_MID]);
             const mid = (r.min + r.max) / 2;
             return expr([
                 'case',
@@ -232,6 +233,7 @@ export function buildColourExpression(
         case 'elevation': {
             const r = ranges.elevation;
             if (!r) return MISSING_COLOUR;
+            if (r.min === r.max) return expr(['case', ['==', ['get', 'elevValue'], null], MISSING_COLOUR, ELEV_MID]);
             const mid = (r.min + r.max) / 2;
             return expr([
                 'case',
