@@ -235,6 +235,17 @@ test.describe('fitToTracks', () => {
         // Now Sydney (lat -33.9) should be included
         expect(south).toBeLessThan(SYDNEY_MAX_LAT);
     });
+
+    test('fitToTracks() with all tracks hidden is a no-op (no crash)', async ({ page }) => {
+        await gotoMap(page);
+        // Hide all three tracks (Tokyo and Helsinki are visible by default; Sydney is already hidden)
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_A_ID);
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_C_ID);
+        // fitToTracks should return without throwing when there are no visible tracks
+        await page.evaluate(() => (window as any).nomadMap.fitToTracks());
+        const exists = await page.evaluate(() => !!(window as any)._map.getLayer('np-tracks-layer'));
+        expect(exists).toBe(true);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -343,5 +354,61 @@ test.describe('colour attribute', () => {
         }
         const exists = await page.evaluate(() => !!(window as any)._map.getLayer('np-tracks-layer'));
         expect(exists).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Layer filter and paint property
+// ---------------------------------------------------------------------------
+
+test.describe('layer filter and paint', () => {
+    // The visibility filter format: ['in', ['get', 'trackId'], ['literal', [id1, id2, ...]]]
+    // filter[2][1] is the array of currently visible track IDs.
+
+    test('track layer filter excludes hidden tracks on load', async ({ page }) => {
+        await gotoMap(page);
+        // Sydney Walk is defaultVisible: false — must be absent from the literal array
+        const filter = await page.evaluate(() => (window as any)._map.getFilter('np-tracks-layer'));
+        const literal: string[] = filter?.[2]?.[1];
+        expect(literal).toBeDefined();
+        expect(literal).not.toContain(TRACK_B_ID);
+        expect(literal).toContain(TRACK_A_ID);
+        expect(literal).toContain(TRACK_C_ID);
+    });
+
+    test('track layer filter drops a track when it is hidden', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_A_ID);
+        const filter = await page.evaluate(() => (window as any)._map.getFilter('np-tracks-layer'));
+        const literal: string[] = filter?.[2]?.[1];
+        expect(literal).not.toContain(TRACK_A_ID);
+    });
+
+    test('track layer filter adds a track when it is shown', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, true), TRACK_B_ID);
+        const filter = await page.evaluate(() => (window as any)._map.getFilter('np-tracks-layer'));
+        const literal: string[] = filter?.[2]?.[1];
+        expect(literal).toContain(TRACK_B_ID);
+    });
+
+    test('line-color is an expression (array) on load', async ({ page }) => {
+        await gotoMap(page);
+        const paint = await page.evaluate(() =>
+            (window as any)._map.getPaintProperty('np-tracks-layer', 'line-color'),
+        );
+        expect(Array.isArray(paint)).toBe(true);
+    });
+
+    test('line-color expression changes when colour attribute switches from day to speed', async ({ page }) => {
+        await gotoMap(page);
+        const before = await page.evaluate(() =>
+            JSON.stringify((window as any)._map.getPaintProperty('np-tracks-layer', 'line-color')),
+        );
+        await page.evaluate(() => (window as any).nomadMap.setColourAttribute('speed'));
+        const after = await page.evaluate(() =>
+            JSON.stringify((window as any)._map.getPaintProperty('np-tracks-layer', 'line-color')),
+        );
+        expect(after).not.toBe(before);
     });
 });

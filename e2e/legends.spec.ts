@@ -421,3 +421,97 @@ test('setBasemap: user-shown track included in layer ranges after basemap switch
     const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
     expect(min).toBe(3); // Sydney Walk 3-7 km/h is included after being shown
 });
+
+// ---------------------------------------------------------------------------
+// Basemap switch — DOM checkbox state
+// Verify the TrackLegend DOM .checked attribute (not just JS isTrackVisible())
+// is consistent after a basemap switch.
+// ---------------------------------------------------------------------------
+
+test('setBasemap: defaultVisible false track checkbox remains unchecked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await switchBasemap(page, 'blueMarble');
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    const checkbox = page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(false);
+});
+
+test('setBasemap: defaultVisible true track checkbox remains checked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await switchBasemap(page, 'blueMarble');
+    await page.locator('.np-track-legend .np-day-header').first().click();
+    const checkbox = page.locator('.np-track-legend .np-day-group').first().locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(true);
+});
+
+test('setBasemap: user-hidden track checkbox stays unchecked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Hide Helsinki Flight via UI then switch basemap
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    await switchBasemap(page, 'blueMarble');
+    // Group remains expanded — checkbox should still be unchecked
+    const checkbox = page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(false);
+});
+
+test('setBasemap: user-shown track checkbox stays checked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Show Sydney Walk via UI then switch basemap
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
+    await switchBasemap(page, 'blueMarble');
+    const checkbox = page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// Group-level visibility toggle
+// The day-header contains a tristate group checkbox that toggles all tracks
+// in that day group simultaneously.
+// ---------------------------------------------------------------------------
+
+test('TrackLegend: group header checkbox hides all tracks in that day group', async ({ page }) => {
+    await gotoMap(page);
+    // Tokyo Drive (day group index 0) starts visible — uncheck via group header checkbox
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').first().locator('input[type="checkbox"]');
+    await groupCheckbox.uncheck();
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_TOKYO)).toBe(false);
+});
+
+test('TrackLegend: group header checkbox shows all tracks in that day group', async ({ page }) => {
+    await gotoMap(page);
+    // Sydney Walk (day group index 1) starts hidden — check via group header checkbox
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').nth(1).locator('input[type="checkbox"]');
+    await groupCheckbox.check();
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_SYDNEY)).toBe(true);
+});
+
+test('TrackLegend: group checkbox uncheck also unchecks individual track row checkboxes', async ({ page }) => {
+    await gotoMap(page);
+    // Uncheck Tokyo group, then expand to verify row checkbox is also unchecked
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').first().locator('input[type="checkbox"]');
+    await groupCheckbox.uncheck();
+    await page.locator('.np-track-legend .np-day-header').first().click();
+    const rowCheckbox = page.locator('.np-track-legend .np-day-group').first().locator('.np-track-row .np-track-row__checkbox');
+    expect(await rowCheckbox.isChecked()).toBe(false);
+});
+
+test('TrackLegend: group checkbox check also checks individual track row checkboxes', async ({ page }) => {
+    await gotoMap(page);
+    // Check Sydney group, then expand to verify row checkbox is also checked
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').nth(1).locator('input[type="checkbox"]');
+    await groupCheckbox.check();
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    const rowCheckbox = page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox');
+    expect(await rowCheckbox.isChecked()).toBe(true);
+});
+
+test('TrackLegend: hiding a group via group checkbox narrows the attribute range', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Hide Helsinki Flight via its group header checkbox
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').nth(2).locator('input[type="checkbox"]');
+    await groupCheckbox.uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
+});
