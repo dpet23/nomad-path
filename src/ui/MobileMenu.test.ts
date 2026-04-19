@@ -155,4 +155,29 @@ describe('MobileMenu', () => {
         mq.trigger(false);
         expect(menu.isOpen).toBe(false);
     });
+
+    it('destroy() removes the hamburger button, backdrop, and drawer from the DOM', () => {
+        const c = setup();
+        const menu = new MobileMenu(c, []);
+        menu.destroy();
+        expect(c.querySelector(BTN_SEL)).toBeNull();
+        expect(c.querySelector(BACKDROP_SEL)).toBeNull();
+        expect(c.querySelector(DRAWER_SEL)).toBeNull();
+    });
+
+    it('destroy() calls removeEventListener with the same handler registered during construction', () => {
+        const mq = stubMatchMedia(false);
+        const c = setup();
+        const menu = new MobileMenu(c, []);
+        // The handler captured by addEventListener during construction
+        const registeredHandler = (mq.addEventListener.mock.calls as [string, unknown][]).find(
+            ([evt]) => evt === 'change',
+        )?.[1];
+        menu.destroy();
+        // destroy() must pass the SAME reference — a new arrow function won't match
+        const removedHandler = (mq.removeEventListener.mock.calls as [string, unknown][]).find(
+            ([evt]) => evt === 'change',
+        )?.[1];
+        expect(removedHandler).toBe(registeredHandler);
+    });
 });
