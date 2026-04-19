@@ -20,7 +20,7 @@
  *   POI_LABELS       = 'np-pois-labels'
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { gotoMap } from './helpers';
 
 // ---------------------------------------------------------------------------

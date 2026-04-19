@@ -11,7 +11,8 @@
   "scripts": {
     "_copy:demo": "node -e \"const fs=require('fs');fs.mkdirSync('demo/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'demo/dist/'+f));\"",
     "_copy:integration": "node -e \"const fs=require('fs');fs.mkdirSync('test/integration/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'test/integration/dist/'+f));\"",
-    "_build:integration": "npm run build:lib && npm run _copy:integration",
+    "_build:integration": "npm run build:lib && npm run _copy:integration && npm run _build:fixture",
+    "_build:fixture": "node -e \"const fs=require('fs'),d='test/fixtures/map';if(fs.existsSync(d)&&fs.readdirSync(d).length){const{execSync}=require('child_process');execSync('node preprocessing/build-trip-data.js -i test/fixtures/map -o test/integration/fixture.geojson -n TestTrip',{stdio:'inherit'})}\"",
     "build:lib": "rollup -c && node -e \"require('fs').cpSync('src/ui/nomad-path.css','dist/nomad-path.css')\"",
     "build:data": "node preprocessing/build-trip-data.js",
     "build:demo": "npm run build:lib && npm run _copy:demo",

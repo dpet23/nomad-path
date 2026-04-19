@@ -17,7 +17,7 @@
  *   viewpoint     — "Mount Takao"  (defaultVisible: false)
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { gotoMap } from './helpers';
 
 // Track IDs derived from day::name
