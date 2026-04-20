@@ -328,6 +328,45 @@ test.describe('basemap switch', () => {
         expect(exists).toBe(true);
     });
 
+    test('rapid basemap switching does not crash', async ({ page }) => {
+        await gotoMap(page);
+        // Fire 3 switches without waiting for any to complete
+        await page.evaluate(() => {
+            const nm = (window as any).nomadMap;
+            nm.setBasemap('blueMarble');
+            nm.setBasemap('osm');
+            nm.setBasemap('blueMarble');
+        });
+        // Wait for the final basemap handler to restore our track layer.
+        // The generation counter ensures only the latest handler runs.
+        await page.waitForFunction(
+            () => !!(window as any)._map.getLayer('np-tracks-layer'),
+            { timeout: 30_000, polling: 200 },
+        );
+    });
+
+    test('track visibility survives rapid basemap switching', async ({ page }) => {
+        await gotoMap(page);
+        // Hide Sydney, then rapid-switch
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_A_ID);
+        await page.evaluate(() => {
+            const nm = (window as any).nomadMap;
+            nm.setBasemap('blueMarble');
+            nm.setBasemap('osm');
+        });
+        await page.waitForFunction(
+            () => !!(window as any)._map.getLayer('np-tracks-layer'),
+            { timeout: 30_000 },
+        );
+        // Wait a bit for all handlers to complete
+        await page.waitForTimeout(500);
+        const visible = await page.evaluate(
+            id => (window as any).nomadMap.isTrackVisible(id),
+            TRACK_A_ID,
+        );
+        expect(visible).toBe(false);
+    });
+
     test('zoom is clamped when switching to a basemap with lower maxZoom', async ({ page }) => {
         await gotoMap(page);
         // Zoom to 12, well above Blue Marble's maxZoom of 8
