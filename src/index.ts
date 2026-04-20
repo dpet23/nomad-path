@@ -50,6 +50,7 @@ export class NomadPath {
     private readonly _layers: LayerManager;
     private readonly _trips: TripData[];
     private _ui: UIComponents | null;
+    private _pendingStyleHandler: (() => void) | null = null;
 
     /**
      * Private — use {@link NomadPath.create} to obtain an instance.
@@ -178,6 +179,7 @@ export class NomadPath {
                 this._map.once('styledata', onStyleData);
                 return;
             }
+            this._pendingStyleHandler = null;
             // Restore exact previous visibility for every track.
             for (const track of extractTracks(this._trips)) {
                 const id = deriveTrackId(track);
@@ -205,10 +207,43 @@ export class NomadPath {
             this._ui?.attrLegend.updateRanges(this._layers.visibleIds);
         };
 
+        // Track the pending handler so destroy() can remove it if called mid-switch.
+        this._pendingStyleHandler = onStyleData;
         this._map.once('styledata', onStyleData);
         engineSetBasemap(this._map, basemapId);
 
         return this;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Cleanup
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Tear down the map instance: remove UI components, cancel pending basemap
+     * switches, and release the MapLibre map (WebGL context, canvas, listeners).
+     *
+     * After calling `destroy()`, the instance must not be used.
+     */
+    destroy(): void {
+        // Cancel any in-flight basemap switch listener.
+        if (this._pendingStyleHandler) {
+            this._map.off('styledata', this._pendingStyleHandler);
+            this._pendingStyleHandler = null;
+        }
+
+        // Tear down UI components (MobileMenu first — it restores panels to container).
+        if (this._ui) {
+            this._ui.mobileMenu.destroy();
+            this._ui.trackLegend.destroy();
+            this._ui.attrLegend.destroy();
+            this._ui.poiLegend.destroy();
+            this._ui.mapControls.destroy();
+            this._ui = null;
+        }
+
+        // Release MapLibre resources (WebGL, canvas, DOM, all event listeners).
+        this._map.remove();
     }
 
     // ---------------------------------------------------------------------------
