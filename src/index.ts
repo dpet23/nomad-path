@@ -50,7 +50,8 @@ export class NomadPath {
     private readonly _layers: LayerManager;
     private readonly _trips: TripData[];
     private _ui: UIComponents | null;
-    private _pendingStyleHandler: (() => void) | null = null;
+    /** Incremented on each setBasemap() call; stale handlers check and bail. */
+    private _basemapGeneration = 0;
 
     /**
      * Private — use {@link NomadPath.create} to obtain an instance.
@@ -166,7 +167,13 @@ export class NomadPath {
         // addLayers(). MapLibre's addSource internally checks style._loaded (not
         // tile-loading state), so it throws only if the style JSON isn't applied
         // yet. Catch and retry on the next styledata if that happens.
+        // Bump generation so any in-flight handler from a previous setBasemap()
+        // sees a stale generation and bails out instead of competing.
+        const gen = ++this._basemapGeneration;
+
         const onStyleData = () => {
+            if (gen !== this._basemapGeneration) return; // stale — a newer switch superseded us
+
             if (this._map.getSource('np-tracks')) {
                 // Old style still active — wait for the next styledata event.
                 this._map.once('styledata', onStyleData);
@@ -179,7 +186,6 @@ export class NomadPath {
                 this._map.once('styledata', onStyleData);
                 return;
             }
-            this._pendingStyleHandler = null;
             // Restore exact previous visibility for every track.
             for (const track of extractTracks(this._trips)) {
                 const id = deriveTrackId(track);
@@ -207,8 +213,6 @@ export class NomadPath {
             this._ui?.attrLegend.updateRanges(this._layers.visibleIds);
         };
 
-        // Track the pending handler so destroy() can remove it if called mid-switch.
-        this._pendingStyleHandler = onStyleData;
         this._map.once('styledata', onStyleData);
         engineSetBasemap(this._map, basemapId);
 
@@ -226,11 +230,8 @@ export class NomadPath {
      * After calling `destroy()`, the instance must not be used.
      */
     destroy(): void {
-        // Cancel any in-flight basemap switch listener.
-        if (this._pendingStyleHandler) {
-            this._map.off('styledata', this._pendingStyleHandler);
-            this._pendingStyleHandler = null;
-        }
+        // Invalidate any in-flight basemap switch handler.
+        this._basemapGeneration++;
 
         // Tear down UI components (MobileMenu first — it restores panels to container).
         if (this._ui) {
