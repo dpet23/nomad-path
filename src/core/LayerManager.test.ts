@@ -153,6 +153,33 @@ describe('buildSegmentFeatures', () => {
 });
 
 // ---------------------------------------------------------------------------
+// buildSegmentFeatures -- sunAngle circular averaging
+// ---------------------------------------------------------------------------
+
+describe('buildSegmentFeatures -- sunAngle circular averaging', () => {
+    it('averages sunAngles correctly when not crossing midnight', () => {
+        const track = makeTrack(DAY, 'Daytime', THREE_COORDS, {
+            sunAngles: [120, 180, 240],
+        });
+        const { featureCollection } = buildSegmentFeatures([track]);
+        expect(featureCollection.features[0].properties!.sunValue).toBeCloseTo(150);
+        expect(featureCollection.features[1].properties!.sunValue).toBeCloseTo(210);
+    });
+
+    it('averages sunAngles correctly across midnight boundary (350° + 10°)', () => {
+        const track = makeTrack(DAY, 'Midnight crossing', THREE_COORDS, {
+            sunAngles: [350, 10, 20],
+        });
+        const { featureCollection } = buildSegmentFeatures([track]);
+        // Correct circular average of 350° and 10° should be ~0°/360° (midnight),
+        // NOT 180° (noon) which is what simple (350+10)/2 gives
+        const sunValue = featureCollection.features[0].properties!.sunValue as number;
+        const distFromMidnight = Math.min(sunValue, 360 - sunValue);
+        expect(distFromMidnight).toBeLessThan(5); // within 5° of midnight
+    });
+});
+
+// ---------------------------------------------------------------------------
 // buildSegmentFeatures -- antimeridian splitting
 // ---------------------------------------------------------------------------
 
