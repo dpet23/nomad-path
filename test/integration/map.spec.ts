@@ -327,6 +327,16 @@ test.describe('basemap switch', () => {
         const exists = await page.evaluate(() => !!(window as any)._map.getLayer('np-tracks-layer'));
         expect(exists).toBe(true);
     });
+
+    test('zoom is clamped when switching to a basemap with lower maxZoom', async ({ page }) => {
+        await gotoMap(page);
+        // Zoom to 12, well above Blue Marble's maxZoom of 8
+        await page.evaluate(() => (window as any)._map.jumpTo({ zoom: 12 }));
+        await switchBasemap(page, 'blueMarble');
+        await waitForMapSettle(page);
+        const zoom = await page.evaluate(() => (window as any)._map.getZoom());
+        expect(zoom).toBeLessThanOrEqual(8);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -410,5 +420,45 @@ test.describe('layer filter and paint', () => {
             JSON.stringify((window as any)._map.getPaintProperty('np-tracks-layer', 'line-color')),
         );
         expect(after).not.toBe(before);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 8. destroy()
+// ---------------------------------------------------------------------------
+
+test.describe('destroy', () => {
+    test('removes all UI panels from the DOM', async ({ page }) => {
+        await gotoMap(page);
+        const beforeCount = await page.locator('.np-panel').count();
+        expect(beforeCount).toBeGreaterThan(0);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const afterCount = await page.locator('.np-panel').count();
+        expect(afterCount).toBe(0);
+    });
+
+    test('removes map controls from the DOM', async ({ page }) => {
+        await gotoMap(page);
+        const beforeCount = await page.locator('.np-map-controls').count();
+        expect(beforeCount).toBe(1);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const afterCount = await page.locator('.np-map-controls').count();
+        expect(afterCount).toBe(0);
+    });
+
+    test('removes mobile menu elements from the DOM', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const btn = await page.locator('.np-mobile-btn').count();
+        const backdrop = await page.locator('.np-mobile-backdrop').count();
+        const drawer = await page.locator('.np-mobile-drawer').count();
+        expect(btn + backdrop + drawer).toBe(0);
+    });
+
+    test('removes the map canvas', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const canvas = await page.locator('.maplibregl-canvas').count();
+        expect(canvas).toBe(0);
     });
 });
