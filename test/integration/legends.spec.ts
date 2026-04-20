@@ -515,3 +515,62 @@ test('TrackLegend: hiding a group via group checkbox narrows the attribute range
     await groupCheckbox.uncheck();
     expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
 });
+
+// ---------------------------------------------------------------------------
+// Edge cases — hiding all tracks, attribute persistence
+// ---------------------------------------------------------------------------
+
+test('AttributeLegend: hiding all visible tracks shows "no data" for speed', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Hide Tokyo Drive (group 0) and Helsinki Flight (group 2) via group checkboxes
+    const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
+    await groupCheckboxes.nth(0).uncheck();
+    await groupCheckboxes.nth(2).uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe('Speed: no data');
+});
+
+test('AttributeLegend: hiding all visible tracks empties layer ranges', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
+    await groupCheckboxes.nth(0).uncheck();
+    await groupCheckboxes.nth(2).uncheck();
+    const speedRange = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed);
+    expect(speedRange).toBeUndefined();
+});
+
+test('AttributeLegend: re-showing a track after hiding all restores speed range', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
+    // Hide all
+    await groupCheckboxes.nth(0).uncheck();
+    await groupCheckboxes.nth(2).uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe('Speed: no data');
+    // Re-show Tokyo Drive
+    await groupCheckboxes.nth(0).check();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
+});
+
+test('setBasemap: colour attribute dropdown preserves selected value', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await switchBasemap(page, 'blueMarble');
+    const selected = await page.locator('.np-attr-select').inputValue();
+    expect(selected).toBe('speed');
+});
+
+test('setBasemap: colour attribute paint expression uses correct attribute after switch', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await switchBasemap(page, 'blueMarble');
+    // The paint expression should be an interpolation array (not a flat string),
+    // proving the speed expression was correctly restored
+    const lineColor = await page.evaluate(() =>
+        (window as any)._map.getPaintProperty('np-tracks-layer', 'line-color'),
+    );
+    expect(Array.isArray(lineColor)).toBe(true);
+    // First element should be 'case' (the speed expression wraps interpolate in case)
+    expect(lineColor[0]).toBe('case');
+});
