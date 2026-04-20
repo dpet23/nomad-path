@@ -95,10 +95,13 @@ const ELEV_LOW = '#2E7D32';
 const ELEV_MID = '#FDD835';
 const ELEV_HIGH = '#FFFFFF';
 
-// Sun angle ramp
-const SUN_MIDNIGHT = '#1A237E';
-const SUN_HORIZON = '#FF6F00';
-const SUN_NOON = '#FDD835';
+// Sun angle ramp — matches the legend gradient in getColourStops()
+const SUN_MIDNIGHT = '#1A1040';
+const SUN_DEEP_NIGHT = '#2D2A80';
+const SUN_TWILIGHT = '#4A5BB8';
+const SUN_HORIZON = '#E86520';
+const SUN_LOW_DAY = '#F5B020';
+const SUN_NOON = '#FFF176';
 
 // ---------------------------------------------------------------------------
 // Colour stop generation (for legend gradient rendering)
@@ -155,17 +158,17 @@ export function getColourStops(attribute: ColourAttribute, ranges: AttributeRang
 
         case 'sunAngle':
             return [
-                [0, '#1A1040'], // Midnight, −90°
-                [0.2, '#2D2A80'], // Deep night, −45°
-                [0.23, '#4A5BB8'], // Civil twilight, −6°
-                [0.25, '#E86520'], // Sunrise, 0°
-                [0.35, '#F5B020'], // Low morning sun, +20°
-                [0.5, '#FFF176'], // Noon, +90°
-                [0.65, '#F5B020'], // Low afternoon sun, +20°
-                [0.75, '#E86520'], // Sunset, 0°
-                [0.77, '#4A5BB8'], // Civil twilight, −6°
-                [0.8, '#2D2A80'], // Deep night, −45°
-                [1.0, '#1A1040'], // Midnight, −90°
+                [0, SUN_MIDNIGHT], // Midnight
+                [0.2, SUN_DEEP_NIGHT], // Deep night
+                [0.23, SUN_TWILIGHT], // Civil twilight
+                [0.25, SUN_HORIZON], // Sunrise
+                [0.35, SUN_LOW_DAY], // Low morning sun
+                [0.5, SUN_NOON], // Noon
+                [0.65, SUN_LOW_DAY], // Low afternoon sun
+                [0.75, SUN_HORIZON], // Sunset
+                [0.77, SUN_TWILIGHT], // Civil twilight
+                [0.8, SUN_DEEP_NIGHT], // Deep night
+                [1.0, SUN_MIDNIGHT], // Midnight
             ];
 
         case 'transportMode': {
@@ -254,12 +257,24 @@ export function buildColourExpression(
                     ['get', 'sunValue'],
                     0,
                     SUN_MIDNIGHT,
+                    72,
+                    SUN_DEEP_NIGHT,
+                    82.8,
+                    SUN_TWILIGHT,
                     90,
                     SUN_HORIZON,
+                    126,
+                    SUN_LOW_DAY,
                     180,
                     SUN_NOON,
+                    234,
+                    SUN_LOW_DAY,
                     270,
                     SUN_HORIZON,
+                    277.2,
+                    SUN_TWILIGHT,
+                    288,
+                    SUN_DEEP_NIGHT,
                     360,
                     SUN_MIDNIGHT,
                 ],

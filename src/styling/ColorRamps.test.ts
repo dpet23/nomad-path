@@ -133,6 +133,27 @@ describe('getColourStops', () => {
         expect(stops[0][1]).toBe(stops[10][1]);
     });
 
+    it('sunAngle legend key colours match the map paint expression', () => {
+        const stops = getColourStops('sunAngle', ranges, 0);
+        const expr = buildColourExpression('sunAngle', ranges, 0) as unknown[];
+        // Structure: ['case', null-check, MISSING, ['interpolate', ...]]
+        const interp = expr[3] as unknown[];
+        // interp = ['interpolate', ['linear'], ['get', 'sunValue'], 0, colour, ...]
+        const mapStops = interp.slice(3);
+        const mapColourAt = (angle: number) => {
+            for (let i = 0; i < mapStops.length; i += 2) {
+                if (mapStops[i] === angle) return mapStops[i + 1];
+            }
+            return undefined;
+        };
+        // Legend position → angle: 0→0, 0.25→90, 0.5→180, 0.75→270, 1.0→360
+        expect(stops[0][1]).toBe(mapColourAt(0));
+        expect(stops.find(s => s[0] === 0.25)?.[1]).toBe(mapColourAt(90));
+        expect(stops.find(s => s[0] === 0.5)?.[1]).toBe(mapColourAt(180));
+        expect(stops.find(s => s[0] === 0.75)?.[1]).toBe(mapColourAt(270));
+        expect(stops.find(s => s[0] === 1.0)?.[1]).toBe(mapColourAt(360));
+    });
+
     it('returns one stop per transport mode', () => {
         const stops = getColourStops('transportMode', ranges, 0);
         expect(stops.length).toBe(Object.keys(TRANSPORT_MODE_COLOURS).length);
