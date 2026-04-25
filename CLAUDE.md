@@ -10,6 +10,7 @@ The original project specification is preserved in git history. This file record
 - [x] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
 - [ ] Epic 6: Testing — four-level test architecture, realistic fixtures, test-driven bug discovery
 - [ ] Epic 7: Cleanup & polish — UX improvements, preprocessing fixes, performance
+- [ ] Epic 8: Reactive state sync — replace manual UI/LayerManager wiring with typed events; enables low-maintenance state-sync test layer (plan: `~/.claude/plans/epic8-reactive-state-sync.md`)
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
@@ -60,6 +61,15 @@ CRITICAL: `AttributeLegend` constructor must call `ctx.layers.updateRanges(this.
 Range LABEL and map PAINT PROPERTY are separate state. Tests that only check the legend label pass even when map colours are wrong. Always test BOTH:
 - Label: text content of `.np-attr-range`
 - Layer ranges: `(window as any).nomadMap._layers._ranges?.speed?.min` (TypeScript private = JS runtime public)
+
+## State-sync architecture (Epic 8 prerequisite)
+Library has NO internal sync system between `LayerManager` and UI components. Cross-component updates are wired by hand: `TrackLegend.onVisibilityChange` callback → `attrLegend.updateRanges()` → `LayerManager.updateRanges()`; `setBasemap` restoration manually replays each surface (`src/index.ts:189-213`). `LayerManager` mutators emit no events; `UIContext` is a struct of references with no notification channel.
+
+Consequences:
+- New code paths that mutate `_visibleIds` / `_ranges` / `_colourAttribute` / `_visiblePOICategories` must remember to invoke every dependent UI component. Forgetting one produces silent UI staleness — this is the bug class behind several Epic 3/4 fixes.
+- Broad, low-maintenance state-sync test coverage is not feasible over a manual-callback architecture. Any test design either enumerates per-action expectations (high churn) or asserts mere internal consistency (misses the bug class).
+
+**Fix is Epic 8** — see `~/.claude/plans/epic8-reactive-state-sync.md`. Until then, hand-written integration tests in `test/integration/legends.spec.ts` are the pragmatic floor for state-sync coverage. Do NOT invest in a generic state-sync test framework before Epic 8 lands; it will not survive the architectural change.
 
 ## Testing Architecture
 
