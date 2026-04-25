@@ -8,14 +8,15 @@ The original project specification is preserved in git history. This file record
 - [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 26 e2e tests
 - [x] Epic 4: UI components (TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls) — 240 unit tests + 66 e2e tests
 - [x] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
-- [ ] Epic 6: Testing — four-level test architecture, realistic fixtures, test-driven bug discovery
+- [x] Epic 6: Testing — three-level test architecture (unit, integration, e2e), realistic fixtures, test-driven bug discovery. Level 4 (watch) deferred to Epic 9.
 - [ ] Epic 7: Cleanup & polish — UX improvements, preprocessing fixes, performance
 - [ ] Epic 8: Reactive state sync — replace manual UI/LayerManager wiring with typed events; enables low-maintenance state-sync test layer (plan: `~/.claude/plans/epic8-reactive-state-sync.md`)
+- [ ] Epic 9: Preprocessing output guarantee + Level 4 watch tests — atomic writes, unlink-on-failure, status sidecar; tests prove output is library-compatible-or-absent under all watch-mode failure modes (plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`)
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 6 in progress: restructuring test infrastructure (four levels, realistic fixtures, discovery-driven testing)
-- 240 unit tests + 66 Playwright integration tests, all passing
+- Epic 6 closed: three-level test architecture in place. Level 4 (watch mode) split out as Epic 9 because it requires preprocessing changes (atomic writes, output-or-absent invariant) larger than Epic 6's scope.
+- Tests: unit + integration + e2e all green via `npm run test:all`
 - Epic 5 additions: `preprocessing/watch.js` (file watcher + serve), `copy:demo`/`clean` scripts, `test/integration/helpers.ts` with shared `TEST_PAGE`/`gotoMap` fast-fail
 - Epic 4 additions: TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls, CSS injection, BasePanel, ColorRamps extraction, dynamic attribute ranges, POI category visibility + defaultVisible from yaml, setBasemap state restoration (tracks + colour attribute + ranges + POI categories), native MapControls (fit-to-tracks button top-left, basemap select top-right)
 - Bugs fixed in Epic 4: setBasemap() discarded dynamic ranges (AttributeLegend constructor didn't sync LayerManager._ranges); setBasemap() POI category restoration was one-directional; serve.json trailingSlash broke test.html relative paths (fixed with absolute paths)
@@ -73,7 +74,7 @@ Consequences:
 
 ## Testing Architecture
 
-Four test levels, each catching failures the level below cannot:
+Three test levels in place; a fourth (watch) is planned as Epic 9.
 
 **Level 1 — Unit** (`preprocessing/lib/*.test.js`, `src/core/*.test.ts`): Pure logic, no DOM/map/server. `npm run test:unit`
 
@@ -81,17 +82,15 @@ Four test levels, each catching failures the level below cannot:
 
 **Level 3 — E2E** (`test/e2e/`): Raw input files → `build:data` → static server → browser → assertions. Tests the seam between pipeline output and library input. `npm run test:e2e`
 
-**Level 4 — Watch** (`test/watch/`): Raw inputs → `npm run watch` → browser → file mutations → rebuild → reload → assertions. Tests concurrent rebuilds, mid-build changes, parser errors during watch, interaction state reset on reload. `npm run test:watch`
+**Level 4 — Watch** (planned, Epic 9): Raw inputs → `npm run watch` → browser → file mutations → rebuild → reload → assertions. Will test the file lifecycle, concurrency, and the load-bearing invariant *preprocessing output is library-compatible or absent — never partial, never stale*. Plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`.
 
 ### Test directory structure
 ```
 test/
   fixtures/
     map/              — raw GPX/KML/yaml for fixture generation (Levels 2+3)
-    watch/            — base input for watch tests (copied to temp dir per run)
   integration/        — Level 2 Playwright tests + test.html + dist/ + fixture.geojson
   e2e/                — Level 3 Playwright tests
-  watch/              — Level 4 Playwright tests
 ```
 
 ### Fixture strategy
@@ -121,7 +120,7 @@ Fixtures must use NON-OVERLAPPING attribute ranges per track so any hidden-track
 
 ## npm Scripts
 See [docs/developer.md](docs/developer.md) for full descriptions.
-Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:integration` / `test:e2e` / `test:watch` / `test:all` / `test:all:browsers` / `test:integration:debug` / `test:e2e:debug` / `test:watch:debug` / `test:integration:install` / `clean`
+Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:integration` / `test:e2e` / `test:all` / `test:all:browsers` / `test:integration:debug` / `test:e2e:debug` / `test:integration:install` / `clean`
 Private (composition only): `_copy:demo` / `_copy:integration` / `_build:integration`
 Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
 Dev process: `test:unit` or `test:integration` during development. `test:all` before merge/end of epic. `test:all:browsers` before major milestones.

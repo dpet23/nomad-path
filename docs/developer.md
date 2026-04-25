@@ -46,12 +46,10 @@ Scripts prefixed with `_` are internal composition helpers — they exist only t
 | `test:unit:watch` | Vitest in watch mode |
 | `test:integration` | Build + Playwright integration tests (Chromium only) |
 | `test:e2e` | Build + Playwright e2e tests — validates pipeline→library seam (Chromium only) |
-| `test:watch` | Playwright watch mode tests — file lifecycle, rebuild, concurrency (Chromium only) |
-| `test:all` | Unit + integration + e2e + watch (all levels, Chromium) |
+| `test:all` | Unit + integration + e2e (Chromium) |
 | `test:all:browsers` | All levels on Chromium + Firefox + WebKit |
 | `test:integration:debug` | Integration tests in Playwright UI mode |
 | `test:e2e:debug` | E2E tests in Playwright UI mode |
-| `test:watch:debug` | Watch tests in Playwright UI mode |
 | `test:integration:install` | Install Playwright browsers (one-time) |
 | `clean` | Remove all generated dirs: `dist/`, `demo/dist/`, `test/integration/dist/`, `coverage/`, `playwright-report/`, `test-results/` |
 
@@ -65,9 +63,9 @@ npm run test:integration -- --grep "pattern"
 
 ## Testing Strategy
 
-<!-- Claude: Update test counts when new tests are added. Four levels: unit (vitest), integration (playwright), e2e (playwright), watch (playwright). -->
+<!-- Claude: Update test counts when new tests are added. Three levels in place: unit (vitest), integration (playwright), e2e (playwright). Level 4 (watch) planned as Epic 9. -->
 
-Four test levels, each catching failures the level below cannot. See `CLAUDE.md` → Testing Architecture for the full breakdown.
+Three test levels in place; Level 4 (watch) is planned as Epic 9. See `CLAUDE.md` → Testing Architecture for the full breakdown.
 
 **Level 1 — Unit** (`npm run test:unit`): Vitest. Pure logic in isolation — preprocessing, rendering, UI components. Run constantly during development.
 
@@ -75,11 +73,9 @@ Four test levels, each catching failures the level below cannot. See `CLAUDE.md`
 
 **Level 3 — E2E** (`npm run test:e2e`): Playwright + Chromium. Raw input files → `build:data` → browser. Validates the seam between pipeline output and library input. A failure here but passing Level 2 = seam bug.
 
-**Level 4 — Watch** (`npm run test:watch`): Playwright + Chromium. File mutations → rebuild → reload → assertions. Tests concurrent rebuilds, mid-build changes, interaction state reset on reload.
-
 **All levels**: `npm run test:all` (Chromium) or `npm run test:all:browsers` (all browsers).
 
-**Debug scripts**: `test:integration:debug`, `test:e2e:debug`, `test:watch:debug` — open Playwright UI mode for step-through debugging with time-travel and DOM snapshots.
+**Debug scripts**: `test:integration:debug`, `test:e2e:debug` — open Playwright UI mode for step-through debugging with time-travel and DOM snapshots.
 
 ### Pre-commit hook
 
@@ -89,7 +85,7 @@ Every commit runs automatically:
 2. `typecheck` — full TypeScript type-check
 3. `test:coverage` — all unit tests with coverage thresholds (fails if coverage drops below 75%)
 
-Browser-level tests (Levels 2–4) are not part of the pre-commit hook — they run on-demand and before merges.
+Browser-level tests (Levels 2–3) are not part of the pre-commit hook — they run on-demand and before merges.
 
 ### When to run each level
 
