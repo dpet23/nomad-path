@@ -8,6 +8,8 @@ node_modules/
 dist/
 demo/dist/
 test/integration/dist/
+test/e2e/dist/
+test/e2e/fixture.geojson
 coverage/
 
 # Environment
