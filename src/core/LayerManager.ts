@@ -47,6 +47,20 @@ function avgNullable(a: number | null | undefined, b: number | null | undefined)
     return (a + b) / 2;
 }
 
+/**
+ * Circular average of two nullable angles in [0, 360].
+ * Handles the midnight wraparound correctly (e.g. avg(350, 10) → 0, not 180).
+ */
+function avgCircular360(a: number | null | undefined, b: number | null | undefined): number | null {
+    if (a == null || b == null) return null;
+    const toRad = Math.PI / 180;
+    const sinAvg = (Math.sin(a * toRad) + Math.sin(b * toRad)) / 2;
+    const cosAvg = (Math.cos(a * toRad) + Math.cos(b * toRad)) / 2;
+    let deg = Math.atan2(sinAvg, cosAvg) / toRad;
+    if (deg < 0) deg += 360;
+    return deg;
+}
+
 type Coord = [number, number] | [number, number, number];
 
 /**
@@ -138,7 +152,7 @@ export function buildSegmentFeatures(tracks: TrackFeature[]): SegmentBuildResult
                 transportMode: transportMode ?? 'drive',
                 elevValue: avgNullable(elevations?.[i], elevations?.[i + 1]),
                 speedValue: avgNullable(speeds?.[i], speeds?.[i + 1]),
-                sunValue: avgNullable(sunAngles?.[i], sunAngles?.[i + 1]),
+                sunValue: avgCircular360(sunAngles?.[i], sunAngles?.[i + 1]),
             };
 
             const split = antimeridianSplit(coords[i], coords[i + 1]);

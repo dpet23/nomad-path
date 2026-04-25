@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
+     version="1.1">
+  <trk>
+    <name>Speed Priority Test</name>
+    <trkseg>
+      <trkpt lat="35.6895" lon="139.6917">
+        <time>2024-03-15T08:00:00Z</time>
+        <extensions>
+          <osmand:speed>10.0</osmand:speed>
+          <speed_2d><value>5.0</value><unit>m/s</unit></speed_2d>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6910" lon="139.6940">
+        <time>2024-03-15T08:05:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

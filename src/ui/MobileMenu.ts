@@ -16,6 +16,7 @@ export class MobileMenu {
     private readonly _backdrop: HTMLDivElement;
     private readonly _drawer: HTMLDivElement;
     private readonly _mq: MediaQueryList;
+    private readonly _mqHandler: (e: { matches: boolean }) => void;
     private _open = false;
 
     /**
@@ -47,15 +48,17 @@ export class MobileMenu {
         this._drawer.className = 'np-mobile-drawer';
         mapContainer.appendChild(this._drawer);
 
-        // Media query listener
+        // Media query listener — store the bound handler so destroy() can pass
+        // the same reference to removeEventListener (a new arrow function won't work).
+        this._mqHandler = (e: { matches: boolean }) => this._onMqChange(e.matches);
         this._mq = window.matchMedia('(max-width: 768px)');
-        this._mq.addEventListener('change', e => this._onMqChange(e.matches));
+        this._mq.addEventListener('change', this._mqHandler);
         this._onMqChange(this._mq.matches);
     }
 
     /** Clean up event listeners and restore panels to the map container. */
     destroy(): void {
-        this._mq.removeEventListener('change', e => this._onMqChange(e.matches));
+        this._mq.removeEventListener('change', this._mqHandler);
         this._restorePanels();
         this._btn.remove();
         this._backdrop.remove();

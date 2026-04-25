@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
+     version="1.1" creator="OsmAnd">
+  <metadata>
+    <name>2025-06-10_09-00_Tue</name>
+    <extensions>
+      <osmand:activity>driving</osmand:activity>
+    </extensions>
+  </metadata>
+  <trk>
+    <name>Coastal Highway</name>
+    <trkseg>
+      <trkpt lat="41.3800" lon="2.1700">
+        <ele>25</ele>
+        <time>2025-06-10T09:00:00Z</time>
+        <extensions><osmand:speed>11.1</osmand:speed></extensions>
+      </trkpt>
+      <trkpt lat="41.3820" lon="2.1730">
+        <ele>28</ele>
+        <time>2025-06-10T09:02:00Z</time>
+        <extensions><osmand:speed>13.9</osmand:speed></extensions>
+      </trkpt>
+      <trkpt lat="41.3850" lon="2.1770">
+        <ele>32</ele>
+        <time>2025-06-10T09:04:00Z</time>
+        <extensions><osmand:speed>16.7</osmand:speed></extensions>
+      </trkpt>
+      <trkpt lat="41.3880" lon="2.1810">
+        <ele>35</ele>
+        <time>2025-06-10T09:06:00Z</time>
+        <extensions><osmand:speed>12.5</osmand:speed></extensions>
+      </trkpt>
+      <trkpt lat="41.3910" lon="2.1860">
+        <ele>30</ele>
+        <time>2025-06-10T09:08:00Z</time>
+        <extensions><osmand:speed>15.3</osmand:speed></extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

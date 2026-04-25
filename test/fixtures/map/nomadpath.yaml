@@ -1,0 +1,8 @@
+groups:
+  flights:
+    defaultVisible: true
+    excludeFromAutoBounds: true
+
+poi_categories:
+  landmark:
+    defaultVisible: false

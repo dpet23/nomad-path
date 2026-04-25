@@ -246,3 +246,76 @@ describe('parseFile', () => {
         expect(() => parseFile('track.tcx')).toThrow('Unsupported file format');
     });
 });
+
+// ---------------------------------------------------------------------------
+// parseGPX — empty document
+// ---------------------------------------------------------------------------
+
+describe('parseGPX — empty document', () => {
+    const { tracks, waypoints } = parseGPX(join(FIXTURES, 'sample-empty.gpx'));
+
+    it('returns no tracks for a GPX with no <trk> elements', () => {
+        expect(tracks).toHaveLength(0);
+    });
+
+    it('returns no waypoints for a GPX with no <wpt> elements', () => {
+        expect(waypoints).toHaveLength(0);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// parseGPX — unknown OsmAnd activity string
+// ---------------------------------------------------------------------------
+
+describe('parseGPX — unknown OsmAnd activity string', () => {
+    const { tracks } = parseGPX(join(FIXTURES, 'sample-unknown-activity.gpx'));
+
+    it('uses the lowercased activity string as transportMode when not in ACTIVITY_MAP', () => {
+        // "Snorkeling" is not in ACTIVITY_MAP → returned lowercased as-is
+        expect(tracks[0].transportMode).toBe('snorkeling');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// parseGPX — flights/ subfolder overrides all transport mode detection
+// ---------------------------------------------------------------------------
+
+describe('parseGPX — flights/ subfolder forces flight mode', () => {
+    // Fixture metadata says "driving" — subfolder wins
+    const { tracks } = parseGPX(join(FIXTURES, 'flights', 'sample.gpx'));
+
+    it('detects flight mode from path component regardless of activity metadata', () => {
+        expect(tracks[0].transportMode).toBe('flight');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// parseGPX — track and waypoints in the same file
+// ---------------------------------------------------------------------------
+
+describe('parseGPX — track and waypoints in same file', () => {
+    const { tracks, waypoints } = parseGPX(join(FIXTURES, 'sample-track-with-waypoints.gpx'));
+
+    it('returns the track', () => {
+        expect(tracks).toHaveLength(1);
+        expect(tracks[0].name).toBe('Morning Stroll');
+    });
+
+    it('returns the waypoint', () => {
+        expect(waypoints).toHaveLength(1);
+        expect(waypoints[0].name).toBe('Shinjuku Station');
+        expect(waypoints[0].category).toBe('landmark');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// parseGPX — speed extension priority (both on same trkpt)
+// ---------------------------------------------------------------------------
+
+describe('parseGPX — speed extension priority', () => {
+    const { tracks } = parseGPX(join(FIXTURES, 'sample-both-speed-extensions.gpx'));
+
+    it('prefers <osmand:speed> (10 m/s → 36 km/h) over <speed_2d> (5 m/s) when both present', () => {
+        expect(tracks[0].points[0].speedKmh).toBeCloseTo(36, 1);
+    });
+});

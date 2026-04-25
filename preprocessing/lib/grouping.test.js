@@ -205,6 +205,51 @@ describe('groupTracks -- flight tracks', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe('groupTracks -- edge cases', () => {
+    it('returns empty array for empty input', () => {
+        expect(groupTracks([])).toEqual([]);
+    });
+
+    it('two flights on the same UTC date with the same name get distinct day keys', () => {
+        // Connecting flights or a rebooking: same route code, same departure date
+        const f1 = makeTrack({
+            name: 'Flight SYD-NRT',
+            transportMode: 'flight',
+            points: [
+                { lat: -33.9461, lon: 151.1772, time: Date.parse('2024-03-16T00:30:00Z') },
+                { lat: 35.7647, lon: 140.3864 },
+            ],
+        });
+        const f2 = makeTrack({
+            name: 'Flight SYD-NRT',
+            transportMode: 'flight',
+            points: [
+                { lat: -33.9461, lon: 151.1772, time: Date.parse('2024-03-16T14:00:00Z') },
+                { lat: 35.7647, lon: 140.3864 },
+            ],
+        });
+        const [g1, g2] = groupTracks([f1, f2]);
+        expect(g1.day).not.toBe(g2.day);
+    });
+
+    it('does not crash when coordinates are out of valid range', () => {
+        // tz-lookup with invalid coords should not throw
+        const track = makeTrack({
+            name: 'bad-coords',
+            transportMode: 'drive',
+            points: [
+                { lat: 999, lon: 999, time: Date.parse('2024-03-15T08:00:00Z') },
+                { lat: 999, lon: 999, time: Date.parse('2024-03-15T08:05:00Z') },
+            ],
+        });
+        expect(() => groupTracks([track])).not.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Passthrough of existing properties
 // ---------------------------------------------------------------------------
 

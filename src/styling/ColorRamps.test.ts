@@ -51,6 +51,22 @@ describe('buildColourExpression', () => {
         expect(Array.isArray(result)).toBe(true);
         expect((result as unknown[])[0]).toBe('case');
     });
+
+    it('speed expression uses flat colour when min === max (no degenerate interpolation)', () => {
+        const equalRanges = { speed: { min: 50, max: 50, unit: 'km/h' } };
+        const result = buildColourExpression('speed', equalRanges, 0) as unknown[];
+        // Should be a case expression with no interpolation
+        expect(result[0]).toBe('case');
+        // The non-null branch should be a flat colour string, not an array
+        expect(typeof result[3]).toBe('string');
+    });
+
+    it('elevation expression uses flat colour when min === max (no degenerate interpolation)', () => {
+        const equalRanges = { elevation: { min: 100, max: 100, unit: 'm' } };
+        const result = buildColourExpression('elevation', equalRanges, 0) as unknown[];
+        expect(result[0]).toBe('case');
+        expect(typeof result[3]).toBe('string');
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -110,11 +126,32 @@ describe('getColourStops', () => {
         expect(stops).toHaveLength(3);
     });
 
-    it('returns 5 stops for sunAngle (symmetric cycle)', () => {
+    it('returns 11 stops for sunAngle (symmetric cycle)', () => {
         const stops = getColourStops('sunAngle', ranges, 0);
-        expect(stops).toHaveLength(5);
+        expect(stops).toHaveLength(11);
         // First and last should be the same colour (midnight)
-        expect(stops[0][1]).toBe(stops[4][1]);
+        expect(stops[0][1]).toBe(stops[10][1]);
+    });
+
+    it('sunAngle legend key colours match the map paint expression', () => {
+        const stops = getColourStops('sunAngle', ranges, 0);
+        const expr = buildColourExpression('sunAngle', ranges, 0) as unknown[];
+        // Structure: ['case', null-check, MISSING, ['interpolate', ...]]
+        const interp = expr[3] as unknown[];
+        // interp = ['interpolate', ['linear'], ['get', 'sunValue'], 0, colour, ...]
+        const mapStops = interp.slice(3);
+        const mapColourAt = (angle: number) => {
+            for (let i = 0; i < mapStops.length; i += 2) {
+                if (mapStops[i] === angle) return mapStops[i + 1];
+            }
+            return undefined;
+        };
+        // Legend position → angle: 0→0, 0.25→90, 0.5→180, 0.75→270, 1.0→360
+        expect(stops[0][1]).toBe(mapColourAt(0));
+        expect(stops.find(s => s[0] === 0.25)?.[1]).toBe(mapColourAt(90));
+        expect(stops.find(s => s[0] === 0.5)?.[1]).toBe(mapColourAt(180));
+        expect(stops.find(s => s[0] === 0.75)?.[1]).toBe(mapColourAt(270));
+        expect(stops.find(s => s[0] === 1.0)?.[1]).toBe(mapColourAt(360));
     });
 
     it('returns one stop per transport mode', () => {

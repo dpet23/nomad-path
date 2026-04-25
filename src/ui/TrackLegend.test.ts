@@ -373,4 +373,32 @@ describe('TrackLegend', () => {
         legend.update();
         expect(c.querySelectorAll(TRACK_ROW_SEL)).toHaveLength(2);
     });
+
+    it('update() reflects current isTrackVisible state in rebuilt checkboxes', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A')]);
+        const { ctx } = mockCtx([trip]);
+        const legend = new TrackLegend(c, ctx);
+        // Initially visible — mock returns true by default
+        expect((c.querySelector(TRACK_CHECKBOX_SEL) as HTMLInputElement).checked).toBe(true);
+        // Simulate the track being hidden externally (e.g. after a basemap switch restores state)
+        (ctx.layers.isTrackVisible as ReturnType<typeof vi.fn>).mockReturnValue(false);
+        // update() rebuilds the DOM — the new checkbox must re-read isTrackVisible
+        legend.update();
+        expect((c.querySelector(TRACK_CHECKBOX_SEL) as HTMLInputElement).checked).toBe(false);
+    });
+
+    it('update() does not change the collapsed state of the BasePanel', () => {
+        const c = setup();
+        const trip = makeTrip([makeTrack(DAY_1, 'A')]);
+        const { ctx } = mockCtx([trip]);
+        const legend = new TrackLegend(c, ctx);
+        // Collapse the panel via the header
+        const header = c.querySelector('.np-panel__header') as HTMLElement;
+        header.click();
+        expect(legend.collapsed).toBe(true);
+        // update() rebuilds track rows but must leave the collapsed state intact
+        legend.update();
+        expect(legend.collapsed).toBe(true);
+    });
 });

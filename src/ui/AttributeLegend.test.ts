@@ -257,4 +257,33 @@ describe('AttributeLegend', () => {
         new AttributeLegend(c, ctx, { position: 'bottomleft' });
         expect(c.querySelector('.np-panel--bottomleft')).not.toBeNull();
     });
+
+    it('constructor calls layers.updateRanges to sync initial ranges with the map layer', () => {
+        // Without this call, LayerManager._ranges stays at static merged metadata
+        // until the first visibility toggle — causing wrong colours on initial load.
+        const c = setup();
+        const track = makeTrack('A', [0, 847]);
+        const trip = makeTrip([track]);
+        const visibleIds = new Set([`${DAY}::A`]);
+        const { ctx, spies } = mockCtx([trip], visibleIds);
+        new AttributeLegend(c, ctx);
+        expect(spies.updateRanges).toHaveBeenCalledOnce();
+    });
+
+    it('updateRanges passes the computed ranges object to layers.updateRanges', () => {
+        const c = setup();
+        const track = makeTrack('A', [10, 500]);
+        const trip = makeTrip([track]);
+        const visibleIds = new Set([`${DAY}::A`]);
+        const { ctx, spies } = mockCtx([trip], visibleIds);
+        const legend = new AttributeLegend(c, ctx);
+        spies.updateRanges.mockClear();
+        legend.updateRanges(new Set([`${DAY}::A`]));
+        // The data passed to LayerManager must contain the computed elevation range
+        expect(spies.updateRanges).toHaveBeenCalledWith(
+            expect.objectContaining({
+                elevation: expect.objectContaining({ min: 10, max: 500 }),
+            }),
+        );
+    });
 });

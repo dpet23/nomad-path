@@ -108,16 +108,11 @@ export function waitForLoad(map: Map): Promise<void> {
  */
 export function setBasemap(map: Map, basemapId: BasemapId): void {
     const basemap = BASEMAPS[basemapId];
-    const currentZoom = map.getZoom();
-    const clampedZoom = Math.min(Math.max(currentZoom, basemap.minZoom), basemap.maxZoom);
 
     map.setStyle(basemap.style);
+    // setMinZoom/setMaxZoom clamp the current zoom automatically.
     map.setMinZoom(basemap.minZoom);
     map.setMaxZoom(basemap.maxZoom);
-
-    if (clampedZoom !== currentZoom) {
-        map.once('style.load', () => map.setZoom(clampedZoom));
-    }
 }
 
 // ---------------------------------------------------------------------------

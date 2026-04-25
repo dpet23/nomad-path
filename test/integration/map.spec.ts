@@ -20,7 +20,7 @@
  *   POI_LABELS       = 'np-pois-labels'
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { gotoMap } from './helpers';
 
 // ---------------------------------------------------------------------------
@@ -235,6 +235,17 @@ test.describe('fitToTracks', () => {
         // Now Sydney (lat -33.9) should be included
         expect(south).toBeLessThan(SYDNEY_MAX_LAT);
     });
+
+    test('fitToTracks() with all tracks hidden is a no-op (no crash)', async ({ page }) => {
+        await gotoMap(page);
+        // Hide all three tracks (Tokyo and Helsinki are visible by default; Sydney is already hidden)
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_A_ID);
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_C_ID);
+        // fitToTracks should return without throwing when there are no visible tracks
+        await page.evaluate(() => (window as any).nomadMap.fitToTracks());
+        const exists = await page.evaluate(() => !!(window as any)._map.getLayer('np-tracks-layer'));
+        expect(exists).toBe(true);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -316,6 +327,55 @@ test.describe('basemap switch', () => {
         const exists = await page.evaluate(() => !!(window as any)._map.getLayer('np-tracks-layer'));
         expect(exists).toBe(true);
     });
+
+    test('rapid basemap switching does not crash', async ({ page }) => {
+        await gotoMap(page);
+        // Fire 3 switches without waiting for any to complete
+        await page.evaluate(() => {
+            const nm = (window as any).nomadMap;
+            nm.setBasemap('blueMarble');
+            nm.setBasemap('osm');
+            nm.setBasemap('blueMarble');
+        });
+        // Wait for the final basemap handler to restore our track layer.
+        // The generation counter ensures only the latest handler runs.
+        await page.waitForFunction(
+            () => !!(window as any)._map.getLayer('np-tracks-layer'),
+            { timeout: 30_000, polling: 200 },
+        );
+    });
+
+    test('track visibility survives rapid basemap switching', async ({ page }) => {
+        await gotoMap(page);
+        // Hide Sydney, then rapid-switch
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_A_ID);
+        await page.evaluate(() => {
+            const nm = (window as any).nomadMap;
+            nm.setBasemap('blueMarble');
+            nm.setBasemap('osm');
+        });
+        await page.waitForFunction(
+            () => !!(window as any)._map.getLayer('np-tracks-layer'),
+            { timeout: 30_000 },
+        );
+        // Wait a bit for all handlers to complete
+        await page.waitForTimeout(500);
+        const visible = await page.evaluate(
+            id => (window as any).nomadMap.isTrackVisible(id),
+            TRACK_A_ID,
+        );
+        expect(visible).toBe(false);
+    });
+
+    test('zoom is clamped when switching to a basemap with lower maxZoom', async ({ page }) => {
+        await gotoMap(page);
+        // Zoom to 12, well above Blue Marble's maxZoom of 8
+        await page.evaluate(() => (window as any)._map.jumpTo({ zoom: 12 }));
+        await switchBasemap(page, 'blueMarble');
+        await waitForMapSettle(page);
+        const zoom = await page.evaluate(() => (window as any)._map.getZoom());
+        expect(zoom).toBeLessThanOrEqual(8);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -343,5 +403,101 @@ test.describe('colour attribute', () => {
         }
         const exists = await page.evaluate(() => !!(window as any)._map.getLayer('np-tracks-layer'));
         expect(exists).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Layer filter and paint property
+// ---------------------------------------------------------------------------
+
+test.describe('layer filter and paint', () => {
+    // The visibility filter format: ['in', ['get', 'trackId'], ['literal', [id1, id2, ...]]]
+    // filter[2][1] is the array of currently visible track IDs.
+
+    test('track layer filter excludes hidden tracks on load', async ({ page }) => {
+        await gotoMap(page);
+        // Sydney Walk is defaultVisible: false — must be absent from the literal array
+        const filter = await page.evaluate(() => (window as any)._map.getFilter('np-tracks-layer'));
+        const literal: string[] = filter?.[2]?.[1];
+        expect(literal).toBeDefined();
+        expect(literal).not.toContain(TRACK_B_ID);
+        expect(literal).toContain(TRACK_A_ID);
+        expect(literal).toContain(TRACK_C_ID);
+    });
+
+    test('track layer filter drops a track when it is hidden', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, false), TRACK_A_ID);
+        const filter = await page.evaluate(() => (window as any)._map.getFilter('np-tracks-layer'));
+        const literal: string[] = filter?.[2]?.[1];
+        expect(literal).not.toContain(TRACK_A_ID);
+    });
+
+    test('track layer filter adds a track when it is shown', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(id => (window as any).nomadMap.setTrackVisible(id, true), TRACK_B_ID);
+        const filter = await page.evaluate(() => (window as any)._map.getFilter('np-tracks-layer'));
+        const literal: string[] = filter?.[2]?.[1];
+        expect(literal).toContain(TRACK_B_ID);
+    });
+
+    test('line-color is an expression (array) on load', async ({ page }) => {
+        await gotoMap(page);
+        const paint = await page.evaluate(() =>
+            (window as any)._map.getPaintProperty('np-tracks-layer', 'line-color'),
+        );
+        expect(Array.isArray(paint)).toBe(true);
+    });
+
+    test('line-color expression changes when colour attribute switches from day to speed', async ({ page }) => {
+        await gotoMap(page);
+        const before = await page.evaluate(() =>
+            JSON.stringify((window as any)._map.getPaintProperty('np-tracks-layer', 'line-color')),
+        );
+        await page.evaluate(() => (window as any).nomadMap.setColourAttribute('speed'));
+        const after = await page.evaluate(() =>
+            JSON.stringify((window as any)._map.getPaintProperty('np-tracks-layer', 'line-color')),
+        );
+        expect(after).not.toBe(before);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// 8. destroy()
+// ---------------------------------------------------------------------------
+
+test.describe('destroy', () => {
+    test('removes all UI panels from the DOM', async ({ page }) => {
+        await gotoMap(page);
+        const beforeCount = await page.locator('.np-panel').count();
+        expect(beforeCount).toBeGreaterThan(0);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const afterCount = await page.locator('.np-panel').count();
+        expect(afterCount).toBe(0);
+    });
+
+    test('removes map controls from the DOM', async ({ page }) => {
+        await gotoMap(page);
+        const beforeCount = await page.locator('.np-map-controls').count();
+        expect(beforeCount).toBe(1);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const afterCount = await page.locator('.np-map-controls').count();
+        expect(afterCount).toBe(0);
+    });
+
+    test('removes mobile menu elements from the DOM', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const btn = await page.locator('.np-mobile-btn').count();
+        const backdrop = await page.locator('.np-mobile-backdrop').count();
+        const drawer = await page.locator('.np-mobile-drawer').count();
+        expect(btn + backdrop + drawer).toBe(0);
+    });
+
+    test('removes the map canvas', async ({ page }) => {
+        await gotoMap(page);
+        await page.evaluate(() => (window as any).nomadMap.destroy());
+        const canvas = await page.locator('.maplibregl-canvas').count();
+        expect(canvas).toBe(0);
     });
 });

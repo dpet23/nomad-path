@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1">
+  <wpt lat="35.6938" lon="139.7006">
+    <name>Shinjuku Station</name>
+    <type>landmark</type>
+  </wpt>
+  <trk>
+    <name>Morning Stroll</name>
+    <trkseg>
+      <trkpt lat="35.6895" lon="139.6917">
+        <time>2024-03-15T09:00:00Z</time>
+      </trkpt>
+      <trkpt lat="35.6910" lon="139.6940">
+        <time>2024-03-15T09:10:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -151,3 +151,143 @@ describe('buildSegmentFeatures', () => {
         expect(props.sunValue).toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+// buildSegmentFeatures -- sunAngle circular averaging
+// ---------------------------------------------------------------------------
+
+describe('buildSegmentFeatures -- sunAngle circular averaging', () => {
+    it('averages sunAngles correctly when not crossing midnight', () => {
+        const track = makeTrack(DAY, 'Daytime', THREE_COORDS, {
+            sunAngles: [120, 180, 240],
+        });
+        const { featureCollection } = buildSegmentFeatures([track]);
+        expect(featureCollection.features[0].properties!.sunValue).toBeCloseTo(150);
+        expect(featureCollection.features[1].properties!.sunValue).toBeCloseTo(210);
+    });
+
+    it('averages sunAngles correctly across midnight boundary (350° + 10°)', () => {
+        const track = makeTrack(DAY, 'Midnight crossing', THREE_COORDS, {
+            sunAngles: [350, 10, 20],
+        });
+        const { featureCollection } = buildSegmentFeatures([track]);
+        // Correct circular average of 350° and 10° should be ~0°/360° (midnight),
+        // NOT 180° (noon) which is what simple (350+10)/2 gives
+        const sunValue = featureCollection.features[0].properties!.sunValue as number;
+        const distFromMidnight = Math.min(sunValue, 360 - sunValue);
+        expect(distFromMidnight).toBeLessThan(5); // within 5° of midnight
+    });
+});
+
+// ---------------------------------------------------------------------------
+// buildSegmentFeatures -- antimeridian splitting
+// ---------------------------------------------------------------------------
+
+describe('buildSegmentFeatures -- antimeridian splitting', () => {
+    it('does not split a segment whose |dLon| is exactly 180', () => {
+        // |dLon| = 180 is the boundary: the condition is > 180 to split
+        const track = makeTrack(DAY, 'No Split', [
+            [0, 0],
+            [180, 0],
+        ]);
+        const { featureCollection } = buildSegmentFeatures([track]);
+        expect(featureCollection.features).toHaveLength(1);
+    });
+
+    it('splits an eastward antimeridian crossing into 2 sub-segments', () => {
+        // [179.9, 0] → [-179.9, 5]: dLon = -359.8, crosses eastward
+        const track = makeTrack(DAY, 'Eastward', [
+            [179.9, 0],
+            [-179.9, 5],
+        ]);
+        const { featureCollection } = buildSegmentFeatures([track]);
+        expect(featureCollection.features).toHaveLength(2);
+    });
+
+    it('splits a westward antimeridian crossing into 2 sub-segments', () => {
+        // [-179.9, 0] → [179.9, 5]: dLon = +359.8, crosses westward
+        const track = makeTrack(DAY, 'Westward', [
+            [-179.9, 0],
+            [179.9, 5],
+        ]);
+        const { featureCollection } = buildSegmentFeatures([track]);
+        expect(featureCollection.features).toHaveLength(2);
+    });
+
+    it('places the boundary of an eastward crossing at lon ±180', () => {
+        // [179.9, 0] → [-179.9, 5]: boundary at exactly ±180°
+        const track = makeTrack(DAY, 'Eastward', [
+            [179.9, 0],
+            [-179.9, 5],
+        ]);
+        const { featureCollection } = buildSegmentFeatures([track]);
+        const [seg0, seg1] = featureCollection.features;
+        const coords0 = (seg0.geometry as GeoJSON.LineString).coordinates;
+        const coords1 = (seg1.geometry as GeoJSON.LineString).coordinates;
+        // First sub-segment ends at 180°
+        expect(coords0[1][0]).toBeCloseTo(180, 5);
+        // Second sub-segment starts at -180°
+        expect(coords1[0][0]).toBeCloseTo(-180, 5);
+    });
+
+    it('places the boundary of a westward crossing at lon ±180', () => {
+        // [-179.9, 0] → [179.9, 5]
+        const track = makeTrack(DAY, 'Westward', [
+            [-179.9, 0],
+            [179.9, 5],
+        ]);
+        const { featureCollection } = buildSegmentFeatures([track]);
+        const [seg0, seg1] = featureCollection.features;
+        const coords0 = (seg0.geometry as GeoJSON.LineString).coordinates;
+        const coords1 = (seg1.geometry as GeoJSON.LineString).coordinates;
+        // First sub-segment ends at -180°
+        expect(coords0[1][0]).toBeCloseTo(-180, 5);
+        // Second sub-segment starts at +180°
+        expect(coords1[0][0]).toBeCloseTo(180, 5);
+    });
+
+    it('interpolates boundary latitude correctly for an eastward crossing', () => {
+        // [179, 0] → [-179, 10]: midpoint crossing → t = 0.5 → boundary lat = 5
+        // dLon = -358, lon2Unwrapped = 181, t = (180-179)/(181-179) = 0.5
+        const track = makeTrack(DAY, 'Eastward Lat', [
+            [179, 0],
+            [-179, 10],
+        ]);
+        const { featureCollection } = buildSegmentFeatures([track]);
+        const [seg0, seg1] = featureCollection.features;
+        const boundaryLatA = (seg0.geometry as GeoJSON.LineString).coordinates[1][1];
+        const boundaryLatB = (seg1.geometry as GeoJSON.LineString).coordinates[0][1];
+        expect(boundaryLatA).toBeCloseTo(5, 5);
+        expect(boundaryLatB).toBeCloseTo(5, 5);
+    });
+
+    it('both sub-segments of a crossing inherit the same attribute values', () => {
+        const track = makeTrack(
+            DAY,
+            'Crossing Attrs',
+            [
+                [179.9, 0],
+                [-179.9, 5],
+            ],
+            { speeds: [10, 20], elevations: [100, 200] },
+        );
+        const { featureCollection } = buildSegmentFeatures([track]);
+        const [seg0, seg1] = featureCollection.features;
+        // Both get the average of the two endpoint values
+        expect(seg0.properties!.speedValue).toBeCloseTo(15);
+        expect(seg1.properties!.speedValue).toBeCloseTo(15);
+        expect(seg0.properties!.elevValue).toBeCloseTo(150);
+        expect(seg1.properties!.elevValue).toBeCloseTo(150);
+    });
+
+    it('handles multiple crossings in one track correctly', () => {
+        // [179, 0] → [-179, 5] → [179, 10]: two crossings → 4 sub-segments
+        const track = makeTrack(DAY, 'Double Cross', [
+            [179, 0],
+            [-179, 5],
+            [179, 10],
+        ]);
+        const { featureCollection } = buildSegmentFeatures([track]);
+        expect(featureCollection.features).toHaveLength(4);
+    });
+});

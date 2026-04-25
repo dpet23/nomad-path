@@ -7,7 +7,9 @@ node_modules/
 # Build output
 dist/
 demo/dist/
-e2e/dist/
+test/integration/dist/
+test/e2e/dist/
+test/e2e/fixture.geojson
 coverage/
 
 # Environment

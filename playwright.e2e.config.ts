@@ -1,9 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
-const BASE_URL = 'http://localhost:3100';
+const BASE_URL = 'http://localhost:3101';
 
 export default defineConfig({
-    testDir: 'test/integration',
-    fullyParallel: false, // Map tests share browser state; run serially for reliability
+    testDir: 'test/e2e',
+    fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     reporter: 'html',
@@ -11,14 +11,14 @@ export default defineConfig({
         baseURL: BASE_URL,
         trace: 'on-first-retry',
     },
-    timeout: 30_000, // Map tile loading can be slow
+    timeout: 30_000,
     expect: {
         timeout: 10_000,
     },
     webServer: {
-        command: 'npx serve ./test/integration -l 3100 --no-clipboard',
+        command: 'npx serve ./test/e2e -l 3101 --no-clipboard',
         url: BASE_URL,
-        reuseExistingServer: false,
+        reuseExistingServer: true,
         timeout: 60_000,
     },
     projects: [

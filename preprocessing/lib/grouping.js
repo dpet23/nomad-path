@@ -34,7 +34,12 @@ function assignGroundDay(track) {
     if (!firstTimed) {
         return slugify(basename(track.sourceFile, extname(track.sourceFile)));
     }
-    const tz = tzlookup(firstTimed.lat, firstTimed.lon);
+    let tz;
+    try {
+        tz = tzlookup(firstTimed.lat, firstTimed.lon);
+    } catch {
+        tz = 'UTC';
+    }
     return DateTime.fromMillis(firstTimed.time, { zone: tz }).toFormat('yyyy-MM-dd');
 }
 
@@ -55,10 +60,10 @@ function assignFlightDay(track) {
     if (!firstTimed) {
         return `flight-${nameSlug}`;
     }
-    const utcDate = DateTime.fromMillis(firstTimed.time, { zone: 'UTC' }).toFormat(
-        'yyyy-MM-dd',
-    );
-    return `flight-${utcDate}-${nameSlug}`;
+    const dt = DateTime.fromMillis(firstTimed.time, { zone: 'UTC' });
+    const utcDate = dt.toFormat('yyyy-MM-dd');
+    const utcTime = dt.toFormat('HHmm');
+    return `flight-${utcDate}-${utcTime}-${nameSlug}`;
 }
 
 // ---------------------------------------------------------------------------

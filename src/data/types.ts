@@ -107,8 +107,9 @@ export interface TrackProperties {
     elevations?: number[];
     /** Parallel array: speed (km/h) per point. null where speed could not be determined. */
     speeds?: (number | null)[];
-    /** Parallel array: solar altitude angle (degrees, −90 to +90) per point.
-     *  Negative = below horizon (night), ~0 = dawn/dusk, positive = daytime.
+    /** Parallel array: perceptual sun angle (0–360°) per point.
+     *  0/360 = midnight, 90 = sunrise/sunset horizon, 180 = solar noon.
+     *  Mapped from solar altitude via a piecewise twilight scale.
      *  null entries indicate points with no timestamp. */
     sunAngles?: (number | null)[];
 }

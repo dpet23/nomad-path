@@ -17,7 +17,7 @@
  *   viewpoint     — "Mount Takao"  (defaultVisible: false)
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { gotoMap } from './helpers';
 
 // Track IDs derived from day::name
@@ -26,11 +26,11 @@ const TRACK_SYDNEY  = '2024-01-02::Sydney Walk';
 const TRACK_HELSINKI = '2024-01-03::Helsinki Flight';
 
 // Expected range labels derived from fixture attribute arrays (visible tracks only at load)
-const SPEED_LABEL_VISIBLE    = 'Speed: 30-800 km/h';        // Tokyo 30-60 + Helsinki 200-800
-const SPEED_LABEL_TOKYO_ONLY = 'Speed: 30-60 km/h';         // after hiding Helsinki
-const SPEED_LABEL_ALL        = 'Speed: 3-800 km/h';         // after showing Sydney Walk too
-const ELEV_LABEL_VISIBLE     = 'Elevation: 10-10000 m';     // Tokyo 10-20 + Helsinki 5000-10000
-const ELEV_LABEL_TOKYO_ONLY  = 'Elevation: 10-20 m';        // after hiding Helsinki
+const SPEED_LABEL_VISIBLE    = 'Speed: 30 to 800 km/h';     // Tokyo 30-60 + Helsinki 200-800
+const SPEED_LABEL_TOKYO_ONLY = 'Speed: 30 to 60 km/h';      // after hiding Helsinki
+const SPEED_LABEL_ALL        = 'Speed: 3 to 800 km/h';      // after showing Sydney Walk too
+const ELEV_LABEL_VISIBLE     = 'Elevation: 10 to 10000 m';  // Tokyo 10-20 + Helsinki 5000-10000
+const ELEV_LABEL_TOKYO_ONLY  = 'Elevation: 10 to 20 m';     // after hiding Helsinki
 
 type PwPage = import('@playwright/test').Page;
 
@@ -420,4 +420,157 @@ test('setBasemap: user-shown track included in layer ranges after basemap switch
     await switchBasemap(page, 'blueMarble');
     const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
     expect(min).toBe(3); // Sydney Walk 3-7 km/h is included after being shown
+});
+
+// ---------------------------------------------------------------------------
+// Basemap switch — DOM checkbox state
+// Verify the TrackLegend DOM .checked attribute (not just JS isTrackVisible())
+// is consistent after a basemap switch.
+// ---------------------------------------------------------------------------
+
+test('setBasemap: defaultVisible false track checkbox remains unchecked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await switchBasemap(page, 'blueMarble');
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    const checkbox = page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(false);
+});
+
+test('setBasemap: defaultVisible true track checkbox remains checked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    await switchBasemap(page, 'blueMarble');
+    await page.locator('.np-track-legend .np-day-header').first().click();
+    const checkbox = page.locator('.np-track-legend .np-day-group').first().locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(true);
+});
+
+test('setBasemap: user-hidden track checkbox stays unchecked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Hide Helsinki Flight via UI then switch basemap
+    await page.locator('.np-track-legend .np-day-header').nth(2).click();
+    await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
+    await switchBasemap(page, 'blueMarble');
+    // Group remains expanded — checkbox should still be unchecked
+    const checkbox = page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(false);
+});
+
+test('setBasemap: user-shown track checkbox stays checked after basemap switch', async ({ page }) => {
+    await gotoMap(page);
+    // Show Sydney Walk via UI then switch basemap
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
+    await switchBasemap(page, 'blueMarble');
+    const checkbox = page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox');
+    expect(await checkbox.isChecked()).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// Group-level visibility toggle
+// The day-header contains a tristate group checkbox that toggles all tracks
+// in that day group simultaneously.
+// ---------------------------------------------------------------------------
+
+test('TrackLegend: group header checkbox hides all tracks in that day group', async ({ page }) => {
+    await gotoMap(page);
+    // Tokyo Drive (day group index 0) starts visible — uncheck via group header checkbox
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').first().locator('input[type="checkbox"]');
+    await groupCheckbox.uncheck();
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_TOKYO)).toBe(false);
+});
+
+test('TrackLegend: group header checkbox shows all tracks in that day group', async ({ page }) => {
+    await gotoMap(page);
+    // Sydney Walk (day group index 1) starts hidden — check via group header checkbox
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').nth(1).locator('input[type="checkbox"]');
+    await groupCheckbox.check();
+    expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_SYDNEY)).toBe(true);
+});
+
+test('TrackLegend: group checkbox uncheck also unchecks individual track row checkboxes', async ({ page }) => {
+    await gotoMap(page);
+    // Uncheck Tokyo group, then expand to verify row checkbox is also unchecked
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').first().locator('input[type="checkbox"]');
+    await groupCheckbox.uncheck();
+    await page.locator('.np-track-legend .np-day-header').first().click();
+    const rowCheckbox = page.locator('.np-track-legend .np-day-group').first().locator('.np-track-row .np-track-row__checkbox');
+    expect(await rowCheckbox.isChecked()).toBe(false);
+});
+
+test('TrackLegend: group checkbox check also checks individual track row checkboxes', async ({ page }) => {
+    await gotoMap(page);
+    // Check Sydney group, then expand to verify row checkbox is also checked
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').nth(1).locator('input[type="checkbox"]');
+    await groupCheckbox.check();
+    await page.locator('.np-track-legend .np-day-header').nth(1).click();
+    const rowCheckbox = page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox');
+    expect(await rowCheckbox.isChecked()).toBe(true);
+});
+
+test('TrackLegend: hiding a group via group checkbox narrows the attribute range', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Hide Helsinki Flight via its group header checkbox
+    const groupCheckbox = page.locator('.np-track-legend .np-day-header').nth(2).locator('input[type="checkbox"]');
+    await groupCheckbox.uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
+});
+
+// ---------------------------------------------------------------------------
+// Edge cases — hiding all tracks, attribute persistence
+// ---------------------------------------------------------------------------
+
+test('AttributeLegend: hiding all visible tracks shows "no data" for speed', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    // Hide Tokyo Drive (group 0) and Helsinki Flight (group 2) via group checkboxes
+    const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
+    await groupCheckboxes.nth(0).uncheck();
+    await groupCheckboxes.nth(2).uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe('Speed: no data');
+});
+
+test('AttributeLegend: hiding all visible tracks empties layer ranges', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
+    await groupCheckboxes.nth(0).uncheck();
+    await groupCheckboxes.nth(2).uncheck();
+    const speedRange = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed);
+    expect(speedRange).toBeUndefined();
+});
+
+test('AttributeLegend: re-showing a track after hiding all restores speed range', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
+    // Hide all
+    await groupCheckboxes.nth(0).uncheck();
+    await groupCheckboxes.nth(2).uncheck();
+    expect(await page.locator('.np-range-label').textContent()).toBe('Speed: no data');
+    // Re-show Tokyo Drive
+    await groupCheckboxes.nth(0).check();
+    expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
+});
+
+test('setBasemap: colour attribute dropdown preserves selected value', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await switchBasemap(page, 'blueMarble');
+    const selected = await page.locator('.np-attr-select').inputValue();
+    expect(selected).toBe('speed');
+});
+
+test('setBasemap: colour attribute paint expression uses correct attribute after switch', async ({ page }) => {
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    await switchBasemap(page, 'blueMarble');
+    // The paint expression should be an interpolation array (not a flat string),
+    // proving the speed expression was correctly restored
+    const lineColor = await page.evaluate(() =>
+        (window as any)._map.getPaintProperty('np-tracks-layer', 'line-color'),
+    );
+    expect(Array.isArray(lineColor)).toBe(true);
+    // First element should be 'case' (the speed expression wraps interpolate in case)
+    expect(lineColor[0]).toBe('case');
 });
