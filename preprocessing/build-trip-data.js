@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { resolve, join, relative, dirname, basename } from 'path';
 import { parseArgs } from 'util';
 
@@ -51,6 +51,23 @@ if (!values.input) {
 
 const inputDir   = resolve(values.input);
 const outputFile = resolve(values.output ?? join(values.input, 'trip-data.geojson'));
+
+// Invariant: output is library-compatible-or-absent. Any non-success exit
+// must remove a prior output file before terminating, so the consumer never
+// sees stale data that doesn't reflect current input.
+function removeOutputIfExists() {
+    try {
+        unlinkSync(outputFile);
+    } catch (err) {
+        if (err.code !== 'ENOENT') throw err;
+    }
+}
+
+function failExit(message) {
+    console.error(message);
+    removeOutputIfExists();
+    process.exit(1);
+}
 const tripName   = values.name ?? basename(dirname(inputDir))
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
@@ -207,21 +224,29 @@ for (const filePath of allFiles) {
             skipped++;
         } else {
             // Real parse failure — surface it with context and abort
-            console.error(`Error parsing ${filePath}: ${err.message}`);
-            process.exit(1);
+            failExit(`Error parsing ${filePath}: ${err.message}`);
         }
     }
 }
 
 if (allTracks.length === 0) {
-    console.error(`No tracks found in ${inputDir}. Check that the directory contains GPX or KML files.`);
-    process.exit(1);
+    failExit(`No tracks found in ${inputDir}. Check that the directory contains GPX or KML files.`);
 }
 
 const grouped = groupTracks(allTracks);
 const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName, poiCategoryConfig });
 
-writeFileSync(outputFile, JSON.stringify(geojson));
+// Atomic write: write to a sibling temp path and rename onto the output.
+// rename(2) is atomic within a filesystem, so concurrent readers see either
+// the old file or the new file — never a partial write.
+const tmpOutput = `${outputFile}.tmp.${process.pid}`;
+try {
+    writeFileSync(tmpOutput, JSON.stringify(geojson));
+    renameSync(tmpOutput, outputFile);
+} catch (err) {
+    try { unlinkSync(tmpOutput); } catch { /* ignore */ }
+    failExit(`Error writing output ${outputFile}: ${err.message}`);
+}
 
 const { stats } = geojson.metadata;
 const modesSummary = Object.entries(stats.transportModes)
