@@ -8,15 +8,18 @@ The original project specification is preserved in git history. This file record
 - [x] Epic 3: Core library (DataLoader, MapEngine, LayerManager) — 127 unit tests + 26 e2e tests
 - [x] Epic 4: UI components (TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls) — 240 unit tests + 66 e2e tests
 - [x] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
-- [x] Epic 6: Testing — three-level test architecture (unit, integration, e2e), realistic fixtures, test-driven bug discovery. Level 4 (watch) deferred to Epic 9.
+- [x] Epic 6: Testing — three test categories (unit, library integration, seam), realistic fixtures, test-driven bug discovery. Watcher tests deferred to Epic 9 (then Epic 10).
 - [ ] Epic 7: Cleanup & polish — UX improvements, preprocessing fixes, performance
 - [ ] Epic 8: Reactive state sync — replace manual UI/LayerManager wiring with typed events; enables low-maintenance state-sync test layer (plan: `~/.claude/plans/epic8-reactive-state-sync.md`)
-- [ ] Epic 9: Preprocessing output guarantee + Level 4 watch tests — atomic writes, unlink-on-failure, status sidecar; tests prove output is library-compatible-or-absent under all watch-mode failure modes (plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`)
+- [x] Epic 9: Preprocessing output guarantee — atomic writes, unlink-on-failure, watch.js status sidecar, crash cleanup. Watcher *tests* split out to Epic 10 after a mid-epic audit found foundational test-strategy problems. Plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`.
+- [ ] Epic 10: Testing strategy remediation — delete drift-prone validators and Theatre tests, build watcher tests on a sound framework (browser-loads-output as contract gate), drop "Level N" naming. Plan: `~/.claude/plans/epic10-testing-remediation.md`.
+- [ ] Epic 11: Configurable preprocessing — user-configurable input ignores via `nomadpath.yaml` (fix `.git/` flooding watch.js), default ignore patterns for common noise, plus other config items TBD. Order vs Epic 10 not yet decided. No plan file yet.
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 6 closed: three-level test architecture in place. Level 4 (watch mode) split out as Epic 9 because it requires preprocessing changes (atomic writes, output-or-absent invariant) larger than Epic 6's scope.
-- Tests: unit + integration + e2e all green via `npm run test:all`
+- Epic 9 closed 2026-04-26 with three preprocessing-side fixes: atomic temp+rename writes; unlink-on-failure on every non-success exit path; watch.js `--status-file` (hidden test instrumentation), `-o`/`-p` flags, crash cleanup of orphaned serve children.
+- Watcher tests held back to Epic 10 because the test framework underneath was wrong (hand-written validators + Theatre tests that mirror library expectations outside the library, both drift-prone).
+- Tests: unit + library integration + seam all green via `npm run test:all`. Watcher tests do not exist yet.
 - Epic 5 additions: `preprocessing/watch.js` (file watcher + serve), `copy:demo`/`clean` scripts, `test/integration/helpers.ts` with shared `TEST_PAGE`/`gotoMap` fast-fail
 - Epic 4 additions: TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls, CSS injection, BasePanel, ColorRamps extraction, dynamic attribute ranges, POI category visibility + defaultVisible from yaml, setBasemap state restoration (tracks + colour attribute + ranges + POI categories), native MapControls (fit-to-tracks button top-left, basemap select top-right)
 - Bugs fixed in Epic 4: setBasemap() discarded dynamic ranges (AttributeLegend constructor didn't sync LayerManager._ranges); setBasemap() POI category restoration was one-directional; serve.json trailingSlash broke test.html relative paths (fixed with absolute paths)
