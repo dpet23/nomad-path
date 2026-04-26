@@ -153,6 +153,20 @@ serve.on('exit', (code) => {
 process.on('SIGINT',  () => { exiting = true; serve.kill(); process.exit(0); });
 process.on('SIGTERM', () => { exiting = true; serve.kill(); process.exit(0); });
 
+// Reap the serve child if watch.js itself crashes via an unhandled error.
+// Without this, an uncaught exception or rejected promise leaves the dev
+// server orphaned holding the port. SIGKILL of the watch process is NOT
+// covered (it deliberately bypasses userspace cleanup) — that's expected
+// behaviour for a force-kill.
+function crashCleanup(err) {
+    exiting = true;
+    try { serve.kill(); } catch { /* ignore */ }
+    console.error(err);
+    process.exit(1);
+}
+process.on('uncaughtException', crashCleanup);
+process.on('unhandledRejection', crashCleanup);
+
 // ---------------------------------------------------------------------------
 // Initial build + watcher
 // ---------------------------------------------------------------------------
