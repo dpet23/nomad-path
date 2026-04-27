@@ -9,24 +9,18 @@ The original project specification is preserved in git history. This file record
 - [x] Epic 4: UI components (TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls) — 240 unit tests + 66 e2e tests
 - [x] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
 - [x] Epic 6: Testing — three test categories (unit, library integration, seam), realistic fixtures, test-driven bug discovery. Watcher tests deferred to Epic 9 (then Epic 10).
-- [ ] Epic 7: Cleanup & polish — UX improvements, preprocessing fixes, performance
-- [ ] Epic 8: Reactive state sync — replace manual UI/LayerManager wiring with typed events; enables low-maintenance state-sync test layer (plan: `~/.claude/plans/epic8-reactive-state-sync.md`)
 - [x] Epic 9: Preprocessing output guarantee — atomic writes, unlink-on-failure, watch.js status sidecar, crash cleanup. Watcher *tests* split out to Epic 10 after a mid-epic audit found foundational test-strategy problems. Plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`.
 - [ ] Epic 10: Preprocessing & watcher test remediation — analysis-first, two-phase, multi-session. Plan: `~/.claude/plans/epic10-preprocessing-watcher-tests.md`. Phase 1 analysis output (when produced) at `docs/test-analysis/preprocessing-watcher-<date>.md`. Old monolithic plan preserved at `~/.claude/plans/epic10-testing-remediation-superseded-2026-04-27.md`.
-- [ ] Epic 11: Preprocessing improvements — user-configurable input ignores via `nomadpath.yaml` (fixes `.git/` flooding watch.js), default ignore patterns for common noise, other config items TBD. Plan: `~/.claude/plans/epic11-preprocessing-improvements.md`. Depends on Epic 10's contract foundation.
-- [ ] Epic 12: E2E rename + thinning — rename `seam` → `e2e`. Decide thin (if Epic 10 leaves contract solid) or thicken (if not) at start. No plan file yet.
+- [ ] Epic 11: Preprocessing improvements — user-configurable input ignores via `nomadpath.yaml` (fixes `.git/` flooding watch.js), default ignore patterns for common noise, chronological output sort, same-date flight grouping, other config items TBD. Plan: `~/.claude/plans/epic11-preprocessing-improvements.md`. Depends on Epic 10's contract foundation.
+- [ ] Epic 12: E2E rename + thinning — rename `seam` → `e2e`. Decide thin (if Epic 10 leaves contract solid) or thicken (if not) at start. Reactive state sync (old Epic 8) considered as one possible approach. Plan: `~/.claude/plans/epic12-e2e-rename-thinning.md`.
 - [ ] Epic 13: Library test remediation — analysis + cleanup + new tests for library code, modelled on Epic 10. Mobile-only library UI bug class lives here (mobile emulation as Playwright project). No plan file yet.
-- [ ] Epic 14+: Library improvements — multiple smaller epics, scoped per feature/area. No plan files yet.
+- [ ] Future: Library improvements — UI/UX work (mobile sidebar UX rethink, track/day-group and POI category group-level zoom, remove redundant "Colour by" from demo toolbar, etc.). Multiple smaller epics scoped per feature/area when picked up.
+- [ ] Future: Performance improvements — colour change performance, MapLibre tile NetworkError noise, sun-angle bucketing decision (gated on perf testing). Needs benchmarks + before/after measurements; own epic when picked up.
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
-- Epic 9 closed 2026-04-26 with three preprocessing-side fixes: atomic temp+rename writes; unlink-on-failure on every non-success exit path; watch.js `--status-file` (hidden test instrumentation), `-o`/`-p` flags, crash cleanup of orphaned serve children.
-- Watcher tests held back to Epic 10 because the test framework underneath was wrong (hand-written validators + Theatre tests that mirror library expectations outside the library, both drift-prone).
-- Tests: unit + library integration + seam all green via `npm run test:all`. Watcher tests do not exist yet.
-- Epic 5 additions: `preprocessing/watch.js` (file watcher + serve), `copy:demo`/`clean` scripts, `test/integration/helpers.ts` with shared `TEST_PAGE`/`gotoMap` fast-fail
-- Epic 4 additions: TrackLegend, AttributeLegend, POILegend, MobileMenu, MapControls, CSS injection, BasePanel, ColorRamps extraction, dynamic attribute ranges, POI category visibility + defaultVisible from yaml, setBasemap state restoration (tracks + colour attribute + ranges + POI categories), native MapControls (fit-to-tracks button top-left, basemap select top-right)
-- Bugs fixed in Epic 4: setBasemap() discarded dynamic ranges (AttributeLegend constructor didn't sync LayerManager._ranges); setBasemap() POI category restoration was one-directional; serve.json trailingSlash broke test.html relative paths (fixed with absolute paths)
-- Bugs fixed in Epic 3: basemap switch layer restoration, fitToTracks visibility filter, initial bounds visibility filter, POI circles not rendering on OSM, POI labels not rendering (wrong glyph URL path + missing text-font)
+- Epic 9 closed 2026-04-26 with preprocessing-side fixes: atomic temp+rename writes, unlink-on-failure on every non-success exit path, watch.js `--status-file` (hidden test instrumentation), `-o`/`-p` flags, crash cleanup of orphaned serve children.
+- Tests: unit + library integration + seam all green via `npm run test:all`. Watcher tests do not exist yet — Epic 10 will produce them after the analysis-first remediation.
 
 ## Key Deviations from Spec
 - Public API class is `NomadPath` (not `TravelMap` — spec name is outdated)
@@ -69,14 +63,14 @@ Range LABEL and map PAINT PROPERTY are separate state. Tests that only check the
 - Label: text content of `.np-attr-range`
 - Layer ranges: `(window as any).nomadMap._layers._ranges?.speed?.min` (TypeScript private = JS runtime public)
 
-## State-sync architecture (Epic 8 prerequisite)
+## State-sync architecture
 Library has NO internal sync system between `LayerManager` and UI components. Cross-component updates are wired by hand: `TrackLegend.onVisibilityChange` callback → `attrLegend.updateRanges()` → `LayerManager.updateRanges()`; `setBasemap` restoration manually replays each surface (`src/index.ts:189-213`). `LayerManager` mutators emit no events; `UIContext` is a struct of references with no notification channel.
 
 Consequences:
-- New code paths that mutate `_visibleIds` / `_ranges` / `_colourAttribute` / `_visiblePOICategories` must remember to invoke every dependent UI component. Forgetting one produces silent UI staleness — this is the bug class behind several Epic 3/4 fixes.
+- New code paths that mutate `_visibleIds` / `_ranges` / `_colourAttribute` / `_visiblePOICategories` must remember to invoke every dependent UI component. Forgetting one produces silent UI staleness — this is the bug class behind several earlier fixes.
 - Broad, low-maintenance state-sync test coverage is not feasible over a manual-callback architecture. Any test design either enumerates per-action expectations (high churn) or asserts mere internal consistency (misses the bug class).
 
-**Fix is Epic 8** — see `~/.claude/plans/epic8-reactive-state-sync.md`. Until then, hand-written integration tests in `test/integration/legends.spec.ts` are the pragmatic floor for state-sync coverage. Do NOT invest in a generic state-sync test framework before Epic 8 lands; it will not survive the architectural change.
+**Possible fix considered for Epic 12** — see `~/.claude/plans/epic12-e2e-rename-thinning.md` (and the superseded Epic 8 plan it references for full implementation details). Until then, hand-written integration tests in `test/integration/legends.spec.ts` are the pragmatic floor for state-sync coverage. Do NOT invest in a generic state-sync test framework that assumes the manual-callback design is permanent; it may not survive Epic 12.
 
 ## Testing Architecture
 
