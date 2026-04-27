@@ -12,8 +12,11 @@ The original project specification is preserved in git history. This file record
 - [ ] Epic 7: Cleanup & polish — UX improvements, preprocessing fixes, performance
 - [ ] Epic 8: Reactive state sync — replace manual UI/LayerManager wiring with typed events; enables low-maintenance state-sync test layer (plan: `~/.claude/plans/epic8-reactive-state-sync.md`)
 - [x] Epic 9: Preprocessing output guarantee — atomic writes, unlink-on-failure, watch.js status sidecar, crash cleanup. Watcher *tests* split out to Epic 10 after a mid-epic audit found foundational test-strategy problems. Plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`.
-- [ ] Epic 10: Testing strategy remediation — delete drift-prone validators and Theatre tests, build watcher tests on a sound framework (browser-loads-output as contract gate), drop "Level N" naming. Plan: `~/.claude/plans/epic10-testing-remediation.md`.
-- [ ] Epic 11: Configurable preprocessing — user-configurable input ignores via `nomadpath.yaml` (fix `.git/` flooding watch.js), default ignore patterns for common noise, plus other config items TBD. Order vs Epic 10 not yet decided. No plan file yet.
+- [ ] Epic 10: Preprocessing & watcher test remediation — analysis-first, two-phase, multi-session. Plan: `~/.claude/plans/epic10-preprocessing-watcher-tests.md`. Phase 1 analysis output (when produced) at `docs/test-analysis/preprocessing-watcher-<date>.md`. Old monolithic plan preserved at `~/.claude/plans/epic10-testing-remediation-superseded-2026-04-27.md`.
+- [ ] Epic 11: Preprocessing improvements — user-configurable input ignores via `nomadpath.yaml` (fixes `.git/` flooding watch.js), default ignore patterns for common noise, other config items TBD. Plan: `~/.claude/plans/epic11-preprocessing-improvements.md`. Depends on Epic 10's contract foundation.
+- [ ] Epic 12: E2E rename + thinning — rename `seam` → `e2e`. Decide thin (if Epic 10 leaves contract solid) or thicken (if not) at start. No plan file yet.
+- [ ] Epic 13: Library test remediation — analysis + cleanup + new tests for library code, modelled on Epic 10. Mobile-only library UI bug class lives here (mobile emulation as Playwright project). No plan file yet.
+- [ ] Epic 14+: Library improvements — multiple smaller epics, scoped per feature/area. No plan files yet.
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
