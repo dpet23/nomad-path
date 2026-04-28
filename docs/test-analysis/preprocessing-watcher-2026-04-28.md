@@ -6,6 +6,16 @@
 
 This doc is the analysis-only output of Epic 10 Phase 1. It is intended to be read cold by future contextless sessions executing Epic 10 Phase 1.5 (contract decision) and Phase 2 (cleanup + new tests).
 
+## Phase 1.5 decision (2026-04-28)
+
+**Contract enforcement: tests-only.** No runtime schema in the library. No shared TypeScript types refactor. No additional test-design discipline rules beyond what Epic 10's existing framework already requires.
+
+**Rationale.** The framework's load-bearing rule — *"the only non-drifting way to verify 'library accepts this output' is to actually load it into the library; hand-written validators are forbidden"* — makes a runtime schema the same artifact shape as Theatre, just on the consumer side. The 44 missing-coverage gaps below already cluster on the three under-tested composition surfaces (pipeline integration, library input variation, watcher); closing them under the existing rules is the proportional response. Shared types would catch field renames at compile time but not value or semantic drift, at the cost of converting preprocessing from JS to TS — disproportionate to the success criterion (*correct under documented conditions, graceful under errors, recoverable in normal cases*, with a competent-user assumption).
+
+**Phase 2 instruction.** Every new test added to close a contract gap (and every test added to close a documented-behaviour, Epic 9, or yaml-config gap) must invoke the real library on pipeline-produced or fixture-shape-varied input and assert observable behaviour. No new Theatre. No hand-written validators outside the library. Tests that only assert internal state without a user-visible counterpart should also assert the user-visible side (per the existing CLAUDE.md "test BOTH label and ranges" rule).
+
+**Evidence log.** A separate file at `docs/test-analysis/escaped-bugs.md` records every manually-caught bug going forward, tagged with the test layer that should have caught it. After 6–10 entries this becomes evidence-based input for any future restructure decision.
+
 ## How to read this doc
 
 Three sections:
