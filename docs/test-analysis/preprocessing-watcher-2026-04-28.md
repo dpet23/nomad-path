@@ -16,6 +16,14 @@ This doc is the analysis-only output of Epic 10 Phase 1. It is intended to be re
 
 **Evidence log.** A separate file at `docs/test-analysis/escaped-bugs.md` records every manually-caught bug going forward, tagged with the test layer that should have caught it. After 6–10 entries this becomes evidence-based input for any future restructure decision.
 
+## Phase 2 Session A status (2026-04-29)
+
+Closed:
+- **15 deletes** in `test/e2e/seam.spec.ts` (Theatre tests).
+- **All 15 output⟷input contract gaps (§3 area 1).** Tests at `test/integration/contract.spec.ts`. Three small library fixes shipped with their tests: gap 5 (`antimeridianSplit` preserves altitude), gap 7 (`mergeRanges` throws on unit mismatch), gap 14 (`DataLoader` warns on unknown `type`). Two regression-only tests pin current behaviour for design-deferred defects: gap 8 (`deriveTrackId` collision → Epic 11) and gap 12 (POI empty `category` → Epic 11). Gap 2 (initial-load `metadata.attributeRanges` consumption) was deferred to Epic 13 because the natural test surfaces an `AttributeLegend` recompute-vs-metadata precedence question that's better handled as an L-Unit test of `LayerManager.addLayers`.
+
+Sessions B and C still owe: 12 documented-behaviour gaps, 8 Epic 9 invariant gaps (incl. watcher infrastructure), 9 yaml-config gaps, watcher scenario coverage, naming refactor, epic close.
+
 ## How to read this doc
 
 Three sections:
