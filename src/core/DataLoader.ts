@@ -55,7 +55,26 @@ export async function loadTripData(urls: string[]): Promise<TripData[]> {
 // Extraction helpers
 // ---------------------------------------------------------------------------
 
-/** Collect all track features across multiple TripData objects. */
+/** Collect all track features across multiple TripData objects.
+ *
+ * Features whose `properties.type` is neither 'track' nor 'poi' are skipped
+ * and a console.warn is emitted; this surfaces typos or schema drift instead
+ * of silently dropping data.
+ */
 export function extractTracks(trips: TripData[]): TrackFeature[] {
-    return trips.flatMap(trip => trip.features.filter((f): f is TrackFeature => f.properties.type === 'track'));
+    const tracks: TrackFeature[] = [];
+    for (const trip of trips) {
+        for (const f of trip.features) {
+            const t = f.properties.type;
+            if (t === 'track') {
+                tracks.push(f as TrackFeature);
+            } else if (t !== 'poi') {
+                console.warn(
+                    `[NomadPath] Skipping feature with unrecognised properties.type=${JSON.stringify(t)}; ` +
+                        'expected "track" or "poi".',
+                );
+            }
+        }
+    }
+    return tracks;
 }
