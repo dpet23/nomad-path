@@ -1,0 +1,25 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Trip A (km/h)",
+        "attributeRanges": {
+            "speed": { "min": 0, "max": 100, "unit": "km/h" }
+        },
+        "stats": { "trackCount": 1, "waypointCount": 0, "dayCount": 1, "transportModes": { "drive": 1 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": { "type": "LineString", "coordinates": [[139.7, 35.7], [139.8, 35.7]] },
+            "properties": {
+                "type": "track",
+                "name": "Metric Drive",
+                "day": "2024-01-01",
+                "transportMode": "drive",
+                "defaultVisible": true,
+                "group": null,
+                "speeds": [50, 60]
+            }
+        }
+    ]
+}

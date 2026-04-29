@@ -1,0 +1,28 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Contract: null speeds in parallel array",
+        "attributeRanges": {
+            "speed": { "min": 50, "max": 100, "unit": "km/h" }
+        },
+        "stats": { "trackCount": 1, "waypointCount": 0, "dayCount": 1, "transportModes": { "drive": 1 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [[139.7, 35.7], [139.8, 35.7], [139.9, 35.7], [140.0, 35.7]]
+            },
+            "properties": {
+                "type": "track",
+                "name": "Patchy Speed Drive",
+                "day": "2024-01-01",
+                "transportMode": "drive",
+                "defaultVisible": true,
+                "group": null,
+                "speeds": [100, null, null, 50]
+            }
+        }
+    ]
+}

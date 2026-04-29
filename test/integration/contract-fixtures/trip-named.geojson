@@ -1,0 +1,22 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Trip B",
+        "attributeRanges": {},
+        "stats": { "trackCount": 1, "waypointCount": 0, "dayCount": 1, "transportModes": { "drive": 1 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": { "type": "LineString", "coordinates": [[140.7, 36.7], [140.8, 36.7]] },
+            "properties": {
+                "type": "track",
+                "name": "Trip B Track",
+                "day": "2024-02-01",
+                "transportMode": "drive",
+                "defaultVisible": true,
+                "group": null
+            }
+        }
+    ]
+}

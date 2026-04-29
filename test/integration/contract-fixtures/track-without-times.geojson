@@ -1,0 +1,25 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Contract: track without times",
+        "attributeRanges": {
+            "elevation": { "min": 100, "max": 300, "unit": "m" }
+        },
+        "stats": { "trackCount": 1, "waypointCount": 0, "dayCount": 1, "transportModes": { "drive": 1 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": { "type": "LineString", "coordinates": [[139.7, 35.7], [139.8, 35.7]] },
+            "properties": {
+                "type": "track",
+                "name": "No Times Drive",
+                "day": "2024-01-01",
+                "transportMode": "drive",
+                "defaultVisible": true,
+                "group": null,
+                "elevations": [100, 300]
+            }
+        }
+    ]
+}

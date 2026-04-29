@@ -1,0 +1,32 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Contract: POI with empty category",
+        "attributeRanges": {},
+        "stats": { "trackCount": 1, "waypointCount": 1, "dayCount": 1, "transportModes": { "drive": 1 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": { "type": "LineString", "coordinates": [[139.7, 35.7], [139.8, 35.7]] },
+            "properties": {
+                "type": "track",
+                "name": "Tokyo Drive",
+                "day": "2024-01-01",
+                "transportMode": "drive",
+                "defaultVisible": true,
+                "group": null
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": { "type": "Point", "coordinates": [139.75, 35.7] },
+            "properties": {
+                "type": "poi",
+                "name": "Mystery Spot",
+                "category": "",
+                "defaultVisible": true
+            }
+        }
+    ]
+}

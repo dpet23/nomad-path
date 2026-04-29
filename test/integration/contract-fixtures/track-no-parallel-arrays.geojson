@@ -1,0 +1,25 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Contract: track with no parallel arrays",
+        "attributeRanges": {},
+        "stats": { "trackCount": 1, "waypointCount": 0, "dayCount": 1, "transportModes": { "flight": 1 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [[139.7, 35.7], [140.0, 35.7], [140.5, 35.7]]
+            },
+            "properties": {
+                "type": "track",
+                "name": "Plain KML Flight",
+                "day": "flight-2024-01-01-plain-kml-flight",
+                "transportMode": "flight",
+                "defaultVisible": true,
+                "group": null
+            }
+        }
+    ]
+}
