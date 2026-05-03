@@ -10,17 +10,21 @@ The original project specification is preserved in git history. This file record
 - [x] Epic 5: Watch mode — `npm run watch` for incremental map building on the go
 - [x] Epic 6: Testing — three test categories (unit, library integration, seam), realistic fixtures, test-driven bug discovery. Watcher tests deferred to Epic 9 (then Epic 10).
 - [x] Epic 9: Preprocessing output guarantee — atomic writes, unlink-on-failure, watch.js status sidecar, crash cleanup. Watcher *tests* split out to Epic 10 after a mid-epic audit found foundational test-strategy problems. Plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`.
-- [ ] Epic 10: Preprocessing & watcher test remediation — analysis-first, two-phase, multi-session. Plan: `~/.claude/plans/epic10-preprocessing-watcher-tests.md`. Phase 1 analysis output (when produced) at `docs/test-analysis/preprocessing-watcher-<date>.md`. Old monolithic plan preserved at `~/.claude/plans/epic10-testing-remediation-superseded-2026-04-27.md`.
-- [ ] Epic 11: Preprocessing improvements — user-configurable input ignores via `nomadpath.yaml` (fixes `.git/` flooding watch.js), default ignore patterns for common noise, chronological output sort, same-date flight grouping, other config items TBD. Plan: `~/.claude/plans/epic11-preprocessing-improvements.md`. Depends on Epic 10's contract foundation.
-- [ ] Epic 12: E2E rename + thinning — rename `seam` → `e2e`. Decide thin (if Epic 10 leaves contract solid) or thicken (if not) at start. Reactive state sync (old Epic 8) considered as one possible approach. Plan: `~/.claude/plans/epic12-e2e-rename-thinning.md`.
-- [ ] Epic 13: Library test remediation — analysis + cleanup + new tests for library code, modelled on Epic 10. Mobile-only library UI bug class lives here (mobile emulation as Playwright project). No plan file yet.
+- [x] Epic 10: Preprocessing & watcher test remediation — closed 2026-05-03 with invariant-only scope after the planned Phase 2 hit a circular dependency between this epic, Epic 11 (schema), and Epic 12 (preprocessing improvements). Final scope: P-Unit gap closures (sun-angle anchors, FlightAware precedence, no-timestamp fallback edge cases, unsupported-file skip-and-continue), library-side `_ranges` pairing test, fixture meta-invariant on non-overlapping ranges, naming refactor (`test:integration` → `test:library`, drop "Level N" terminology). Watcher harness deferred to its own future epic to be sequenced in front of Epic 12. Plan: `~/.claude/plans/let-s-continue-this-epic-logical-dahl.md` (close-out plan), original at `~/.claude/plans/epic10-preprocessing-watcher-tests.md`. Phase 1 analysis at `docs/test-analysis/preprocessing-watcher-2026-04-28.md` (still authoritative input for Epic 11 / 12 / 14 / harness epic).
+- [ ] Epic 11: Schema as shared contract — top-level `schema/` folder peer to `src/` and `preprocessing/`, valibot artifact (single source for types + runtime validator), build-time deep validation in preprocessing (refuses to write on failure), load-time light envelope check in library (per-feature skip+warn+count). Library imports types only; no runtime schema-lib in the bundle. Replaces the Phase 1.5 tests-only decision after each test-design loop revealed a new shape of the same preprocessing-vs-library spec drift bug class. Plan: `~/.claude/plans/epic11-schema-shared-contract.md`.
+- [ ] Epic 12: Preprocessing improvements — user-configurable input ignores via `nomadpath.yaml` (fixes `.git/` flooding watch.js), default ignore patterns for common noise, chronological output sort, same-date flight grouping, other config items TBD. Plan: `~/.claude/plans/epic12-preprocessing-improvements.md`. Depends on Epic 11's schema foundation.
+- [ ] Epic 13: E2E rename + thinning — rename `seam` → `e2e`. Decide thin (if Epics 10 + 11 leave contract solid) or thicken (if not) at start. Reactive state sync (old Epic 8) considered as one possible approach. Plan: `~/.claude/plans/epic13-e2e-rename-thinning.md`.
+- [ ] Epic 14: Library test remediation — analysis + cleanup + new tests for library code, modelled on Epic 10. Mobile-only library UI bug class lives here (mobile emulation as Playwright project). No plan file yet. Carry-over from Epic 10 Phase 2 Session A: the `metadata.attributeRanges` → `LayerManager._ranges` initial-load consumption test was deferred here because the natural test surfaces an `AttributeLegend` recompute-vs-metadata precedence question that's better handled as an L-Unit test of `LayerManager.addLayers`. Analysis: `docs/test-analysis/preprocessing-watcher-2026-04-28.md` §3 area 1 #2.
+- [ ] Future: Watcher test harness — sequenced in front of Epic 12. Carries the watcher-lifecycle invariant tests (atomic write, unlink-on-failure, status sidecar, crash cleanup, SIGINT/SIGTERM, orphan reaping) and Epic-12-specific watcher behaviour tests once Epic 12's scope crystallises. Split out from Epic 10 because building a bullet-proof harness against today's surface would be invalidated by Epic 12's not-yet-known config/behaviour changes. No plan file yet. Analysis input: `docs/test-analysis/preprocessing-watcher-2026-04-28.md` §3 area 3 (Epic 9 invariants).
 - [ ] Future: Library improvements — UI/UX work (mobile sidebar UX rethink, track/day-group and POI category group-level zoom, remove redundant "Colour by" from demo toolbar, etc.). Multiple smaller epics scoped per feature/area when picked up.
 - [ ] Future: Performance improvements — colour change performance, MapLibre tile NetworkError noise, sun-angle bucketing decision (gated on perf testing). Needs benchmarks + before/after measurements; own epic when picked up.
 - [ ] Future: Natural disaster data parsers (earthquakes, bushfires, cyclones)
 
 ## Current Status
 - Epic 9 closed 2026-04-26 with preprocessing-side fixes: atomic temp+rename writes, unlink-on-failure on every non-success exit path, watch.js `--status-file` (hidden test instrumentation), `-o`/`-p` flags, crash cleanup of orphaned serve children.
-- Tests: unit + library integration + seam all green via `npm run test:all`. Watcher tests do not exist yet — Epic 10 will produce them after the analysis-first remediation.
+- Tests: unit + library + e2e all green via `npm run test:all`. Watcher tests pending a future epic (sequenced in front of Epic 12).
+- Epic 10 closed 2026-05-03 with invariant-only scope (P-Unit math gaps + library `_ranges` pair + fixture meta-invariant + naming refactor). Watcher harness split out because it can't be built bullet-proof until Epics 11 and 12 stabilise the preprocessing surface; building it now would create test infrastructure that future epics would invalidate.
+- Epic 11 (schema) plan written 2026-05-02; implementation not yet started.
 
 ## Key Deviations from Spec
 - Public API class is `NomadPath` (not `TravelMap` — spec name is outdated)
@@ -70,27 +74,27 @@ Consequences:
 - New code paths that mutate `_visibleIds` / `_ranges` / `_colourAttribute` / `_visiblePOICategories` must remember to invoke every dependent UI component. Forgetting one produces silent UI staleness — this is the bug class behind several earlier fixes.
 - Broad, low-maintenance state-sync test coverage is not feasible over a manual-callback architecture. Any test design either enumerates per-action expectations (high churn) or asserts mere internal consistency (misses the bug class).
 
-**Possible fix considered for Epic 12** — see `~/.claude/plans/epic12-e2e-rename-thinning.md` (and the superseded Epic 8 plan it references for full implementation details). Until then, hand-written integration tests in `test/integration/legends.spec.ts` are the pragmatic floor for state-sync coverage. Do NOT invest in a generic state-sync test framework that assumes the manual-callback design is permanent; it may not survive Epic 12.
+**Possible fix considered for Epic 13** — see `~/.claude/plans/epic13-e2e-rename-thinning.md` (and the superseded Epic 8 plan it references for full implementation details). Until then, hand-written integration tests in `test/integration/legends.spec.ts` are the pragmatic floor for state-sync coverage. Do NOT invest in a generic state-sync test framework that assumes the manual-callback design is permanent; it may not survive Epic 13.
 
 ## Testing Architecture
 
-Three test levels in place; a fourth (watch) is planned as Epic 9.
+Three test categories in place; a watcher harness is pending a future epic (sequenced in front of Epic 12).
 
-**Level 1 — Unit** (`preprocessing/lib/*.test.js`, `src/core/*.test.ts`): Pure logic, no DOM/map/server. `npm run test:unit`
+**`npm run test:unit`** (`preprocessing/lib/*.test.js`, `src/core/*.test.ts`): Pure logic, no DOM/map/server. Vitest.
 
-**Level 2 — Integration** (`test/integration/`): JS library in a browser with a pipeline-generated fixture. Tests visibility, filters, paint properties, basemap restore, attribute ranges, DOM sync, stress/stability. `npm run test:integration`
+**`npm run test:library`** (`test/integration/`): JS library in a browser with a pipeline-generated fixture. Tests visibility, filters, paint properties, basemap restore, attribute ranges, DOM sync, stress/stability. Playwright + Chromium.
 
-**Level 3 — E2E** (`test/e2e/`): Raw input files → `build:data` → static server → browser → assertions. Tests the seam between pipeline output and library input. `npm run test:e2e`
+**`npm run test:e2e`** (`test/e2e/`): Raw input files → `build:data` → static server → browser → assertions. Tests the seam between pipeline output and library input. Playwright + Chromium.
 
-**Level 4 — Watch** (planned, Epic 9): Raw inputs → `npm run watch` → browser → file mutations → rebuild → reload → assertions. Will test the file lifecycle, concurrency, and the load-bearing invariant *preprocessing output is library-compatible or absent — never partial, never stale*. Plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`.
+**Watcher tests** (pending future epic): raw inputs → `npm run watch` → browser → file mutations → rebuild → reload → assertions. Will test the file lifecycle, concurrency, and the load-bearing invariant *preprocessing output is library-compatible or absent — never partial, never stale*. Sequenced in front of Epic 12 so its preprocessing changes ship with regression cover.
 
 ### Test directory structure
 ```
 test/
   fixtures/
-    map/              — raw GPX/KML/yaml for fixture generation (Levels 2+3)
-  integration/        — Level 2 Playwright tests + test.html + dist/ + fixture.geojson
-  e2e/                — Level 3 Playwright tests
+    map/              — raw GPX/KML/yaml for fixture generation (library + e2e)
+  integration/        — test:library Playwright tests + test.html + dist/ + fixture.geojson
+  e2e/                — test:e2e Playwright tests
 ```
 
 ### Fixture strategy
@@ -110,7 +114,7 @@ Fixtures must use NON-OVERLAPPING attribute ranges per track so any hidden-track
 - **Vitest**: v2, `passWithNoTests: true`
 - **suncalc**: CJS module — `import suncalc from 'suncalc'; const { getPosition, getTimes } = suncalc;`
 - **tsconfig split**: `tsconfig.json` (IDE), `tsconfig.rollup.json` (Rollup), `tsconfig.node.json` (preprocessing)
-- **Playwright browsers**: binaries in `~/.cache/ms-playwright/` (global/shared, not in node_modules). First-time setup: `npm run test:integration:install`. `clean` script only removes `dist/`.
+- **Playwright browsers**: binaries in `~/.cache/ms-playwright/` (global/shared, not in node_modules). First-time setup: `npm run test:library:install`. `clean` script only removes `dist/`.
 - **MapLibre 4.7.1**: does NOT emit `style.load` after `setStyle()`. Use `styledata` event + check for source absence + try/catch on `addLayers`. `isStyleLoaded()` also unreliable (depends on tile loading). See `src/index.ts setBasemap()`.
 - **MapLibre GeoJSON + symbol layers**: Adding a symbol layer to the same source as a circle layer gates circle tile delivery on glyph loading. Always use a SEPARATE source for label/symbol layers.
 - **Playwright headless**: `idle` event never fires with OSM basemap (tile fetches stay pending). `querySourceFeatures` unreliable; use `source.serialize().data.features` for data checks. Use `waitForFunction` polling `queryRenderedFeatures` for render checks. `isMoving()` is reliable; `isStyleLoaded()` is not.
@@ -120,10 +124,10 @@ Fixtures must use NON-OVERLAPPING attribute ranges per track so any hidden-track
 
 ## npm Scripts
 See [docs/developer.md](docs/developer.md) for full descriptions.
-Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:integration` / `test:e2e` / `test:all` / `test:all:browsers` / `test:integration:debug` / `test:e2e:debug` / `test:integration:install` / `clean`
-Private (composition only): `_copy:demo` / `_copy:integration` / `_build:integration`
+Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:library` / `test:e2e` / `test:all` / `test:all:browsers` / `test:library:debug` / `test:e2e:debug` / `test:library:install` / `clean`
+Private (composition only): `_copy:demo` / `_copy:library` / `_build:library`
 Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
-Dev process: `test:unit` or `test:integration` during development. `test:all` before merge/end of epic. `test:all:browsers` before major milestones.
+Dev process: `test:unit` or `test:library` during development. `test:all` before merge/end of epic. `test:all:browsers` before major milestones.
 
 ## Real Data
 - `/home/dan/Documents/holidays/` — DO NOT COPY OR COMMIT

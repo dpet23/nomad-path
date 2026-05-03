@@ -20,10 +20,17 @@
 <script type="module">
 import { NomadPath } from '/dist/nomad-path.js';
 
+// Tests can override the fixture (and pass multiple) via the URL:
+//   ?fixture=/contract-fixtures/foo.geojson
+//   ?fixture=/contract-fixtures/foo.geojson&fixture=/contract-fixtures/bar.geojson
+const params = new URLSearchParams(window.location.search);
+const overrides = params.getAll('fixture');
+const dataUrls = overrides.length > 0 ? overrides : ['/fixture.geojson'];
+
 try {
     const nomadMap = await NomadPath.create({
         container: 'map',
-        dataUrls: ['/fixture.geojson'],
+        dataUrls,
         defaultBasemap: 'osm',
         initialBounds: 'auto',
     });

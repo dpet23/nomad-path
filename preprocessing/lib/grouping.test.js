@@ -115,6 +115,53 @@ describe('groupTracks -- ground tracks', () => {
         const [grouped] = groupTracks([track]);
         expect(grouped.day).toBe('day3-morning');
     });
+
+    it('strips only the final extension when the filename stem contains dots', () => {
+        // basename(file, extname(file)) only removes the last extension.
+        // A stem like "morning.run.no-time.gpx" should become "morning-run-no-time"
+        // (dots collapsed by slugify), not lose the middle ".run." portion.
+        const track = {
+            name: 'morning run',
+            sourceFile: '/some/path/morning.run.no-time.gpx',
+            transportMode: 'walk',
+            points: [
+                { lon: 139.6917, lat: 35.6895, sunAngle: null },
+                { lon: 139.6925, lat: 35.6900, sunAngle: null },
+            ],
+        };
+        const [grouped] = groupTracks([track]);
+        expect(grouped.day).toBe('morning-run-no-time');
+    });
+
+    it('produces a stem-derived day key that COLLIDES with a same-date timestamped track', () => {
+        // Documented limitation: a no-timestamp file named like "2025-01-01.gpx"
+        // produces stem "2025-01-01", which is identical to the day key a real
+        // timestamped track on 2025-01-01 would receive. This pins current
+        // behaviour so a future change (e.g. prefixing stem-derived keys to
+        // disambiguate) shows up as a deliberate test update, not a silent
+        // semantics shift.
+        const stemTrack = {
+            name: 'misleading filename',
+            sourceFile: '/some/path/2025-01-01.gpx',
+            transportMode: 'walk',
+            points: [
+                { lon: 139.6917, lat: 35.6895, sunAngle: null },
+                { lon: 139.6925, lat: 35.6900, sunAngle: null },
+            ],
+        };
+        const datedTrack = makeTrack({
+            name: 'real-2025-01-01',
+            transportMode: 'drive',
+            points: [
+                { lat: 35.6895, lon: 139.6917, time: Date.parse('2025-01-01T08:00:00Z') },
+                { lat: 35.6900, lon: 139.6925, time: Date.parse('2025-01-01T08:05:00Z') },
+            ],
+        });
+        const [stemGrouped, datedGrouped] = groupTracks([stemTrack, datedTrack]);
+        expect(stemGrouped.day).toBe('2025-01-01');
+        expect(datedGrouped.day).toBe('2025-01-01');
+        expect(stemGrouped.day).toBe(datedGrouped.day);
+    });
 });
 
 // ---------------------------------------------------------------------------

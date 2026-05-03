@@ -1,0 +1,22 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Contract: unknown transportMode",
+        "attributeRanges": {},
+        "stats": { "trackCount": 1, "waypointCount": 0, "dayCount": 1, "transportModes": { "snorkel": 1 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": { "type": "LineString", "coordinates": [[139.7, 35.7], [139.8, 35.7]] },
+            "properties": {
+                "type": "track",
+                "name": "Reef Snorkel",
+                "day": "2024-01-01",
+                "transportMode": "snorkel",
+                "defaultVisible": true,
+                "group": null
+            }
+        }
+    ]
+}

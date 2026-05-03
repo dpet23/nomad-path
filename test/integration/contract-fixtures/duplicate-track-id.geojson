@@ -1,0 +1,34 @@
+{
+    "type": "FeatureCollection",
+    "metadata": {
+        "tripName": "Contract: duplicate (day, name) tuples",
+        "attributeRanges": {},
+        "stats": { "trackCount": 2, "waypointCount": 0, "dayCount": 1, "transportModes": { "drive": 2 } }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": { "type": "LineString", "coordinates": [[139.7, 35.7], [139.8, 35.7]] },
+            "properties": {
+                "type": "track",
+                "name": "Coastal Drive",
+                "day": "2024-01-01",
+                "transportMode": "drive",
+                "defaultVisible": true,
+                "group": null
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": { "type": "LineString", "coordinates": [[139.7, 35.6], [139.8, 35.6]] },
+            "properties": {
+                "type": "track",
+                "name": "Coastal Drive",
+                "day": "2024-01-01",
+                "transportMode": "drive",
+                "defaultVisible": true,
+                "group": null
+            }
+        }
+    ]
+}

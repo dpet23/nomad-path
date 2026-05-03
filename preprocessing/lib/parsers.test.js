@@ -228,6 +228,30 @@ describe('parseKML — FlightAware with renamed file (no "flight" in filename)',
 });
 
 // ---------------------------------------------------------------------------
+// parseKML — flights/ subfolder priority over document-name detection
+//
+// Per docs/preprocessing.md:99-104, the documented precedence order is:
+//   1. flights/-prefixed subfolder
+//   2. (GPX-only) OsmAnd activity extension
+//   3. KML <Document><name> starting with "FlightAware"
+//   4. Filename keywords
+//
+// The KML path needs an explicit conflict test: a file inside flights/ whose
+// document name does NOT start with "FlightAware" must still resolve to
+// `flight` mode. Without this, a regression that swapped the order (checked
+// document name before subfolder) would silently route the file through
+// filename-keyword detection.
+// ---------------------------------------------------------------------------
+
+describe('parseKML — flights/ subfolder beats non-FlightAware document name', () => {
+    const { tracks } = parseKML(join(FIXTURES, 'flights', 'cruise-chartered.kml'));
+
+    it('resolves to flight mode despite a non-FlightAware document name', () => {
+        expect(tracks[0].transportMode).toBe('flight');
+    });
+});
+
+// ---------------------------------------------------------------------------
 // parseFile — dispatch and error handling
 // ---------------------------------------------------------------------------
 

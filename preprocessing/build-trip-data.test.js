@@ -11,9 +11,9 @@
 //     output must be removed before the script exits.
 //
 // Atomic-rename behaviour (no concurrent reader ever observes a partial
-// JSON write) is verified at Level 4 (test/watch) where racing readers
-// can be exercised. Here we cover the behavioural contract: success
-// produces valid output, failure removes any previous output.
+// JSON write) is verified by the future watcher-tests epic, where racing
+// readers can be exercised. Here we cover the behavioural contract:
+// success produces valid output, failure removes any previous output.
 
 import { spawnSync } from 'child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
@@ -83,6 +83,28 @@ describe('successful build', () => {
         expect(json.metadata?.tripName).toBe('Fresh Trip');
         expect(json.stale).toBeUndefined();
     });
+
+    it('skips unsupported files and continues building from the parseable ones', () => {
+        // docs/preprocessing.md:16 — "All other file types are skipped with a
+        // warning." Pin the outer behaviour: a mixed input (valid GPX + an
+        // unsupported file) must produce successful output containing the
+        // GPX's data, with the skip count surfaced in the script's summary.
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        writeFileSync(join(input, 'notes.txt'), 'unrelated text file');
+        const output = join(tmp, 'trip-data.geojson');
+
+        const r = runBuild(['-i', input, '-o', output, '-n', 'Mixed Input Trip']);
+
+        expect(r.status, r.stderr).toBe(0);
+        expect(existsSync(output)).toBe(true);
+
+        const json = JSON.parse(readFileSync(output, 'utf8'));
+        expect(json.features.length).toBeGreaterThan(0);
+        // The summary reports 1 parsed and 1 skipped.
+        expect(r.stdout).toMatch(/1 file\(s\) parsed, 1 skipped/);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -97,7 +119,8 @@ describe('successful build', () => {
 //      parsers; downstream lib code throws nothing). It's reachable only via
 //      runtime crashes (e.g. previous tz-lookup bug). We don't synthesise a
 //      crashing parser; the unlink path is exercised by the no-tracks tests
-//      below, and Level 4 covers the broader invariant under arbitrary input.
+//      below, and the watcher-tests epic covers the broader invariant under
+//      arbitrary input.
 //
 //   2. "No tracks found" — input parses (or is skipped) but yields zero
 //      tracks. Includes: empty dir, dir of only unsupported file types,

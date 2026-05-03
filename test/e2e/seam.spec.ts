@@ -1,13 +1,18 @@
 /**
- * Level 3 — E2E seam tests.
+ * E2E seam tests (`npm run test:e2e`).
  *
  * These tests validate the contract between the preprocessing pipeline and the
  * map library. The fixture is generated from raw GPX/KML files in
  * test/fixtures/map/ by `build:data`, then loaded in the browser via
  * test/e2e/test.html.
  *
- * A failure here that passes Level 2 means a seam bug: the pipeline produces
- * something the library doesn't handle correctly.
+ * A failure here that passes `test:library` means a seam bug: the pipeline
+ * produces something the library doesn't handle correctly.
+ *
+ * Tests in this file must invoke the real library on pipeline-produced output
+ * and assert observable behaviour. Tests that read trips[0].features /
+ * trips[0].metadata directly without invoking the library are Theatre and
+ * belong in P-Unit instead.
  */
 import { test, expect } from './fixtures';
 import { gotoMap } from './helpers';
@@ -24,274 +29,11 @@ import { gotoMap } from './helpers';
 //   yaml: landmark POI defaultVisible: false
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Seam: metadata structure
-// ---------------------------------------------------------------------------
-
 test.describe('pipeline metadata', () => {
     test('fixture loads without error', async ({ page }) => {
         await gotoMap(page);
         const ready = await page.evaluate(() => (window as any).nomadMapReady);
         expect(ready).toBe(true);
-    });
-
-    test('trip metadata is accessible and has correct structure', async ({ page }) => {
-        await gotoMap(page);
-        const metadata = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            return trips[0].metadata;
-        });
-        expect(metadata).toBeDefined();
-        expect(metadata.tripName).toBe('Meridian Trip');
-        expect(metadata.attributeRanges).toBeDefined();
-        expect(metadata.stats).toBeDefined();
-    });
-
-    test('attributeRanges has elevation and speed with correct units', async ({ page }) => {
-        await gotoMap(page);
-        const ranges = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            return trips[0].metadata.attributeRanges;
-        });
-        expect(ranges.elevation).toBeDefined();
-        expect(ranges.elevation.unit).toBe('m');
-        expect(Number.isFinite(ranges.elevation.min)).toBe(true);
-        expect(Number.isFinite(ranges.elevation.max)).toBe(true);
-        expect(ranges.elevation.min).toBeLessThan(ranges.elevation.max);
-
-        expect(ranges.speed).toBeDefined();
-        expect(ranges.speed.unit).toBe('km/h');
-        expect(Number.isFinite(ranges.speed.min)).toBe(true);
-        expect(Number.isFinite(ranges.speed.max)).toBe(true);
-        expect(ranges.speed.min).toBeLessThan(ranges.speed.max);
-    });
-
-    test('stats reflect the fixture input files', async ({ page }) => {
-        await gotoMap(page);
-        const stats = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            return trips[0].metadata.stats;
-        });
-        expect(stats.trackCount).toBe(4);
-        expect(stats.waypointCount).toBe(2);
-        expect(stats.dayCount).toBe(2); // ground days only (flight excluded)
-        expect(stats.transportModes.drive).toBe(2);
-        expect(stats.transportModes.walk).toBe(1);
-        expect(stats.transportModes.flight).toBe(1);
-        expect(stats.dateRange.start).toBe('2025-06-10');
-        expect(stats.dateRange.end).toBe('2025-06-11');
-    });
-});
-
-// ---------------------------------------------------------------------------
-// Seam: track features
-// ---------------------------------------------------------------------------
-
-test.describe('pipeline track features', () => {
-    test('all tracks have required properties', async ({ page }) => {
-        await gotoMap(page);
-        const issues = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const tracks = trips[0].features.filter((f: any) => f.properties.type === 'track');
-            const problems: string[] = [];
-            for (const t of tracks) {
-                const p = t.properties;
-                if (!p.name) problems.push(`Track missing name`);
-                if (!p.day) problems.push(`Track ${p.name} missing day`);
-                if (!p.transportMode) problems.push(`Track ${p.name} missing transportMode`);
-                if (p.defaultVisible === undefined) problems.push(`Track ${p.name} missing defaultVisible`);
-                if (t.geometry.type !== 'LineString') problems.push(`Track ${p.name} not LineString`);
-                if (t.geometry.coordinates.length < 2) problems.push(`Track ${p.name} has < 2 coords`);
-            }
-            return problems;
-        });
-        expect(issues).toEqual([]);
-    });
-
-    test('track transport modes match expected values', async ({ page }) => {
-        await gotoMap(page);
-        const modes = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const tracks = trips[0].features.filter((f: any) => f.properties.type === 'track');
-            return tracks.map((t: any) => ({
-                name: t.properties.name,
-                mode: t.properties.transportMode,
-            }));
-        });
-        const modeMap = Object.fromEntries(modes.map((m: any) => [m.name, m.mode]));
-        expect(modeMap['Coastal Highway']).toBe('drive');
-        expect(modeMap['Old Town Stroll']).toBe('walk');
-        expect(modeMap['Mountain Pass']).toBe('drive');
-        expect(modeMap['TST101 LEBL-LFPG']).toBe('flight');
-    });
-
-    test('flight track has a flight-prefixed day key', async ({ page }) => {
-        await gotoMap(page);
-        const flightDay = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const flight = trips[0].features.find(
-                (f: any) => f.properties.transportMode === 'flight',
-            );
-            return flight?.properties.day;
-        });
-        expect(flightDay).toMatch(/^flight-2025-06-09-/);
-    });
-
-    test('ground tracks sharing a date share the same day key', async ({ page }) => {
-        await gotoMap(page);
-        const day10Tracks = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            return trips[0].features
-                .filter((f: any) => f.properties.type === 'track' && f.properties.day === '2025-06-10')
-                .map((f: any) => f.properties.name);
-        });
-        expect(day10Tracks).toContain('Coastal Highway');
-        expect(day10Tracks).toContain('Old Town Stroll');
-        expect(day10Tracks).toHaveLength(2);
-    });
-
-    test('parallel arrays have correct length (one per coordinate)', async ({ page }) => {
-        await gotoMap(page);
-        const issues = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const tracks = trips[0].features.filter((f: any) => f.properties.type === 'track');
-            const problems: string[] = [];
-            for (const t of tracks) {
-                const n = t.geometry.coordinates.length;
-                const p = t.properties;
-                if (p.elevations && p.elevations.length !== n) {
-                    problems.push(`${p.name}: elevations length ${p.elevations.length} != coords ${n}`);
-                }
-                if (p.speeds && p.speeds.length !== n) {
-                    problems.push(`${p.name}: speeds length ${p.speeds.length} != coords ${n}`);
-                }
-                if (p.sunAngles && p.sunAngles.length !== n) {
-                    problems.push(`${p.name}: sunAngles length ${p.sunAngles.length} != coords ${n}`);
-                }
-                if (p.times && p.times.length !== n) {
-                    problems.push(`${p.name}: times length ${p.times.length} != coords ${n}`);
-                }
-            }
-            return problems;
-        });
-        expect(issues).toEqual([]);
-    });
-
-    test('metadata elevation range actually bounds all per-point values', async ({ page }) => {
-        await gotoMap(page);
-        const result = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const meta = trips[0].metadata;
-            const range = meta.attributeRanges.elevation;
-            const tracks = trips[0].features.filter((f: any) => f.properties.type === 'track');
-            let globalMin = Infinity;
-            let globalMax = -Infinity;
-            for (const t of tracks) {
-                const elev = t.properties.elevations;
-                if (!elev) continue;
-                for (const v of elev) {
-                    if (v != null && isFinite(v)) {
-                        if (v < globalMin) globalMin = v;
-                        if (v > globalMax) globalMax = v;
-                    }
-                }
-            }
-            return { range, globalMin, globalMax };
-        });
-        expect(result.range.min).toBeLessThanOrEqual(result.globalMin);
-        expect(result.range.max).toBeGreaterThanOrEqual(result.globalMax);
-    });
-
-    test('metadata speed range actually bounds all per-point values', async ({ page }) => {
-        await gotoMap(page);
-        const result = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const meta = trips[0].metadata;
-            const range = meta.attributeRanges.speed;
-            const tracks = trips[0].features.filter((f: any) => f.properties.type === 'track');
-            let globalMin = Infinity;
-            let globalMax = -Infinity;
-            for (const t of tracks) {
-                const speeds = t.properties.speeds;
-                if (!speeds) continue;
-                for (const v of speeds) {
-                    if (v != null && isFinite(v)) {
-                        if (v < globalMin) globalMin = v;
-                        if (v > globalMax) globalMax = v;
-                    }
-                }
-            }
-            return { range, globalMin, globalMax };
-        });
-        expect(result.range.min).toBeLessThanOrEqual(result.globalMin);
-        expect(result.range.max).toBeGreaterThanOrEqual(result.globalMax);
-    });
-});
-
-// ---------------------------------------------------------------------------
-// Seam: group + visibility from nomadpath.yaml
-// ---------------------------------------------------------------------------
-
-test.describe('pipeline group and visibility config', () => {
-    test('flight track has group "flights" from subfolder', async ({ page }) => {
-        await gotoMap(page);
-        const group = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const flight = trips[0].features.find(
-                (f: any) => f.properties.transportMode === 'flight',
-            );
-            return flight?.properties.group;
-        });
-        expect(group).toBe('flights');
-    });
-
-    test('flight track has excludeFromAutoBounds from yaml', async ({ page }) => {
-        await gotoMap(page);
-        const excluded = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            const flight = trips[0].features.find(
-                (f: any) => f.properties.transportMode === 'flight',
-            );
-            return flight?.properties.excludeFromAutoBounds;
-        });
-        expect(excluded).toBe(true);
-    });
-
-    test('root-level tracks have group null', async ({ page }) => {
-        await gotoMap(page);
-        const groups = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            return trips[0].features
-                .filter((f: any) => f.properties.type === 'track' && f.properties.transportMode !== 'flight')
-                .map((f: any) => ({ name: f.properties.name, group: f.properties.group }));
-        });
-        for (const g of groups) {
-            expect(g.group).toBeNull();
-        }
-    });
-
-    test('landmark POI has defaultVisible false from yaml', async ({ page }) => {
-        await gotoMap(page);
-        const landmark = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            return trips[0].features.find(
-                (f: any) => f.properties.type === 'poi' && f.properties.category === 'landmark',
-            )?.properties;
-        });
-        expect(landmark).toBeDefined();
-        expect(landmark.defaultVisible).toBe(false);
-    });
-
-    test('accommodation POI has defaultVisible true (default)', async ({ page }) => {
-        await gotoMap(page);
-        const accom = await page.evaluate(() => {
-            const trips = (window as any).nomadMap.trips as any[];
-            return trips[0].features.find(
-                (f: any) => f.properties.type === 'poi' && f.properties.category === 'accommodation',
-            )?.properties;
-        });
-        expect(accom).toBeDefined();
-        expect(accom.defaultVisible).toBe(true);
     });
 });
 

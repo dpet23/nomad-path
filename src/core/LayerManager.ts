@@ -1,7 +1,7 @@
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, Map as MaplibreMap } from 'maplibre-gl';
 
-import type { AttributeRanges, POIFeature, TrackFeature, TripData } from '../data/types';
+import type { AttributeRange, AttributeRanges, POIFeature, TrackFeature, TripData } from '../data/types';
 import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
 
@@ -70,9 +70,10 @@ type Coord = [number, number] | [number, number, number];
  * Returns null for normal segments that don't cross.
  *
  * The boundary pair represents the same geographic location (the antimeridian)
- * as seen from each side: [180, lat] and [-180, lat].
+ * as seen from each side: [180, lat] and [-180, lat]. Altitude is preserved
+ * if both endpoints carry it.
  */
-function antimeridianSplit(c1: Coord, c2: Coord): [[number, number], [number, number]] | null {
+function antimeridianSplit(c1: Coord, c2: Coord): [Coord, Coord] | null {
     const dLon = c2[0] - c1[0];
     if (Math.abs(dLon) <= 180) return null;
 
@@ -84,11 +85,37 @@ function antimeridianSplit(c1: Coord, c2: Coord): [[number, number], [number, nu
     const t = (boundaryLon - c1[0]) / (lon2Unwrapped - c1[0]);
     const boundaryLat = c1[1] + t * (c2[1] - c1[1]);
 
+    const a1 = c1.length === 3 ? c1[2] : undefined;
+    const a2 = c2.length === 3 ? c2[2] : undefined;
+    const boundary: Coord =
+        a1 !== undefined && a2 !== undefined
+            ? [boundaryLon, boundaryLat, a1 + t * (a2 - a1)]
+            : [boundaryLon, boundaryLat];
+    const mirrorBoundary: Coord =
+        boundary.length === 3 ? [-boundaryLon, boundaryLat, boundary[2]] : [-boundaryLon, boundaryLat];
+
     // Return the boundary as seen from each side of the antimeridian.
-    return [
-        [boundaryLon, boundaryLat], // end of the first sub-segment
-        [-boundaryLon, boundaryLat], // start of the second sub-segment
-    ];
+    return [boundary, mirrorBoundary];
+}
+
+/**
+ * Merge two AttributeRange objects on the same attribute key. Throws if their
+ * units disagree — silently picking one would render the other trip with the
+ * wrong colour scale.
+ */
+function mergeOneRange(key: string, existing: AttributeRange, incoming: AttributeRange): AttributeRange {
+    if (existing.unit !== incoming.unit) {
+        throw new Error(
+            `Conflicting units for attribute "${key}" across trips: ` +
+                `"${existing.unit ?? '(none)'}" vs "${incoming.unit ?? '(none)'}". ` +
+                'Re-export the trips with matching units.',
+        );
+    }
+    return {
+        min: Math.min(existing.min, incoming.min),
+        max: Math.max(existing.max, incoming.max),
+        unit: existing.unit,
+    };
 }
 
 /**
@@ -100,15 +127,7 @@ function mergeRanges(rangesList: AttributeRanges[]): AttributeRanges {
         for (const [key, range] of Object.entries(ranges)) {
             if (!range) continue;
             const existing = merged[key];
-            if (existing) {
-                merged[key] = {
-                    min: Math.min(existing.min, range.min),
-                    max: Math.max(existing.max, range.max),
-                    unit: existing.unit,
-                };
-            } else {
-                merged[key] = { ...range };
-            }
+            merged[key] = existing ? mergeOneRange(key, existing, range) : { ...range };
         }
     }
     return merged;

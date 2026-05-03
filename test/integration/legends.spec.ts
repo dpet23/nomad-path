@@ -553,6 +553,27 @@ test('AttributeLegend: re-showing a track after hiding all restores speed range'
     expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_TOKYO_ONLY);
 });
 
+test('AttributeLegend: re-showing a track after hiding all restores speed layer ranges', async ({ page }) => {
+    // Pair to the label-only test above. CLAUDE.md "Two-Layer Observable
+    // State" rule: assert both label AND _ranges. The "restores from
+    // no-data" transition was previously label-only; this pins the
+    // map paint side too, catching a future regression where the label
+    // re-renders but the layer expression is left at its empty state.
+    await gotoMap(page);
+    await page.selectOption('.np-attr-select', 'speed');
+    const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
+    await groupCheckboxes.nth(0).uncheck();
+    await groupCheckboxes.nth(2).uncheck();
+    // Sanity: layer ranges are empty
+    let speedRange = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed);
+    expect(speedRange).toBeUndefined();
+    // Re-show Tokyo Drive
+    await groupCheckboxes.nth(0).check();
+    speedRange = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed);
+    expect(speedRange?.min).toBe(30);
+    expect(speedRange?.max).toBe(60);
+});
+
 test('setBasemap: colour attribute dropdown preserves selected value', async ({ page }) => {
     await gotoMap(page);
     await page.selectOption('.np-attr-select', 'speed');
