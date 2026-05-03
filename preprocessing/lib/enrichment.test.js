@@ -3,8 +3,12 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, expect, it } from 'vitest';
 
+import suncalc from 'suncalc';
+
 import { parseGPX, parseKML } from './parsers.js';
 import { computeSunAngle, enrichTrack } from './enrichment.js';
+
+const { getTimes } = suncalc;
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures');
 
@@ -48,6 +52,65 @@ describe('computeSunAngle', () => {
         const preDawn = computeSunAngle(LAT, LON, new Date('2024-03-14T19:30:00Z'));
         const postDusk = computeSunAngle(LAT, LON, new Date('2024-03-15T12:00:00Z'));
         expect(preDawn).toBeLessThan(postDusk);
+    });
+
+    // Anchor-value tests: pin the documented 0/90/180/270/360 scale so a
+    // half-amplitude regression (e.g. switching to 0-180) wouldn't pass
+    // unnoticed.
+    //
+    // Implementation note (preprocessing/lib/enrichment.js:79-87): the angle
+    // is interpolated from solar *altitude*, not clock-time. The 90/270
+    // anchors hit at altitude=0 (true horizon); 180 hits at altitude=90
+    // (zenith). suncalc's reported sunrise/sunset times account for
+    // atmospheric refraction (~-0.833°) so the angle at those times is a
+    // few degrees off the anchor. Tests pin altitude-driven anchors using
+    // scenarios where altitude is unambiguous: equatorial equinox for the
+    // zenith pass, and bracketing the suncalc sunrise/sunset times to
+    // confirm we cross 90/270 within a small clock window.
+    describe('documented anchor values (0/90/180/270/360 scale)', () => {
+        it('returns 180 at solar noon on the equator at equinox (sun overhead)', () => {
+            // March 20 2024 equinox; equator + 0° longitude → solar noon at
+            // ~12:00 UTC, altitude ≈ 90°.
+            const equinoxNoon = new Date('2024-03-20T12:00:00Z');
+            const angle = computeSunAngle(0, 0, equinoxNoon);
+            expect(angle).toBeGreaterThanOrEqual(178);
+            expect(angle).toBeLessThanOrEqual(180);
+        });
+
+        it('crosses 90 (sunrise anchor) within ~10 minutes of suncalc sunrise', () => {
+            const noon = new Date('2024-03-15T12:00:00Z');
+            const { sunrise } = getTimes(noon, LAT, LON);
+            // Sample 20 minutes before vs. 20 minutes after suncalc sunrise:
+            // we should be below 90 before, above 90 after.
+            const before = computeSunAngle(LAT, LON, new Date(sunrise.getTime() - 20 * 60_000));
+            const after  = computeSunAngle(LAT, LON, new Date(sunrise.getTime() + 20 * 60_000));
+            expect(before).toBeLessThan(90);
+            expect(after).toBeGreaterThan(90);
+        });
+
+        it('crosses 270 (sunset anchor) within ~10 minutes of suncalc sunset', () => {
+            const noon = new Date('2024-03-15T12:00:00Z');
+            const { sunset } = getTimes(noon, LAT, LON);
+            const before = computeSunAngle(LAT, LON, new Date(sunset.getTime() - 20 * 60_000));
+            const after  = computeSunAngle(LAT, LON, new Date(sunset.getTime() + 20 * 60_000));
+            expect(before).toBeLessThan(270);
+            expect(after).toBeGreaterThan(270);
+        });
+
+        it('produces angles that strictly span the full 0-360 range across one local day', () => {
+            // Sample once per hour across a single day; assert we observe
+            // values in all four quadrants. A half-amplitude scale (0-180)
+            // would never produce values > 180, failing this.
+            const dayStart = Date.parse('2024-03-15T00:00:00Z');
+            const samples = [];
+            for (let h = 0; h < 24; h++) {
+                samples.push(computeSunAngle(LAT, LON, new Date(dayStart + h * 3600_000)));
+            }
+            expect(samples.some(a => a < 90)).toBe(true);   // pre-dawn
+            expect(samples.some(a => a >= 90 && a < 180)).toBe(true);  // morning
+            expect(samples.some(a => a >= 180 && a < 270)).toBe(true); // afternoon
+            expect(samples.some(a => a >= 270)).toBe(true); // post-dusk
+        });
     });
 });
 

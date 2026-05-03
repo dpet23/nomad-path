@@ -83,6 +83,28 @@ describe('successful build', () => {
         expect(json.metadata?.tripName).toBe('Fresh Trip');
         expect(json.stale).toBeUndefined();
     });
+
+    it('skips unsupported files and continues building from the parseable ones', () => {
+        // docs/preprocessing.md:16 — "All other file types are skipped with a
+        // warning." Pin the outer behaviour: a mixed input (valid GPX + an
+        // unsupported file) must produce successful output containing the
+        // GPX's data, with the skip count surfaced in the script's summary.
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        writeFileSync(join(input, 'notes.txt'), 'unrelated text file');
+        const output = join(tmp, 'trip-data.geojson');
+
+        const r = runBuild(['-i', input, '-o', output, '-n', 'Mixed Input Trip']);
+
+        expect(r.status, r.stderr).toBe(0);
+        expect(existsSync(output)).toBe(true);
+
+        const json = JSON.parse(readFileSync(output, 'utf8'));
+        expect(json.features.length).toBeGreaterThan(0);
+        // The summary reports 1 parsed and 1 skipped.
+        expect(r.stdout).toMatch(/1 file\(s\) parsed, 1 skipped/);
+    });
 });
 
 // ---------------------------------------------------------------------------
