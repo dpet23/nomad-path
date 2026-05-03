@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { POIFeature, TripData } from '../data/types';
+import type { POIFeature, TripData } from '../../schema/types';
 import { groupPOIsByCategory, POILegend } from './POILegend';
 import type { UIContext } from './UIContext';
 

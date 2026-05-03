@@ -1,4 +1,4 @@
-import type { TrackFeature, TripData } from '../data/types';
+import type { TrackFeature, TripData } from '../../schema/types';
 
 // ---------------------------------------------------------------------------
 // Track ID

@@ -1,7 +1,7 @@
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, Map as MaplibreMap } from 'maplibre-gl';
 
-import type { AttributeRange, AttributeRanges, POIFeature, TrackFeature, TripData } from '../data/types';
+import type { AttributeRange, AttributeRanges, POIFeature, TrackFeature, TripData } from '../../schema/types';
 import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
 

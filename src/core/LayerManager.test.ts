@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { TrackFeature } from '../data/types';
+import type { TrackFeature } from '../../schema/types';
 import { buildSegmentFeatures } from './LayerManager';
 
 // ---------------------------------------------------------------------------
