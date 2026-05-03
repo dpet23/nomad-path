@@ -9,10 +9,10 @@
  * A failure here that passes `test:library` means a seam bug: the pipeline
  * produces something the library doesn't handle correctly.
  *
- * Per Epic 10 Phase 1.5 (tests-only contract): tests in this file must invoke
- * the real library on pipeline-produced output and assert observable
- * behaviour. Tests that read trips[0].features / trips[0].metadata directly
- * without invoking the library are Theatre and belong in P-Unit instead.
+ * Tests in this file must invoke the real library on pipeline-produced output
+ * and assert observable behaviour. Tests that read trips[0].features /
+ * trips[0].metadata directly without invoking the library are Theatre and
+ * belong in P-Unit instead.
  */
 import { test, expect } from './fixtures';
 import { gotoMap } from './helpers';
