@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import chokidar from 'chokidar';
 import { execFileSync, spawn } from 'child_process';
-import { renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
+import { statSync, unlinkSync } from 'fs';
 import { parseArgs } from 'util';
 import { dirname, resolve } from 'path';
 
@@ -32,33 +32,16 @@ Or with tmux:
 
 // ---------------------------------------------------------------------------
 // Args
-//
-// Public flags are documented in USAGE above. Test-only flag (deliberately
-// not advertised in --help):
-//
-//   --status-file <path>
-//     When set, watch.js writes { buildId, ok, error } to <path> after every
-//     build attempt (atomic temp+rename). Used by the future watcher-tests
-//     epic to observe rebuild completion deterministically without scraping
-//     stdout.
-//     Default `npm run watch` invocations do not set this and never write a
-//     status file, so production behaviour is unchanged.
-//
-//     buildId is an in-memory monotonic counter that resets to 0 on every
-//     watcher start. This is fine for the test-harness use case (each
-//     globalSetup spawns a fresh watcher) and not intended to support
-//     consumers that need monotonicity across restarts.
 // ---------------------------------------------------------------------------
 
 let values;
 try {
     ({ values } = parseArgs({
         options: {
-            input:         { type: 'string', short: 'i' },
-            name:          { type: 'string', short: 'n' },
-            output:        { type: 'string', short: 'o' },
-            port:          { type: 'string', short: 'p' },
-            'status-file': { type: 'string' },
+            input:  { type: 'string', short: 'i' },
+            name:   { type: 'string', short: 'n' },
+            output: { type: 'string', short: 'o' },
+            port:   { type: 'string', short: 'p' },
         },
     }));
 } catch {
@@ -71,11 +54,10 @@ if (!values.input) {
     process.exit(1);
 }
 
-const INPUT       = resolve(values.input);
-const OUTPUT      = resolve(values.output ?? 'demo/trip-data.geojson');
-const SERVE_DIR   = dirname(OUTPUT);
-const PORT        = values.port;
-const STATUS_FILE = values['status-file'] ? resolve(values['status-file']) : null;
+const INPUT     = resolve(values.input);
+const OUTPUT    = resolve(values.output ?? 'demo/trip-data.geojson');
+const SERVE_DIR = dirname(OUTPUT);
+const PORT      = values.port;
 
 try {
     if (!statSync(INPUT).isDirectory()) throw new Error();
@@ -91,21 +73,6 @@ try {
 const buildArgs = ['preprocessing/build-trip-data.js', '-i', INPUT, '-o', OUTPUT];
 if (values.name) buildArgs.push('-n', values.name);
 
-let buildId = 0;
-
-function writeStatus({ ok, error }) {
-    if (!STATUS_FILE) return;
-    const payload = JSON.stringify({ buildId, ok, error: error ?? null });
-    const tmp = `${STATUS_FILE}.tmp.${process.pid}`;
-    try {
-        writeFileSync(tmp, payload);
-        renameSync(tmp, STATUS_FILE);
-    } catch (writeErr) {
-        try { unlinkSync(tmp); } catch { /* ignore */ }
-        console.error(`[watch] Failed to write status file: ${writeErr.message}`);
-    }
-}
-
 function removeOutputIfExists() {
     try {
         unlinkSync(OUTPUT);
@@ -117,23 +84,17 @@ function removeOutputIfExists() {
 }
 
 function build() {
-    buildId++;
     console.log('[watch] Building…');
     try {
         execFileSync('node', buildArgs, { stdio: 'inherit' });
         console.log('[watch] Done.');
-        writeStatus({ ok: true });
-    } catch (err) {
+    } catch {
         // build-trip-data.js handles its own failures by unlinking OUTPUT
         // before exiting non-zero. But if the spawned process died abnormally
         // (signalled, OOM, etc.) it may not have run that cleanup. Belt-and-
-        // braces: ensure stale output is gone before we report status.
+        // braces: ensure stale output is gone before reporting failure.
         removeOutputIfExists();
-        const message = err.signal
-            ? `Build process killed by signal ${err.signal}`
-            : (err.message ?? 'Build failed');
         console.error('[watch] Build failed — watching for more changes');
-        writeStatus({ ok: false, error: message });
     }
 }
 
