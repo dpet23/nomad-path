@@ -1,13 +1,13 @@
 /**
- * Level 3 — E2E seam tests.
+ * E2E seam tests (`npm run test:e2e`).
  *
  * These tests validate the contract between the preprocessing pipeline and the
  * map library. The fixture is generated from raw GPX/KML files in
  * test/fixtures/map/ by `build:data`, then loaded in the browser via
  * test/e2e/test.html.
  *
- * A failure here that passes Level 2 means a seam bug: the pipeline produces
- * something the library doesn't handle correctly.
+ * A failure here that passes `test:library` means a seam bug: the pipeline
+ * produces something the library doesn't handle correctly.
  *
  * Per Epic 10 Phase 1.5 (tests-only contract): tests in this file must invoke
  * the real library on pipeline-produced output and assert observable

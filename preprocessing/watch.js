@@ -38,8 +38,9 @@ Or with tmux:
 //
 //   --status-file <path>
 //     When set, watch.js writes { buildId, ok, error } to <path> after every
-//     build attempt (atomic temp+rename). Used by Level 4 (test/watch) to
-//     observe rebuild completion deterministically without scraping stdout.
+//     build attempt (atomic temp+rename). Used by the future watcher-tests
+//     epic to observe rebuild completion deterministically without scraping
+//     stdout.
 //     Default `npm run watch` invocations do not set this and never write a
 //     status file, so production behaviour is unchanged.
 //

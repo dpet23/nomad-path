@@ -11,9 +11,9 @@
 //     output must be removed before the script exits.
 //
 // Atomic-rename behaviour (no concurrent reader ever observes a partial
-// JSON write) is verified at Level 4 (test/watch) where racing readers
-// can be exercised. Here we cover the behavioural contract: success
-// produces valid output, failure removes any previous output.
+// JSON write) is verified by the future watcher-tests epic, where racing
+// readers can be exercised. Here we cover the behavioural contract:
+// success produces valid output, failure removes any previous output.
 
 import { spawnSync } from 'child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
@@ -97,7 +97,8 @@ describe('successful build', () => {
 //      parsers; downstream lib code throws nothing). It's reachable only via
 //      runtime crashes (e.g. previous tz-lookup bug). We don't synthesise a
 //      crashing parser; the unlink path is exercised by the no-tracks tests
-//      below, and Level 4 covers the broader invariant under arbitrary input.
+//      below, and the watcher-tests epic covers the broader invariant under
+//      arbitrary input.
 //
 //   2. "No tracks found" — input parses (or is skipped) but yields zero
 //      tracks. Includes: empty dir, dir of only unsupported file types,

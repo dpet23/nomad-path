@@ -77,23 +77,23 @@ Consequences:
 
 ## Testing Architecture
 
-Three test levels in place; a fourth (watch) is planned as Epic 9.
+Three test categories in place; a watcher harness is pending a future epic (sequenced in front of Epic 12).
 
-**Level 1 — Unit** (`preprocessing/lib/*.test.js`, `src/core/*.test.ts`): Pure logic, no DOM/map/server. `npm run test:unit`
+**`npm run test:unit`** (`preprocessing/lib/*.test.js`, `src/core/*.test.ts`): Pure logic, no DOM/map/server. Vitest.
 
-**Level 2 — Integration** (`test/integration/`): JS library in a browser with a pipeline-generated fixture. Tests visibility, filters, paint properties, basemap restore, attribute ranges, DOM sync, stress/stability. `npm run test:integration`
+**`npm run test:library`** (`test/integration/`): JS library in a browser with a pipeline-generated fixture. Tests visibility, filters, paint properties, basemap restore, attribute ranges, DOM sync, stress/stability. Playwright + Chromium.
 
-**Level 3 — E2E** (`test/e2e/`): Raw input files → `build:data` → static server → browser → assertions. Tests the seam between pipeline output and library input. `npm run test:e2e`
+**`npm run test:e2e`** (`test/e2e/`): Raw input files → `build:data` → static server → browser → assertions. Tests the seam between pipeline output and library input. Playwright + Chromium.
 
-**Level 4 — Watch** (planned, Epic 9): Raw inputs → `npm run watch` → browser → file mutations → rebuild → reload → assertions. Will test the file lifecycle, concurrency, and the load-bearing invariant *preprocessing output is library-compatible or absent — never partial, never stale*. Plan: `~/.claude/plans/epic9-preprocessing-guarantee.md`.
+**Watcher tests** (pending future epic): raw inputs → `npm run watch` → browser → file mutations → rebuild → reload → assertions. Will test the file lifecycle, concurrency, and the load-bearing invariant *preprocessing output is library-compatible or absent — never partial, never stale*. Sequenced in front of Epic 12 so its preprocessing changes ship with regression cover.
 
 ### Test directory structure
 ```
 test/
   fixtures/
-    map/              — raw GPX/KML/yaml for fixture generation (Levels 2+3)
-  integration/        — Level 2 Playwright tests + test.html + dist/ + fixture.geojson
-  e2e/                — Level 3 Playwright tests
+    map/              — raw GPX/KML/yaml for fixture generation (library + e2e)
+  integration/        — test:library Playwright tests + test.html + dist/ + fixture.geojson
+  e2e/                — test:e2e Playwright tests
 ```
 
 ### Fixture strategy
@@ -113,7 +113,7 @@ Fixtures must use NON-OVERLAPPING attribute ranges per track so any hidden-track
 - **Vitest**: v2, `passWithNoTests: true`
 - **suncalc**: CJS module — `import suncalc from 'suncalc'; const { getPosition, getTimes } = suncalc;`
 - **tsconfig split**: `tsconfig.json` (IDE), `tsconfig.rollup.json` (Rollup), `tsconfig.node.json` (preprocessing)
-- **Playwright browsers**: binaries in `~/.cache/ms-playwright/` (global/shared, not in node_modules). First-time setup: `npm run test:integration:install`. `clean` script only removes `dist/`.
+- **Playwright browsers**: binaries in `~/.cache/ms-playwright/` (global/shared, not in node_modules). First-time setup: `npm run test:library:install`. `clean` script only removes `dist/`.
 - **MapLibre 4.7.1**: does NOT emit `style.load` after `setStyle()`. Use `styledata` event + check for source absence + try/catch on `addLayers`. `isStyleLoaded()` also unreliable (depends on tile loading). See `src/index.ts setBasemap()`.
 - **MapLibre GeoJSON + symbol layers**: Adding a symbol layer to the same source as a circle layer gates circle tile delivery on glyph loading. Always use a SEPARATE source for label/symbol layers.
 - **Playwright headless**: `idle` event never fires with OSM basemap (tile fetches stay pending). `querySourceFeatures` unreliable; use `source.serialize().data.features` for data checks. Use `waitForFunction` polling `queryRenderedFeatures` for render checks. `isMoving()` is reliable; `isStyleLoaded()` is not.
@@ -123,10 +123,10 @@ Fixtures must use NON-OVERLAPPING attribute ranges per track so any hidden-track
 
 ## npm Scripts
 See [docs/developer.md](docs/developer.md) for full descriptions.
-Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:integration` / `test:e2e` / `test:all` / `test:all:browsers` / `test:integration:debug` / `test:e2e:debug` / `test:integration:install` / `clean`
-Private (composition only): `_copy:demo` / `_copy:integration` / `_build:integration`
+Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:library` / `test:e2e` / `test:all` / `test:all:browsers` / `test:library:debug` / `test:e2e:debug` / `test:library:install` / `clean`
+Private (composition only): `_copy:demo` / `_copy:library` / `_build:library`
 Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
-Dev process: `test:unit` or `test:integration` during development. `test:all` before merge/end of epic. `test:all:browsers` before major milestones.
+Dev process: `test:unit` or `test:library` during development. `test:all` before merge/end of epic. `test:all:browsers` before major milestones.
 
 ## Real Data
 - `/home/dan/Documents/holidays/` — DO NOT COPY OR COMMIT
