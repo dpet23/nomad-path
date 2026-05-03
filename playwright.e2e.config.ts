@@ -3,6 +3,7 @@ const BASE_URL = 'http://localhost:3101';
 
 export default defineConfig({
     testDir: 'test/e2e',
+    testMatch: '**/*.spec.ts', // .test.ts is reserved for vitest
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,

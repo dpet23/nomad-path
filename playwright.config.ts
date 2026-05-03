@@ -3,6 +3,7 @@ const BASE_URL = 'http://localhost:3100';
 
 export default defineConfig({
     testDir: 'test/integration',
+    testMatch: '**/*.spec.ts', // .test.ts is reserved for vitest (e.g. fixture.test.ts)
     fullyParallel: false, // Map tests share browser state; run serially for reliability
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
