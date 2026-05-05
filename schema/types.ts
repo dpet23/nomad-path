@@ -1,38 +1,12 @@
 /**
- * Configuration object passed to TravelMap.create().
+ * Shared contract types for the on-disk trip-data.geojson file.
+ *
+ * These types describe the *interface* between preprocessing (producer)
+ * and library (consumer). Anything that is serialised to disk lives here.
+ *
+ * Library-only types (runtime construction config, UI config) live in
+ * src/config/types.ts and are not part of this contract.
  */
-export interface TravelMapConfig {
-    /** ID of the HTML container element. */
-    container: string;
-    /** URLs to one or more trip-data.geojson files. */
-    dataUrls: string[];
-    /** Initial map bounds, or 'auto' to fit all visible tracks. */
-    initialBounds?: 'auto' | [[number, number], [number, number]];
-    /** Default basemap style. */
-    defaultBasemap?: 'osm' | 'satellite' | 'terrain';
-    /** Legend panel configuration. */
-    legends?: LegendsConfig;
-    /** Mobile layout configuration. */
-    mobile?: MobileConfig;
-}
-
-/** Configuration for individual legend panels. */
-export interface LegendsConfig {
-    tracks?: LegendPanelConfig;
-    attributes?: LegendPanelConfig;
-    pois?: LegendPanelConfig;
-}
-
-/** Per-panel legend configuration. */
-export interface LegendPanelConfig {
-    position?: 'topleft' | 'topright' | 'bottomleft' | 'bottomright';
-    collapsed?: boolean;
-}
-
-/** Mobile layout configuration. */
-export interface MobileConfig {
-    legendMenu?: 'hamburger' | 'tabs' | 'stack';
-}
 
 /**
  * Root GeoJSON FeatureCollection with embedded trip metadata.

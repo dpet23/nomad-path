@@ -1,6 +1,6 @@
 import type { Map as MaplibreMap } from 'maplibre-gl';
 
-import type { TravelMapConfig, TripData } from '../schema/types';
+import type { TripData } from '../schema/types';
 import { deriveTrackId, extractTracks, loadTripData } from './core/DataLoader';
 import { type ColourAttribute, LayerManager, TRANSPORT_MODE_COLOURS } from './core/LayerManager';
 import {
@@ -12,6 +12,7 @@ import {
     setBasemap as engineSetBasemap,
     waitForLoad,
 } from './core/MapEngine';
+import type { TravelMapConfig } from './data/types';
 import { AttributeLegend } from './ui/AttributeLegend';
 import { MapControls } from './ui/MapControls';
 import { MobileMenu } from './ui/MobileMenu';
@@ -19,7 +20,8 @@ import { POILegend } from './ui/POILegend';
 import { TrackLegend } from './ui/TrackLegend';
 import type { UIContext } from './ui/UIContext';
 
-export type { AttributeRange, AttributeRanges, TravelMapConfig, TripData, TripMetadata } from '../schema/types';
+export type { AttributeRange, AttributeRanges, TripData, TripMetadata } from '../schema/types';
+export type { TravelMapConfig } from './data/types';
 export type { BasemapId, ColourAttribute };
 export { BASEMAPS, TRANSPORT_MODE_COLOURS };
 

@@ -1,4 +1,4 @@
-import type { LegendPanelConfig } from '../../schema/types';
+import type { LegendPanelConfig } from '../data/types';
 
 /**
  * Base class for positioned, collapsible legend panels.
