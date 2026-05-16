@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { TrackFeature, TripData } from '../../schema/types';
+import type { TrackFeature, TripData } from '../data/types';
 import { computeVisibleRanges } from './AttributeRanges';
 
 // ---------------------------------------------------------------------------

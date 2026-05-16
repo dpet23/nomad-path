@@ -1,6 +1,5 @@
-import type { AttributeRanges } from '../../schema/types';
 import { computeVisibleRanges } from '../core/AttributeRanges';
-import type { LegendPanelConfig } from '../data/types';
+import type { AttributeRanges, LegendPanelConfig } from '../data/types';
 import {
     COLOUR_ATTRIBUTE_REGISTRY,
     type ColourAttribute,

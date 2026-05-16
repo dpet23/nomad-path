@@ -66,7 +66,7 @@ function extractSunAngles(points) {
  * Convert a grouped, enriched track into a GeoJSON LineString Feature.
  *
  * @param {GroupedTrack} track
- * @returns {import('../../schema/types.js').TrackFeature}
+ * @returns {import('../../src/data/types.js').TrackFeature}
  */
 function trackToFeature(track) {
     const coordinates = track.points.map(p => [p.lon, p.lat]);
@@ -96,7 +96,7 @@ function trackToFeature(track) {
  *
  * @param {RawWaypoint} waypoint
  * @param {Record<string, { defaultVisible?: boolean }>} poiCategoryConfig
- * @returns {import('../../schema/types.js').POIFeature}
+ * @returns {import('../../src/data/types.js').POIFeature}
  */
 function waypointToFeature(waypoint, poiCategoryConfig) {
     const defaultVisible = poiCategoryConfig[waypoint.category]?.defaultVisible ?? true;
@@ -116,7 +116,7 @@ function waypointToFeature(waypoint, poiCategoryConfig) {
  * Build a trip-data GeoJSON FeatureCollection from grouped tracks and
  * waypoints.
  *
- * The returned object matches the TripData interface from schema/types.ts
+ * The returned object matches the TripData interface from src/data/types.ts
  * and is ready to be serialised with JSON.stringify().
  *
  * @param {object} opts
@@ -124,7 +124,7 @@ function waypointToFeature(waypoint, poiCategoryConfig) {
  * @param {RawWaypoint[]} opts.waypoints
  * @param {string} opts.tripName
  * @param {Record<string, { defaultVisible?: boolean }>} [opts.poiCategoryConfig]
- * @returns {import('../../schema/types.js').TripData}
+ * @returns {import('../../src/data/types.js').TripData}
  */
 export function buildGeoJSON({ tracks, waypoints, tripName, poiCategoryConfig = {} }) {
     const elevRange = { min: Infinity, max: -Infinity };

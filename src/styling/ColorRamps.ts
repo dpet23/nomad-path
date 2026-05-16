@@ -1,6 +1,6 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
 
-import type { AttributeRanges } from '../../schema/types';
+import type { AttributeRanges } from '../data/types';
 
 // ---------------------------------------------------------------------------
 // Types

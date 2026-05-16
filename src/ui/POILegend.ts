@@ -1,5 +1,4 @@
-import type { POIFeature, TripData } from '../../schema/types';
-import type { LegendPanelConfig } from '../data/types';
+import type { LegendPanelConfig, POIFeature, TripData } from '../data/types';
 import { BasePanel } from './BasePanel';
 import type { UIContext } from './UIContext';
 

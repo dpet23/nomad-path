@@ -212,24 +212,6 @@
     "overrides": [
         {
             "files": [
-                "src/**/*.ts"
-            ],
-            "rules": {
-                "no-restricted-imports": [
-                    "error",
-                    {
-                        "patterns": [
-                            {
-                                "group": ["**/schema/validate", "../schema/validate", "../../schema/validate"],
-                                "message": "Library code (src/**) must not import schema/validate. Import types from schema/types instead. The validator is preprocessing-only to keep the library bundle minimal."
-                            }
-                        ]
-                    }
-                ]
-            }
-        },
-        {
-            "files": [
                 "preprocessing/**/*.js"
             ],
             "env": {

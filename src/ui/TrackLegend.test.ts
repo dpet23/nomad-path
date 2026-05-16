@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { TrackFeature, TripData } from '../../schema/types';
+import type { TrackFeature, TripData } from '../data/types';
 import { groupTracksByDay, TrackLegend } from './TrackLegend';
 import type { UIContext } from './UIContext';
 
