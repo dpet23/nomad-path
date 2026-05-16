@@ -1,14 +1,34 @@
 /**
- * The capability map: one runtime entry per visualisation the library can
- * render. Library dispatch (paint expressions, legend gradients) reads from
- * this constant; the validator iterates the same constant to check input.
+ * The capability map: one entry per visualisation the library can render.
+ * Each entry declares what the renderer reads from a track's `properties`.
+ * The validator (step c) iterates these declarations to check preprocessing
+ * output before atomic-rename.
  *
- * Populated in step (b). For now this is the placeholder shape that lets
- * the rest of the contract module compile.
+ * Keys are the exact `track.properties` field names the renderer reads.
+ * `ColourAttribute = keyof typeof CAPABILITIES`.
+ *
+ *   - kind SCALAR: a string-valued property on `track.properties`.
+ *   - kind PARALLEL_ARRAY: a numeric array whose length equals
+ *     `track.geometry.coordinates.length`.
+ *   - optional: when true, validator accepts the property being absent.
+ *   - nullable: when true, parallel-array entries may be null.
+ *   - range: inclusive value bounds for numeric entries.
  */
 
-export interface CapabilityMap {
-    [id: string]: never;
-}
+export const REQUIREMENT_KIND = {
+    SCALAR: 'scalar',
+    PARALLEL_ARRAY: 'parallel-array',
+} as const;
 
-export const CAPABILITIES: CapabilityMap = {};
+export const CAPABILITIES = {
+    day: { kind: REQUIREMENT_KIND.SCALAR },
+    transportMode: { kind: REQUIREMENT_KIND.SCALAR, optional: true },
+    speeds: { kind: REQUIREMENT_KIND.PARALLEL_ARRAY, optional: true, nullable: true },
+    elevations: { kind: REQUIREMENT_KIND.PARALLEL_ARRAY, optional: true },
+    sunAngles: {
+        kind: REQUIREMENT_KIND.PARALLEL_ARRAY,
+        optional: true,
+        nullable: true,
+        range: { min: 0, max: 360 },
+    },
+} as const;

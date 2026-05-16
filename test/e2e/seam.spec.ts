@@ -87,7 +87,7 @@ test.describe('library renders pipeline data', () => {
         await gotoMap(page);
         // Default attribute is "day" which has no range label; switching to speed
         // surfaces the pipeline-derived range.
-        await page.selectOption('.np-attr-select', 'speed');
+        await page.selectOption('.np-attr-select', 'speeds');
         const rangeText = await page.locator('.np-range-label').textContent();
         expect(rangeText).toBeTruthy();
         expect(rangeText).toMatch(/km\/h/);

@@ -108,7 +108,7 @@ test('AttributeLegend: dropdown has one option per colour attribute', async ({ p
 
 test('AttributeLegend: speed label shows range of visible tracks only', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_VISIBLE);
 });
 
@@ -116,27 +116,27 @@ test('AttributeLegend: speed layer ranges exclude hidden tracks on initial load'
     // The map paint property must use dynamic (visible-only) ranges, not the static
     // merged-metadata ranges that include Sydney Walk (min=3 km/h).
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
     expect(min).toBe(30); // Tokyo min — if 3, Sydney Walk leaked into the layer expression
 });
 
 test('AttributeLegend: elevation label shows range of visible tracks only', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'elevation');
+    await page.selectOption('.np-attr-select', 'elevations');
     expect(await page.locator('.np-range-label').textContent()).toBe(ELEV_LABEL_VISIBLE);
 });
 
 test('AttributeLegend: elevation layer ranges exclude hidden tracks on initial load', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'elevation');
+    await page.selectOption('.np-attr-select', 'elevations');
     const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.elevation?.min);
     expect(min).toBe(10); // Tokyo min — if 1, Sydney Walk leaked into the layer expression
 });
 
 test('AttributeLegend: hiding a track via checkbox narrows the range label', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     // Expand Helsinki Flight's day group (third day header) and uncheck it
     await page.locator('.np-track-legend .np-day-header').nth(2).click();
     await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
@@ -145,7 +145,7 @@ test('AttributeLegend: hiding a track via checkbox narrows the range label', asy
 
 test('AttributeLegend: hiding a track via checkbox narrows the layer ranges', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await page.locator('.np-track-legend .np-day-header').nth(2).click();
     await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
     const max = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.max);
@@ -154,7 +154,7 @@ test('AttributeLegend: hiding a track via checkbox narrows the layer ranges', as
 
 test('AttributeLegend: hiding a track via checkbox narrows the elevation range label', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'elevation');
+    await page.selectOption('.np-attr-select', 'elevations');
     await page.locator('.np-track-legend .np-day-header').nth(2).click();
     await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
     expect(await page.locator('.np-range-label').textContent()).toBe(ELEV_LABEL_TOKYO_ONLY);
@@ -162,7 +162,7 @@ test('AttributeLegend: hiding a track via checkbox narrows the elevation range l
 
 test('AttributeLegend: showing a hidden track via checkbox widens the range label', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     // Expand Sydney Walk's day group (second day header) and check it
     await page.locator('.np-track-legend .np-day-header').nth(1).click();
     await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
@@ -171,7 +171,7 @@ test('AttributeLegend: showing a hidden track via checkbox widens the range labe
 
 test('AttributeLegend: showing a hidden track via checkbox widens the layer ranges', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await page.locator('.np-track-legend .np-day-header').nth(1).click();
     await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
     const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
@@ -360,14 +360,14 @@ test('setBasemap: user-shown POI category stays visible after basemap switch', a
 
 test('setBasemap: speed range preserved for default visible tracks', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await switchBasemap(page, 'blueMarble');
     expect(await page.locator('.np-range-label').textContent()).toBe(SPEED_LABEL_VISIBLE);
 });
 
 test('setBasemap: speed layer ranges preserved for default visible tracks', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await switchBasemap(page, 'blueMarble');
     const min = await page.evaluate(() => (window as any).nomadMap._layers._ranges?.speed?.min);
     expect(min).toBe(30); // Sydney Walk must stay excluded
@@ -375,14 +375,14 @@ test('setBasemap: speed layer ranges preserved for default visible tracks', asyn
 
 test('setBasemap: elevation range preserved for default visible tracks', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'elevation');
+    await page.selectOption('.np-attr-select', 'elevations');
     await switchBasemap(page, 'blueMarble');
     expect(await page.locator('.np-range-label').textContent()).toBe(ELEV_LABEL_VISIBLE);
 });
 
 test('setBasemap: user-hidden track remains excluded from range after basemap switch', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     // Hide Helsinki Flight via UI
     await page.locator('.np-track-legend .np-day-header').nth(2).click();
     await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
@@ -393,7 +393,7 @@ test('setBasemap: user-hidden track remains excluded from range after basemap sw
 
 test('setBasemap: user-hidden track excluded from layer ranges after basemap switch', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await page.locator('.np-track-legend .np-day-header').nth(2).click();
     await page.locator('.np-track-legend .np-day-group').nth(2).locator('.np-track-row .np-track-row__checkbox').uncheck();
     await switchBasemap(page, 'blueMarble');
@@ -403,7 +403,7 @@ test('setBasemap: user-hidden track excluded from layer ranges after basemap swi
 
 test('setBasemap: user-shown track remains included in range after basemap switch', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     // Show Sydney Walk via UI
     await page.locator('.np-track-legend .np-day-header').nth(1).click();
     await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
@@ -414,7 +414,7 @@ test('setBasemap: user-shown track remains included in range after basemap switc
 
 test('setBasemap: user-shown track included in layer ranges after basemap switch', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await page.locator('.np-track-legend .np-day-header').nth(1).click();
     await page.locator('.np-track-legend .np-day-group').nth(1).locator('.np-track-row .np-track-row__checkbox').check();
     await switchBasemap(page, 'blueMarble');
@@ -509,7 +509,7 @@ test('TrackLegend: group checkbox check also checks individual track row checkbo
 
 test('TrackLegend: hiding a group via group checkbox narrows the attribute range', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     // Hide Helsinki Flight via its group header checkbox
     const groupCheckbox = page.locator('.np-track-legend .np-day-header').nth(2).locator('input[type="checkbox"]');
     await groupCheckbox.uncheck();
@@ -522,7 +522,7 @@ test('TrackLegend: hiding a group via group checkbox narrows the attribute range
 
 test('AttributeLegend: hiding all visible tracks shows "no data" for speed', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     // Hide Tokyo Drive (group 0) and Helsinki Flight (group 2) via group checkboxes
     const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
     await groupCheckboxes.nth(0).uncheck();
@@ -532,7 +532,7 @@ test('AttributeLegend: hiding all visible tracks shows "no data" for speed', asy
 
 test('AttributeLegend: hiding all visible tracks empties layer ranges', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
     await groupCheckboxes.nth(0).uncheck();
     await groupCheckboxes.nth(2).uncheck();
@@ -542,7 +542,7 @@ test('AttributeLegend: hiding all visible tracks empties layer ranges', async ({
 
 test('AttributeLegend: re-showing a track after hiding all restores speed range', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
     // Hide all
     await groupCheckboxes.nth(0).uncheck();
@@ -560,7 +560,7 @@ test('AttributeLegend: re-showing a track after hiding all restores speed layer 
     // map paint side too, catching a future regression where the label
     // re-renders but the layer expression is left at its empty state.
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     const groupCheckboxes = page.locator('.np-track-legend .np-day-header input[type="checkbox"]');
     await groupCheckboxes.nth(0).uncheck();
     await groupCheckboxes.nth(2).uncheck();
@@ -576,15 +576,15 @@ test('AttributeLegend: re-showing a track after hiding all restores speed layer 
 
 test('setBasemap: colour attribute dropdown preserves selected value', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await switchBasemap(page, 'blueMarble');
     const selected = await page.locator('.np-attr-select').inputValue();
-    expect(selected).toBe('speed');
+    expect(selected).toBe('speeds');
 });
 
 test('setBasemap: colour attribute paint expression uses correct attribute after switch', async ({ page }) => {
     await gotoMap(page);
-    await page.selectOption('.np-attr-select', 'speed');
+    await page.selectOption('.np-attr-select', 'speeds');
     await switchBasemap(page, 'blueMarble');
     // The paint expression should be an interpolation array (not a flat string),
     // proving the speed expression was correctly restored

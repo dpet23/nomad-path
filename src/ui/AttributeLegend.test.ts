@@ -142,9 +142,9 @@ describe('AttributeLegend', () => {
         const { ctx, spies } = mockCtx();
         new AttributeLegend(c, ctx);
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
-        select.value = 'speed';
+        select.value = 'speeds';
         select.dispatchEvent(new Event('change'));
-        expect(spies.setColourAttribute).toHaveBeenCalledWith('speed');
+        expect(spies.setColourAttribute).toHaveBeenCalledWith('speeds');
     });
 
     it('shows range label for elevation derived from visible track data', () => {
@@ -155,7 +155,7 @@ describe('AttributeLegend', () => {
         const { ctx } = mockCtx([trip], visibleIds);
         new AttributeLegend(c, ctx);
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
-        select.value = 'elevation';
+        select.value = 'elevations';
         select.dispatchEvent(new Event('change'));
         const label = c.querySelector(RANGE_LABEL_SEL);
         expect(label?.textContent).toMatch(/Elevation/);
@@ -172,7 +172,7 @@ describe('AttributeLegend', () => {
         const { ctx } = mockCtx([trip], visibleIds);
         new AttributeLegend(c, ctx);
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
-        select.value = 'elevation';
+        select.value = 'elevations';
         select.dispatchEvent(new Event('change'));
         const label = c.querySelector(RANGE_LABEL_SEL);
         expect(label?.textContent).toMatch(/100/);
@@ -184,7 +184,7 @@ describe('AttributeLegend', () => {
         const { ctx } = mockCtx();
         new AttributeLegend(c, ctx);
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
-        select.value = 'elevation';
+        select.value = 'elevations';
         select.dispatchEvent(new Event('change'));
         const label = c.querySelector(RANGE_LABEL_SEL);
         expect(label?.textContent).toBe('Elevation: no data');
@@ -204,9 +204,9 @@ describe('AttributeLegend', () => {
         const legend = new AttributeLegend(c, ctx);
         expect(legend.attribute).toBe('day');
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
-        select.value = 'speed';
+        select.value = 'speeds';
         select.dispatchEvent(new Event('change'));
-        expect(legend.attribute).toBe('speed');
+        expect(legend.attribute).toBe('speeds');
     });
 
     it('updateRanges refreshes the range label when elevation is selected', () => {
@@ -222,7 +222,7 @@ describe('AttributeLegend', () => {
 
         // Switch to elevation so the label is visible
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
-        select.value = 'elevation';
+        select.value = 'elevations';
         select.dispatchEvent(new Event('change'));
 
         // Now hide track B — updateRanges should drop the max from 1200 to 500
@@ -243,7 +243,7 @@ describe('AttributeLegend', () => {
         const legend = new AttributeLegend(c, ctx);
 
         const select = c.querySelector(SELECT_SEL) as HTMLSelectElement;
-        select.value = 'elevation';
+        select.value = 'elevations';
         select.dispatchEvent(new Event('change'));
 
         legend.updateRanges(new Set()); // nothing visible

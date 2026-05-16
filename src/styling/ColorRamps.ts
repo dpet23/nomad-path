@@ -1,25 +1,23 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
 
+import { CAPABILITIES } from '../contract/capabilities';
 import type { AttributeRanges } from '../contract/types';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-/**
- * Registry of all supported colour attributes.
- * Add a new entry here to extend — the ColourAttribute type is derived automatically.
- */
-export const COLOUR_ATTRIBUTE_REGISTRY = {
-    day: { label: 'Day' },
-    speed: { label: 'Speed' },
-    elevation: { label: 'Elevation' },
-    sunAngle: { label: 'Daylight' },
-    transportMode: { label: 'Transport mode' },
-} as const;
+/** Identifier of a render capability. Single source of truth: CAPABILITIES. */
+export type ColourAttribute = keyof typeof CAPABILITIES;
 
-/** Supported colour visualisation modes for track layers. */
-export type ColourAttribute = keyof typeof COLOUR_ATTRIBUTE_REGISTRY;
+/** Display label for each ColourAttribute. */
+export const COLOUR_ATTRIBUTE_REGISTRY: Record<ColourAttribute, { label: string }> = {
+    day: { label: 'Day' },
+    speeds: { label: 'Speed' },
+    elevations: { label: 'Elevation' },
+    sunAngles: { label: 'Daylight' },
+    transportMode: { label: 'Transport mode' },
+};
 
 // MapLibre's ExpressionSpecification is a complex discriminated union that
 // TypeScript cannot verify from manually-built array literals. We cast via
@@ -132,7 +130,7 @@ export function getColourStops(attribute: ColourAttribute, ranges: AttributeRang
                 [1, DAY_COLOUR_END],
             ];
 
-        case 'speed':
+        case 'speeds':
             if (!ranges.speed)
                 return [
                     [0, MISSING_COLOUR],
@@ -144,7 +142,7 @@ export function getColourStops(attribute: ColourAttribute, ranges: AttributeRang
                 [1, SPEED_HIGH],
             ];
 
-        case 'elevation':
+        case 'elevations':
             if (!ranges.elevation)
                 return [
                     [0, MISSING_COLOUR],
@@ -156,7 +154,7 @@ export function getColourStops(attribute: ColourAttribute, ranges: AttributeRang
                 [1, ELEV_HIGH],
             ];
 
-        case 'sunAngle':
+        case 'sunAngles':
             return [
                 [0, SUN_MIDNIGHT], // Midnight
                 [0.2, SUN_DEEP_NIGHT], // Deep night
@@ -220,7 +218,7 @@ export function buildColourExpression(
                 TRANSPORT_MODE_FALLBACK,
             ]);
 
-        case 'speed': {
+        case 'speeds': {
             const r = ranges.speed;
             if (!r) return MISSING_COLOUR;
             if (r.min === r.max) return expr(['case', ['==', ['get', 'speedValue'], null], MISSING_COLOUR, SPEED_MID]);
@@ -233,7 +231,7 @@ export function buildColourExpression(
             ]);
         }
 
-        case 'elevation': {
+        case 'elevations': {
             const r = ranges.elevation;
             if (!r) return MISSING_COLOUR;
             if (r.min === r.max) return expr(['case', ['==', ['get', 'elevValue'], null], MISSING_COLOUR, ELEV_MID]);
@@ -246,7 +244,7 @@ export function buildColourExpression(
             ]);
         }
 
-        case 'sunAngle':
+        case 'sunAngles':
             return expr([
                 'case',
                 ['==', ['get', 'sunValue'], null],
