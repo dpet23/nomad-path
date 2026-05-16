@@ -1,4 +1,4 @@
-import type { TrackFeature, TripData } from '../data/types';
+import type { TrackFeature, TripData } from '../contract/types';
 
 // ---------------------------------------------------------------------------
 // Track ID

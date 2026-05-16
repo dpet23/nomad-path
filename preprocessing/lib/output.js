@@ -116,7 +116,7 @@ function waypointToFeature(waypoint, poiCategoryConfig) {
  * Build a trip-data GeoJSON FeatureCollection from grouped tracks and
  * waypoints.
  *
- * The returned object matches the TripData interface from src/data/types.ts
+ * The returned object matches the TripData interface from src/contract/types.ts
  * and is ready to be serialised with JSON.stringify().
  *
  * @param {object} opts

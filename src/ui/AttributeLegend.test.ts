@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { TrackFeature, TripData } from '../data/types';
+import type { TrackFeature, TripData } from '../contract/types';
 import { COLOUR_ATTRIBUTE_REGISTRY } from '../styling/ColorRamps';
 import { AttributeLegend } from './AttributeLegend';
 import type { UIContext } from './UIContext';

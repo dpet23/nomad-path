@@ -1,6 +1,6 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
 
-import type { AttributeRanges } from '../data/types';
+import type { AttributeRanges } from '../contract/types';
 
 // ---------------------------------------------------------------------------
 // Types
