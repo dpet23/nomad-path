@@ -1,5 +1,6 @@
+import type { TrackFeature } from '../contract/types';
 import { deriveTrackId, extractTracks } from '../core/DataLoader';
-import type { LegendPanelConfig, TrackFeature } from '../data/types';
+import type { LegendPanelConfig } from '../data/types';
 import { TRANSPORT_MODE_FALLBACK_INFO, TRANSPORT_MODES } from '../styling/ColorRamps';
 import { BasePanel } from './BasePanel';
 import type { UIContext } from './UIContext';

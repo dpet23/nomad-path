@@ -1,4 +1,4 @@
-import type { AttributeRanges, TripData } from '../data/types';
+import type { AttributeRanges, TripData } from '../contract/types';
 import { deriveTrackId, extractTracks } from './DataLoader';
 
 /** Scan a set of nullable number arrays and return the global min/max, or null if no values. */

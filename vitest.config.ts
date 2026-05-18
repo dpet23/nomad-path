@@ -18,6 +18,8 @@ export default defineConfig({
                 'src/core/MapEngine.ts',
                 'src/core/LayerManager.ts',
                 'src/data/types.ts',
+                'src/contract/types.ts',
+                'src/contract/index.ts',
                 'preprocessing/build-trip-data.js',
                 'preprocessing/watch.js',
             ],

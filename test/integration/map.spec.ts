@@ -391,14 +391,14 @@ test.describe('colour attribute', () => {
 
     test('setColourAttribute updates the getter', async ({ page }) => {
         await gotoMap(page);
-        await page.evaluate(() => (window as any).nomadMap.setColourAttribute('speed'));
+        await page.evaluate(() => (window as any).nomadMap.setColourAttribute('speeds'));
         const attr = await page.evaluate(() => (window as any).nomadMap.colourAttribute);
-        expect(attr).toBe('speed');
+        expect(attr).toBe('speeds');
     });
 
     test('setColourAttribute does not remove the track layer', async ({ page }) => {
         await gotoMap(page);
-        for (const attr of ['speed', 'elevation', 'sunAngle', 'transportMode', 'day'] as const) {
+        for (const attr of ['speeds', 'elevations', 'sunAngles', 'transportMode', 'day'] as const) {
             await page.evaluate(a => (window as any).nomadMap.setColourAttribute(a), attr);
         }
         const exists = await page.evaluate(() => !!(window as any)._map.getLayer('np-tracks-layer'));
@@ -454,7 +454,7 @@ test.describe('layer filter and paint', () => {
         const before = await page.evaluate(() =>
             JSON.stringify((window as any)._map.getPaintProperty('np-tracks-layer', 'line-color')),
         );
-        await page.evaluate(() => (window as any).nomadMap.setColourAttribute('speed'));
+        await page.evaluate(() => (window as any).nomadMap.setColourAttribute('speeds'));
         const after = await page.evaluate(() =>
             JSON.stringify((window as any)._map.getPaintProperty('np-tracks-layer', 'line-color')),
         );

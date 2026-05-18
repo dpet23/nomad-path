@@ -1,5 +1,6 @@
+import type { AttributeRanges } from '../contract/types';
 import { computeVisibleRanges } from '../core/AttributeRanges';
-import type { AttributeRanges, LegendPanelConfig } from '../data/types';
+import type { LegendPanelConfig } from '../data/types';
 import {
     COLOUR_ATTRIBUTE_REGISTRY,
     type ColourAttribute,
@@ -153,19 +154,19 @@ export class AttributeLegend extends BasePanel {
     private _renderRangeLabel(): void {
         const r = this._ranges;
         switch (this._attribute) {
-            case 'speed':
+            case 'speeds':
                 this._rangeLabel.textContent = r.speed
                     ? `Speed: ${r.speed.min.toFixed(0)} to ${r.speed.max.toFixed(0)} ${r.speed.unit ?? 'km/h'}`
                     : 'Speed: no data';
                 break;
-            case 'elevation': {
+            case 'elevations': {
                 const e = r.elevation;
                 this._rangeLabel.textContent = e
                     ? `Elevation: ${e.min.toFixed(0)} to ${e.max.toFixed(0)} ${e.unit ?? 'm'}`
                     : 'Elevation: no data';
                 break;
             }
-            case 'sunAngle':
+            case 'sunAngles':
                 this._rangeLabel.textContent = 'Daylight: morning → noon → evening';
                 break;
             case 'day':

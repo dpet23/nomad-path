@@ -212,6 +212,26 @@
     "overrides": [
         {
             "files": [
+                "src/core/**/*.ts",
+                "src/ui/**/*.ts",
+                "src/styling/**/*.ts"
+            ],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": ["**/contract/validate"],
+                                "message": "Rendering layers must not import the validator. Use types from contract/types or the capability map from contract/capabilities instead."
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": [
                 "preprocessing/**/*.js"
             ],
             "env": {

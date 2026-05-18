@@ -1,7 +1,7 @@
 import type { Map as MaplibreMap } from 'maplibre-gl';
 
+import type { TripData } from '../contract/types';
 import type { LayerManager } from '../core/LayerManager';
-import type { TripData } from '../data/types';
 
 /**
  * Internal context object shared with all UI components.
