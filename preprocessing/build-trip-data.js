@@ -5,6 +5,8 @@ import { parseArgs } from 'util';
 
 import { parse as parseYAML } from 'yaml';
 
+import { validate } from '../dist/contract.js';
+
 import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
@@ -235,6 +237,13 @@ if (allTracks.length === 0) {
 
 const grouped = groupTracks(allTracks);
 const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName, poiCategoryConfig });
+
+// Validate against the capability contract before writing. Failures route
+// through failExit so the output file is never left in an invalid state.
+const validation = validate(geojson);
+if (!validation.ok) {
+    failExit(`Validation failed:\n  ${validation.errors.join('\n  ')}`);
+}
 
 // Atomic write: write to a sibling temp path and rename onto the output.
 // rename(2) is atomic within a filesystem, so concurrent readers see either
