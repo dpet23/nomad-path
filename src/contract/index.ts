@@ -1,3 +1,4 @@
+export { CAPABILITIES } from './capabilities';
 export type {
     AttributeRange,
     AttributeRanges,
@@ -9,3 +10,4 @@ export type {
     TripMetadata,
     TripStats,
 } from './types';
+export { validate, type ValidationResult } from './validate';

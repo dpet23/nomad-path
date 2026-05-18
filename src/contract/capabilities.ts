@@ -1,34 +1,23 @@
 /**
  * The capability map: one entry per visualisation the library can render.
- * Each entry declares what the renderer reads from a track's `properties`.
- * The validator (step c) iterates these declarations to check preprocessing
- * output before atomic-rename.
+ * Each entry declares the property the renderer reads from a track's
+ * `properties`, and a predicate that the validator runs against it.
  *
  * Keys are the exact `track.properties` field names the renderer reads.
  * `ColourAttribute = keyof typeof CAPABILITIES`.
  *
- *   - kind SCALAR: a string-valued property on `track.properties`.
- *   - kind PARALLEL_ARRAY: a numeric array whose length equals
- *     `track.geometry.coordinates.length`.
+ *   - check: predicate run against the value (see ./checks).
  *   - optional: when true, validator accepts the property being absent.
- *   - nullable: when true, parallel-array entries may be null.
- *   - range: inclusive value bounds for numeric entries.
+ *   - entry / nullable: additional context passed to the predicate (used
+ *     by isParallelArray).
  */
 
-export const REQUIREMENT_KIND = {
-    SCALAR: 'scalar',
-    PARALLEL_ARRAY: 'parallel-array',
-} as const;
+import { inRange, isFiniteNumber, isNonEmptyString, isParallelArray } from './checks';
 
 export const CAPABILITIES = {
-    day: { kind: REQUIREMENT_KIND.SCALAR },
-    transportMode: { kind: REQUIREMENT_KIND.SCALAR, optional: true },
-    speeds: { kind: REQUIREMENT_KIND.PARALLEL_ARRAY, optional: true, nullable: true },
-    elevations: { kind: REQUIREMENT_KIND.PARALLEL_ARRAY, optional: true },
-    sunAngles: {
-        kind: REQUIREMENT_KIND.PARALLEL_ARRAY,
-        optional: true,
-        nullable: true,
-        range: { min: 0, max: 360 },
-    },
+    day: { check: isNonEmptyString },
+    transportMode: { check: isNonEmptyString, optional: true },
+    speeds: { check: isParallelArray, entry: isFiniteNumber, nullable: true, optional: true },
+    elevations: { check: isParallelArray, entry: isFiniteNumber, optional: true },
+    sunAngles: { check: isParallelArray, entry: inRange(0, 360), nullable: true, optional: true },
 } as const;

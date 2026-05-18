@@ -3,10 +3,11 @@ import resolve from '@rollup/plugin-node-resolve';
 import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 
+import contract from './rollup.contract.config.js';
+
 const production = !process.env.ROLLUP_WATCH;
 
-/** @type {import('rollup').RollupOptions} */
-export default {
+const library = {
     input: 'src/index.ts',
     output: {
         file: 'dist/nomad-path.js',
@@ -20,3 +21,6 @@ export default {
         production && terser(),
     ].filter(Boolean),
 };
+
+/** @type {import('rollup').RollupOptions[]} */
+export default [library, contract];
