@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { resolve, join, relative, dirname, basename } from 'path';
+import { fileURLToPath } from 'url';
 import { parseArgs } from 'util';
 
 import { parse as parseYAML } from 'yaml';
@@ -81,38 +82,28 @@ const tripName   = values.name ?? basename(dirname(inputDir))
 if (values.init) {
     const configPath = join(inputDir, 'nomadpath.yaml');
 
-    // Discover immediate subdirectories to pre-populate the template.
+    // Discover immediate subdirectories to seed the scaffold. Hidden
+    // dirs (.git, .DS_Store, ...) are skipped — they're never groups.
     let subdirs = [];
     try {
         subdirs = readdirSync(inputDir)
-            .filter(e => !e.startsWith('.') && statSync(join(inputDir, e)).isDirectory());
+            .filter(e => !e.startsWith('.') && statSync(join(inputDir, e)).isDirectory())
+            .sort();
     } catch { /* ignore scan errors */ }
 
-    const groupEntries = subdirs.length > 0
-        ? subdirs.map(d => `  ${d}:\n    defaultVisible: true`).join('\n')
-        : '  # my-flights:\n  #   defaultVisible: false';
+    // Read the on-disk template and substitute the `# <<subdirs>>` marker
+    // with one `<name>: {}` line per discovered subdir (empty body — user
+    // adds settings inline only when they want a non-default). If no
+    // subdirs exist, leave a commented example so the file isn't bare.
+    const templatePath = join(dirname(fileURLToPath(import.meta.url)), 'nomadpath.template.yaml');
+    const template = readFileSync(templatePath, 'utf8');
 
-    const template = `\
-# nomadpath.yaml — Nomad Path preprocessing configuration
-# See: preprocessing/README.md for full documentation.
-#
-# Groups correspond to immediate subdirectories of your input directory.
-# Tracks at the root level (not in any subfolder) are always visible.
-#
-# Available group options:
-#   defaultVisible:        true | false   — whether tracks are shown at map load (default: true)
-#   excludeFromAutoBounds: true | false   — exclude from initial viewport fit even when visible (default: false)
+    const scaffold = subdirs.length > 0
+        ? subdirs.map(d => `  ${d}: {}`).join('\n')
+        : '  # my-flights: { defaultVisible: false }';
+    const rendered = template.replace(/^[ \t]*#[ \t]*<<subdirs>>[ \t]*$/m, scaffold);
 
-groups:
-${groupEntries}
-
-# POI category visibility at map load. Category names come from waypoint <type> tags.
-# poi_categories:
-#   accommodation:
-#     defaultVisible: false
-`;
-
-    writeFileSync(configPath, template);
+    writeFileSync(configPath, rendered);
     console.log(`Created: ${configPath}`);
     console.log(`Edit the file, then re-run without --init to build your trip data.`);
     process.exit(0);

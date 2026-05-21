@@ -1,0 +1,18 @@
+# nomadpath.yaml — Nomad Path preprocessing configuration
+#
+# Only list folders/categories that need a non-default setting. Folders
+# omitted from this file inherit the defaults below.
+#
+# Group settings (under groups.<folder>):
+#   defaultVisible        true|false (default true)  — shown at map load
+#   excludeFromAutoBounds true|false (default false) — excluded from initial map viewport fit
+#
+# POI category settings (under poi_categories.<category>):
+#   defaultVisible        true|false (default true)  — shown at map load
+
+groups:
+  # <<subdirs>>
+
+# poi_categories:
+#   accommodation:
+#     defaultVisible: false

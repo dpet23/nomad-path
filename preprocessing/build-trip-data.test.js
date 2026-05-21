@@ -21,6 +21,7 @@ import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { parse as parseYAML } from 'yaml';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(HERE, 'build-trip-data.js');
@@ -185,5 +186,105 @@ describe('no-tracks-found removes stale output', () => {
         expect(existsSync(output)).toBe(false);
         // ENOENT during unlink would surface here.
         expect(r.stderr).not.toMatch(/ENOENT|EACCES|cannot unlink/i);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// --init template generation
+// ---------------------------------------------------------------------------
+
+describe('--init nomadpath.yaml template', () => {
+    it('writes nomadpath.yaml at <input>/ and exits 0', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+
+        const r = runBuild(['-i', input, '--init']);
+
+        expect(r.status, r.stderr).toBe(0);
+        expect(existsSync(join(input, 'nomadpath.yaml'))).toBe(true);
+    });
+
+    it('includes the legend header listing all available settings', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+
+        runBuild(['-i', input, '--init']);
+        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+
+        // Legend header must mention each setting by name so a user
+        // editing on a phone (vim, no autocomplete) can read it in-file.
+        expect(yaml).toMatch(/defaultVisible/);
+        expect(yaml).toMatch(/excludeFromAutoBounds/);
+        expect(yaml).toMatch(/poi_categories/);
+    });
+
+    it('emits one uncommented `<subdir>: {}` line per immediate subdirectory, sorted', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        // Create in non-alphabetical order to verify sorting.
+        mkdirSync(join(input, 'flights-2025'));
+        mkdirSync(join(input, 'drafts-2026'));
+        mkdirSync(join(input, 'australia'));
+
+        runBuild(['-i', input, '--init']);
+        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+
+        // Each subdir appears as `  <name>: {}` (two-space indent under groups:).
+        expect(yaml).toMatch(/^ {2}australia: \{\}$/m);
+        expect(yaml).toMatch(/^ {2}drafts-2026: \{\}$/m);
+        expect(yaml).toMatch(/^ {2}flights-2025: \{\}$/m);
+
+        // Sorted order: australia < drafts-2026 < flights-2025.
+        const a = yaml.indexOf('australia:');
+        const d = yaml.indexOf('drafts-2026:');
+        const f = yaml.indexOf('flights-2025:');
+        expect(a).toBeGreaterThan(0);
+        expect(a).toBeLessThan(d);
+        expect(d).toBeLessThan(f);
+    });
+
+    it('skips hidden subdirectories (.git, .DS_Store, etc.)', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        mkdirSync(join(input, '.git'));
+        mkdirSync(join(input, '.cache'));
+        mkdirSync(join(input, 'flights'));
+
+        runBuild(['-i', input, '--init']);
+        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+
+        expect(yaml).toMatch(/^ {2}flights: \{\}$/m);
+        // Hidden dirs must not become group entries.
+        expect(yaml).not.toMatch(/^ {2}\.git: /m);
+        expect(yaml).not.toMatch(/^ {2}\.cache: /m);
+    });
+
+    it('falls back to a commented example entry when no subdirs exist', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+
+        runBuild(['-i', input, '--init']);
+        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+
+        // No real entries; show the user what one would look like.
+        expect(yaml).toMatch(/^ {2}#.*my-flights/m);
+    });
+
+    it('writes valid yaml that round-trips through the parser', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        mkdirSync(join(input, 'flights-2025'));
+        mkdirSync(join(input, 'drafts-2026'));
+
+        runBuild(['-i', input, '--init']);
+        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+
+        // Must parse without throwing, and yield the expected scaffold.
+        const parsed = parseYAML(yaml);
+        expect(parsed).toHaveProperty('groups');
+        expect(parsed.groups).toHaveProperty('flights-2025');
+        expect(parsed.groups).toHaveProperty('drafts-2026');
+        // Empty body — `{}` in flow style — parses to empty object.
+        expect(parsed.groups['flights-2025']).toEqual({});
     });
 });
