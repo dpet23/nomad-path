@@ -8,7 +8,7 @@ import { parse as parseYAML } from 'yaml';
 
 import { validate } from '../dist/contract.js';
 
-import { CONFIG_FILE, configPath } from './lib/config.js';
+import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
 import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
@@ -24,14 +24,14 @@ Usage: node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>] [-
 
 Options:
   -i, --input  <dir>   Directory to scan for GPS files (recursive) [required]
-  -o, --output <file>  Output path (default: <input>/trip-data.geojson)
+  -o, --output <file>  Output path (default: <input>/${OUTPUT_FILE})
   -n, --name   <name>  Trip name in GeoJSON metadata (default: parent dir name, title-cased)
       --init           Write a ${CONFIG_FILE} template to <input>/ and exit
 
 Example:
   npm run build:data -- -i ./trips/japan-2024/tracks
   npm run build:data -- -i ./trips/japan-2024/tracks --init
-  npm run build:data -- -i ./trips/japan-2024/tracks -n "Japan 2024" -o ./public/trip-data.geojson
+  npm run build:data -- -i ./trips/japan-2024/tracks -n "Japan 2024" -o ./public/${OUTPUT_FILE}
 `.trim();
 
 let values;
@@ -55,7 +55,7 @@ if (!values.input) {
 }
 
 const inputDir   = expandPath(values.input);
-const outputFile = expandPath(values.output) ?? join(inputDir, 'trip-data.geojson');
+const outputFile = expandPath(values.output) ?? join(inputDir, OUTPUT_FILE);
 
 // Invariant: output is library-compatible-or-absent. Any non-success exit
 // must remove a prior output file before terminating, so the consumer never

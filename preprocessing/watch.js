@@ -3,8 +3,9 @@ import chokidar from 'chokidar';
 import { execFileSync, spawn } from 'child_process';
 import { statSync, unlinkSync } from 'fs';
 import { parseArgs } from 'util';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 
+import { OUTPUT_FILE } from './lib/config.js';
 import { expandPath } from './lib/paths.js';
 
 const USAGE = `
@@ -15,7 +16,7 @@ Starts a local dev server. Open the printed URL to view the map.
 
 Options:
   -i, --input  <dir>   Directory to watch for GPS files [required]
-  -o, --output <file>  Output path for trip-data.geojson (default: ./demo/trip-data.geojson)
+  -o, --output <file>  Output path for the geojson (default: ./demo/${OUTPUT_FILE})
                        The dev server serves the directory containing this file.
   -p, --port   <n>     Port for the local dev server (default: serve's default, 3000)
   -n, --name   <name>  Trip name in GeoJSON metadata
@@ -57,7 +58,7 @@ if (!values.input) {
 }
 
 const INPUT     = expandPath(values.input);
-const OUTPUT    = expandPath(values.output ?? 'demo/trip-data.geojson');
+const OUTPUT    = expandPath(values.output ?? join('demo', OUTPUT_FILE));
 const SERVE_DIR = dirname(OUTPUT);
 const PORT      = values.port;
 

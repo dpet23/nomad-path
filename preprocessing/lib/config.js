@@ -11,6 +11,7 @@
 import { join } from 'path';
 
 export const CONFIG_FILE = 'nomadpath.yaml';
+export const OUTPUT_FILE = 'trip-data.geojson';
 
 /**
  * Resolve the config file path for a given input directory.

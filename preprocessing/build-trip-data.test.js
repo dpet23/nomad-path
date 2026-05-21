@@ -24,7 +24,7 @@ import { homedir } from 'os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse as parseYAML } from 'yaml';
 
-import { CONFIG_FILE } from './lib/config.js';
+import { CONFIG_FILE, OUTPUT_FILE } from './lib/config.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(HERE, 'build-trip-data.js');
@@ -57,7 +57,7 @@ describe('successful build', () => {
         const input = join(tmp, 'input');
         mkdirSync(input);
         cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
-        const output = join(tmp, 'trip-data.geojson');
+        const output = join(tmp, OUTPUT_FILE);
 
         const r = runBuild(['-i', input, '-o', output, '-n', 'Test Trip']);
 
@@ -75,7 +75,7 @@ describe('successful build', () => {
         const input = join(tmp, 'input');
         mkdirSync(input);
         cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
-        const output = join(tmp, 'trip-data.geojson');
+        const output = join(tmp, OUTPUT_FILE);
 
         // Pre-existing stale file — must be replaced.
         writeFileSync(output, '{"stale": true}');
@@ -97,7 +97,7 @@ describe('successful build', () => {
         mkdirSync(input);
         cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
         writeFileSync(join(input, 'notes.txt'), 'unrelated text file');
-        const output = join(tmp, 'trip-data.geojson');
+        const output = join(tmp, OUTPUT_FILE);
 
         const r = runBuild(['-i', input, '-o', output, '-n', 'Mixed Input Trip']);
 
@@ -138,7 +138,7 @@ describe('no-tracks-found removes stale output', () => {
     it('exits non-zero AND deletes the prior output when input dir is empty', () => {
         const input = join(tmp, 'input');
         mkdirSync(input);
-        const output = join(tmp, 'trip-data.geojson');
+        const output = join(tmp, OUTPUT_FILE);
 
         writeFileSync(output, '{"stale": true}');
         expect(existsSync(output)).toBe(true);
@@ -154,7 +154,7 @@ describe('no-tracks-found removes stale output', () => {
         mkdirSync(input);
         writeFileSync(join(input, 'readme.txt'), 'not a gps file');
         writeFileSync(join(input, 'image.jpg'), 'not a gps file either');
-        const output = join(tmp, 'trip-data.geojson');
+        const output = join(tmp, OUTPUT_FILE);
 
         writeFileSync(output, '{"stale": true}');
 
@@ -168,7 +168,7 @@ describe('no-tracks-found removes stale output', () => {
         const input = join(tmp, 'input');
         mkdirSync(input);
         writeFileSync(join(input, 'broken.gpx'), '<gpx><not-closed>');
-        const output = join(tmp, 'trip-data.geojson');
+        const output = join(tmp, OUTPUT_FILE);
 
         writeFileSync(output, '{"stale": true}');
 
@@ -181,7 +181,7 @@ describe('no-tracks-found removes stale output', () => {
     it('does not crash when output does not exist on no-tracks-found', () => {
         const input = join(tmp, 'input');
         mkdirSync(input);
-        const output = join(tmp, 'trip-data.geojson');
+        const output = join(tmp, OUTPUT_FILE);
 
         const r = runBuild(['-i', input, '-o', output]);
 
