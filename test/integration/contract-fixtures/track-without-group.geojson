@@ -13,8 +13,7 @@
                 "type": "track",
                 "name": "Legacy Track",
                 "day": "2024-01-01",
-                "transportMode": "drive",
-                "defaultVisible": true
+                "transportMode": "drive"
             }
         }
     ]

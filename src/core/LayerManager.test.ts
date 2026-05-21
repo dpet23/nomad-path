@@ -19,7 +19,6 @@ const makeTrack = (
         type: 'track',
         name,
         day,
-        defaultVisible: true,
         transportMode: 'drive',
         elevations: coords.map((_, i) => 100 + i * 10),
         speeds: coords.map((_, i) => 30 + i * 5),
@@ -140,7 +139,6 @@ describe('buildSegmentFeatures', () => {
                 type: 'track',
                 name: 'No attrs',
                 day: DAY,
-                defaultVisible: true,
                 transportMode: 'drive',
             },
         };

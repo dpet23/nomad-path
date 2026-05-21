@@ -23,7 +23,6 @@ const makeTrack = (day: string, name: string): TrackFeature => ({
         type: 'track',
         name,
         day,
-        defaultVisible: true,
         transportMode: 'drive',
     },
 });

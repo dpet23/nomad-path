@@ -74,7 +74,7 @@ function assignFlightDay(track) {
  * @typedef {import('./enrichment.js').EnrichedTrack & {
  *   day: string;
  *   group: string | null;
- *   defaultVisible: boolean;
+ *   hidden?: boolean;
  * }} GroupedTrack
  */
 

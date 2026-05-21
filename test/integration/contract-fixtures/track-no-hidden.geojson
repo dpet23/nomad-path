@@ -1,7 +1,7 @@
 {
     "type": "FeatureCollection",
     "metadata": {
-        "tripName": "Contract: track missing defaultVisible",
+        "tripName": "Contract: track missing hidden",
         "attributeRanges": {},
         "stats": { "trackCount": 1, "waypointCount": 0, "dayCount": 1, "transportModes": { "drive": 1 } }
     },

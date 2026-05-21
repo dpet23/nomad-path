@@ -4,15 +4,15 @@
 # omitted from this file inherit the defaults below.
 #
 # Group settings (under groups.<folder>):
-#   defaultVisible        true|false (default true)  — shown at map load
+#   hidden                true|false (default false) — hidden at map load
 #   excludeFromAutoBounds true|false (default false) — excluded from initial map viewport fit
 #
 # POI category settings (under poi_categories.<category>):
-#   defaultVisible        true|false (default true)  — shown at map load
+#   hidden                true|false (default false) — hidden at map load
 
 groups:
   # <<subdirs>>
 
 # poi_categories:
 #   accommodation:
-#     defaultVisible: false
+#     hidden: true

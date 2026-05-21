@@ -80,7 +80,7 @@ function trackToFeature(track) {
         name: track.name,
         day: track.day,
         type: 'track',
-        defaultVisible: track.defaultVisible ?? true,
+        ...(track.hidden && { hidden: true }),
         ...(track.excludeFromAutoBounds && { excludeFromAutoBounds: true }),
         group: track.group ?? null,
         transportMode: track.transportMode,
@@ -95,16 +95,16 @@ function trackToFeature(track) {
  * Convert a raw waypoint into a GeoJSON Point Feature.
  *
  * @param {RawWaypoint} waypoint
- * @param {Record<string, { defaultVisible?: boolean }>} poiCategoryConfig
+ * @param {Record<string, { hidden?: boolean }>} poiCategoryConfig
  * @returns {import('../../src/data/types.js').POIFeature}
  */
 function waypointToFeature(waypoint, poiCategoryConfig) {
-    const defaultVisible = poiCategoryConfig[waypoint.category]?.defaultVisible ?? true;
+    const hidden = poiCategoryConfig[waypoint.category]?.hidden === true;
     return point([waypoint.lon, waypoint.lat], {
         name: waypoint.name,
         type: 'poi',
         category: waypoint.category,
-        defaultVisible,
+        ...(hidden && { hidden: true }),
     });
 }
 
@@ -123,7 +123,7 @@ function waypointToFeature(waypoint, poiCategoryConfig) {
  * @param {GroupedTrack[]} opts.tracks
  * @param {RawWaypoint[]} opts.waypoints
  * @param {string} opts.tripName
- * @param {Record<string, { defaultVisible?: boolean }>} [opts.poiCategoryConfig]
+ * @param {Record<string, { hidden?: boolean }>} [opts.poiCategoryConfig]
  * @returns {import('../../src/data/types.js').TripData}
  */
 export function buildGeoJSON({ tracks, waypoints, tripName, poiCategoryConfig = {} }) {

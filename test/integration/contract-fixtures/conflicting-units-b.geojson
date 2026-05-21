@@ -16,7 +16,6 @@
                 "name": "Imperial Drive",
                 "day": "2024-02-01",
                 "transportMode": "drive",
-                "defaultVisible": true,
                 "group": null,
                 "speeds": [30, 40]
             }

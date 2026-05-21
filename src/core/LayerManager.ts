@@ -244,8 +244,8 @@ export class LayerManager {
     /**
      * Add track and POI layers to the map from the loaded trip data.
      *
-     * Tracks with `defaultVisible: false` start hidden. Must be called after
-     * the map's style has loaded.
+     * Tracks with `hidden: true` start hidden. Must be called after the
+     * map's style has loaded.
      */
     addLayers(trips: TripData[]): void {
         const tracks = trips.flatMap(t => t.features.filter((f): f is TrackFeature => f.properties.type === 'track'));
@@ -261,12 +261,9 @@ export class LayerManager {
         }
 
         this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
-        // Respect the defaultVisible flag set during preprocessing.
-        this._visibleIds = new Set(tracks.filter(t => t.properties.defaultVisible !== false).map(deriveTrackId));
-        // Initialise visible POI categories respecting the defaultVisible flag from preprocessing.
-        this._visiblePOICategories = new Set(
-            pois.filter(p => p.properties.defaultVisible !== false).map(p => p.properties.category),
-        );
+        // Respect the `hidden` flag set during preprocessing (absent/false = visible).
+        this._visibleIds = new Set(tracks.filter(t => !t.properties.hidden).map(deriveTrackId));
+        this._visiblePOICategories = new Set(pois.filter(p => !p.properties.hidden).map(p => p.properties.category));
 
         const { featureCollection, maxDayIndex } = buildSegmentFeatures(tracks);
         this._maxDayIndex = maxDayIndex;

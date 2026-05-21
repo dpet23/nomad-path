@@ -3,9 +3,9 @@
  *
  * Each test navigates to the test harness page (e2e/test.html) which loads
  * a deterministic fixture (e2e/fixture.geojson) with:
- *   - "Tokyo Drive"  — defaultVisible: true,  day 2024-01-01, coords ~139.7°E 35.7°N
- *   - "Sydney Walk"  — defaultVisible: false, day 2024-01-02, coords ~151.2°E -33.9°N
- *   - "Helsinki Flight"— defaultVisible: true,  day 2024-01-03, excludeFromAutoBounds, coords ~25°E 60.2°N
+ *   - "Tokyo Drive"  — visible,      day 2024-01-01, coords ~139.7°E 35.7°N
+ *   - "Sydney Walk"  — hidden: true, day 2024-01-02, coords ~151.2°E -33.9°N
+ *   - "Helsinki Flight"— visible,    day 2024-01-03, excludeFromAutoBounds, coords ~25°E 60.2°N
  *   - "Test Hotel"   — POI at 139.695°E 35.691°N
  *
  * Tests interact via window.nomadMap (NomadPath instance) and window._map
@@ -149,7 +149,7 @@ test.describe('POI rendering', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('track visibility', () => {
-    test('Tokyo Drive (defaultVisible: true) is visible on load', async ({ page }) => {
+    test('Tokyo Drive (visible by default) is visible on load', async ({ page }) => {
         await gotoMap(page);
         const visible = await page.evaluate(
             id => (window as any).nomadMap.isTrackVisible(id),
@@ -158,7 +158,7 @@ test.describe('track visibility', () => {
         expect(visible).toBe(true);
     });
 
-    test('Sydney Walk (defaultVisible: false) is hidden on load', async ({ page }) => {
+    test('Sydney Walk (hidden: true) is hidden on load', async ({ page }) => {
         await gotoMap(page);
         const visible = await page.evaluate(
             id => (window as any).nomadMap.isTrackVisible(id),
@@ -196,7 +196,7 @@ test.describe('fitToTracks', () => {
     test('initial auto-fit only includes visible tracks (Tokyo, not Sydney)', async ({ page }) => {
         await gotoMap(page);
         await waitForMapSettle(page);
-        // Sydney Walk is defaultVisible: false, so initial bounds should not reach Sydney latitude
+        // Sydney Walk has hidden: true, so initial bounds should not reach Sydney latitude
         const south = await page.evaluate(() => (window as any)._map.getBounds().getSouth());
         // Tokyo is ~35.7°N; Sydney is ~-33.9°S — a negative south bound means Sydney is included
         expect(south).toBeGreaterThan(TOKYO_MIN_LAT);
@@ -213,7 +213,7 @@ test.describe('fitToTracks', () => {
     test('excludeFromAutoBounds track is visible but excluded from initial auto-fit', async ({ page }) => {
         await gotoMap(page);
         await waitForMapSettle(page);
-        // Helsinki Flight is defaultVisible:true but excludeFromAutoBounds:true.
+        // Helsinki Flight is visible-by-default but has excludeFromAutoBounds:true.
         // It should be visible (renderable) but its coords (~60°N) must not affect initial bounds.
         const [isVisible, north] = await page.evaluate(
             id => [
@@ -416,7 +416,7 @@ test.describe('layer filter and paint', () => {
 
     test('track layer filter excludes hidden tracks on load', async ({ page }) => {
         await gotoMap(page);
-        // Sydney Walk is defaultVisible: false — must be absent from the literal array
+        // Sydney Walk has hidden: true — must be absent from the literal array
         const filter = await page.evaluate(() => (window as any)._map.getFilter('np-tracks-layer'));
         const literal: string[] = filter?.[2]?.[1];
         expect(literal).toBeDefined();

@@ -100,7 +100,7 @@ if (values.init) {
 
     const scaffold = subdirs.length > 0
         ? subdirs.map(d => `  ${d}: {}`).join('\n')
-        : '  # my-flights: { defaultVisible: false }';
+        : '  # my-flights: { hidden: true }';
     const rendered = template.replace(/^[ \t]*#[ \t]*<<subdirs>>[ \t]*$/m, scaffold);
 
     writeFileSync(configPath, rendered);
@@ -114,8 +114,8 @@ if (values.init) {
 // ---------------------------------------------------------------------------
 
 /**
- * @typedef {{ defaultVisible?: boolean, excludeFromAutoBounds?: boolean }} GroupConfig
- * @typedef {{ defaultVisible?: boolean }} POICategoryConfig
+ * @typedef {{ hidden?: boolean, excludeFromAutoBounds?: boolean }} GroupConfig
+ * @typedef {{ hidden?: boolean }} POICategoryConfig
  */
 
 /** @type {Record<string, GroupConfig>} */
@@ -141,19 +141,18 @@ try {
 // ---------------------------------------------------------------------------
 
 /**
- * Augment an enriched track with `group` and `defaultVisible` fields derived
- * from the file's position relative to the input directory.
+ * Augment an enriched track with `group` and `hidden` fields derived from
+ * the file's position relative to the input directory.
  *
  * The group is the first subfolder component under inputDir (e.g. "flights-2025"
  * for a file at "flights-2025/QFA468.kml"). Files at the root level have group = null.
  *
- * defaultVisible priority:
- *   1. Group config in nomadpath.yaml
- *   2. true (default — show everything unless told otherwise)
+ * `hidden` defaults to false (visible). Set true only when the group's
+ * nomadpath.yaml entry specifies `hidden: true`.
  *
  * @param {import('./lib/enrichment.js').EnrichedTrack} track
  * @param {string} filePath
- * @returns {import('./lib/enrichment.js').EnrichedTrack & { group: string|null, defaultVisible: boolean }}
+ * @returns {import('./lib/enrichment.js').EnrichedTrack & { group: string|null, hidden: boolean, excludeFromAutoBounds: boolean }}
  */
 function augmentTrack(track, filePath) {
     const rel = relative(inputDir, filePath).replace(/\\/g, '/');
@@ -165,10 +164,10 @@ function augmentTrack(track, filePath) {
     const group = isSubdir ? firstComponent : null;
 
     const cfg = (group && groupConfig[group]) ?? {};
-    const defaultVisible = cfg.defaultVisible ?? true;
+    const hidden = cfg.hidden === true;
     const excludeFromAutoBounds = cfg.excludeFromAutoBounds ?? false;
 
-    return { ...track, group: group ?? null, defaultVisible, excludeFromAutoBounds };
+    return { ...track, group: group ?? null, hidden, excludeFromAutoBounds };
 }
 
 // ---------------------------------------------------------------------------

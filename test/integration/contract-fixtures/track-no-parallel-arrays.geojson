@@ -17,7 +17,6 @@
                 "name": "Plain KML Flight",
                 "day": "flight-2024-01-01-plain-kml-flight",
                 "transportMode": "flight",
-                "defaultVisible": true,
                 "group": null
             }
         }

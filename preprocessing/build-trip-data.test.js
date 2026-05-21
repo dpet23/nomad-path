@@ -213,7 +213,7 @@ describe('--init nomadpath.yaml template', () => {
 
         // Legend header must mention each setting by name so a user
         // editing on a phone (vim, no autocomplete) can read it in-file.
-        expect(yaml).toMatch(/defaultVisible/);
+        expect(yaml).toMatch(/hidden/);
         expect(yaml).toMatch(/excludeFromAutoBounds/);
         expect(yaml).toMatch(/poi_categories/);
     });

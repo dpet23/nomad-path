@@ -14,7 +14,6 @@
                 "name": "Day Three",
                 "day": "2024-01-03",
                 "transportMode": "drive",
-                "defaultVisible": true,
                 "group": null
             }
         },
@@ -26,7 +25,6 @@
                 "name": "Day One",
                 "day": "2024-01-01",
                 "transportMode": "drive",
-                "defaultVisible": true,
                 "group": null
             }
         },
@@ -38,7 +36,6 @@
                 "name": "Day Two",
                 "day": "2024-01-02",
                 "transportMode": "drive",
-                "defaultVisible": true,
                 "group": null
             }
         }

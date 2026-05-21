@@ -30,7 +30,6 @@
         "name": "Tokyo Drive",
         "day": "2024-01-01",
         "transportMode": "drive",
-        "defaultVisible": true,
         "group": null,
         "elevations": [10, 15, 20],
         "speeds": [30, 45, 60],
@@ -52,7 +51,7 @@
         "name": "Sydney Walk",
         "day": "2024-01-02",
         "transportMode": "walk",
-        "defaultVisible": false,
+        "hidden": true,
         "group": "hidden-group",
         "elevations": [1, 2, 3],
         "speeds": [3, 5, 7],
@@ -74,7 +73,6 @@
         "name": "Helsinki Flight",
         "day": "2024-01-03",
         "transportMode": "flight",
-        "defaultVisible": true,
         "excludeFromAutoBounds": true,
         "group": "flights",
         "elevations": [5000, 7500, 10000],
@@ -104,7 +102,7 @@
         "type": "poi",
         "name": "Mount Takao",
         "category": "viewpoint",
-        "defaultVisible": false
+        "hidden": true
       }
     }
   ]

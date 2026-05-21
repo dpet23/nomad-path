@@ -4,17 +4,17 @@
  * Uses the same fixture and test harness as map.spec.ts.
  *
  * Fixture tracks (in day order):
- *   Day 0 — Tokyo Drive    (defaultVisible: true,  drive, speeds 30-60 km/h, elevations 10-20 m)
- *   Day 1 — Sydney Walk    (defaultVisible: false, walk,  speeds 3-7 km/h,   elevations 1-3 m)
- *   Day 2 — Helsinki Flight(defaultVisible: true,  flight,speeds 200-800 km/h,elevations 5000-10000 m)
+ *   Day 0 — Tokyo Drive    (visible,        drive, speeds 30-60 km/h, elevations 10-20 m)
+ *   Day 1 — Sydney Walk    (hidden: true,   walk,  speeds 3-7 km/h,   elevations 1-3 m)
+ *   Day 2 — Helsinki Flight(visible,        flight,speeds 200-800 km/h,elevations 5000-10000 m)
  *
  * Attribute ranges are NON-OVERLAPPING so any leaked hidden track is detectable by value:
  *   Visible-only speed:     30-800 km/h  (Sydney Walk would change min to 3)
  *   Visible-only elevation: 10-10000 m   (Sydney Walk would change min to 1)
  *
  * Fixture POIs (in category order):
- *   accommodation — "Test Hotel"   (defaultVisible: true)
- *   viewpoint     — "Mount Takao"  (defaultVisible: false)
+ *   accommodation — "Test Hotel"   (visible)
+ *   viewpoint     — "Mount Takao"  (hidden: true)
  */
 
 import { expect, test } from './fixtures';
@@ -202,16 +202,16 @@ test('POILegend: renders the fixture POI after expanding category', async ({ pag
     expect(await name.textContent()).toBe('Test Hotel');
 });
 
-test('POILegend: category with defaultVisible false starts hidden', async ({ page }) => {
+test('POILegend: category with hidden: true starts hidden', async ({ page }) => {
     await gotoMap(page);
-    // "viewpoint" category has defaultVisible: false in the fixture
+    // "viewpoint" category has hidden: true in the fixture
     const visible = await page.evaluate(() =>
         (window as any).nomadMap.isPOICategoryVisible('viewpoint'),
     );
     expect(visible).toBe(false);
 });
 
-test('POILegend: category with defaultVisible true starts visible', async ({ page }) => {
+test('POILegend: category without hidden starts visible', async ({ page }) => {
     await gotoMap(page);
     const visible = await page.evaluate(() =>
         (window as any).nomadMap.isPOICategoryVisible('accommodation'),
@@ -296,13 +296,13 @@ async function switchBasemap(page: PwPage, basemapId: string) {
 
 // --- Track visibility × basemap switch ---
 
-test('setBasemap: defaultVisible true track stays visible (no user interaction)', async ({ page }) => {
+test('setBasemap: visible-by-default track stays visible (no user interaction)', async ({ page }) => {
     await gotoMap(page);
     await switchBasemap(page, 'blueMarble');
     expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_TOKYO)).toBe(true);
 });
 
-test('setBasemap: defaultVisible false track stays hidden (no user interaction)', async ({ page }) => {
+test('setBasemap: hidden-by-default track stays hidden (no user interaction)', async ({ page }) => {
     await gotoMap(page);
     await switchBasemap(page, 'blueMarble');
     expect(await page.evaluate(id => (window as any).nomadMap.isTrackVisible(id), TRACK_SYDNEY)).toBe(false);
@@ -328,13 +328,13 @@ test('setBasemap: user-shown track stays visible after basemap switch', async ({
 
 // --- POI category visibility × basemap switch ---
 
-test('setBasemap: defaultVisible true POI category stays visible (no user interaction)', async ({ page }) => {
+test('setBasemap: visible-by-default POI category stays visible (no user interaction)', async ({ page }) => {
     await gotoMap(page);
     await switchBasemap(page, 'blueMarble');
     expect(await page.evaluate(() => (window as any).nomadMap.isPOICategoryVisible('accommodation'))).toBe(true);
 });
 
-test('setBasemap: defaultVisible false POI category stays hidden (no user interaction)', async ({ page }) => {
+test('setBasemap: hidden-by-default POI category stays hidden (no user interaction)', async ({ page }) => {
     await gotoMap(page);
     await switchBasemap(page, 'blueMarble');
     expect(await page.evaluate(() => (window as any).nomadMap.isPOICategoryVisible('viewpoint'))).toBe(false);
@@ -428,7 +428,7 @@ test('setBasemap: user-shown track included in layer ranges after basemap switch
 // is consistent after a basemap switch.
 // ---------------------------------------------------------------------------
 
-test('setBasemap: defaultVisible false track checkbox remains unchecked after basemap switch', async ({ page }) => {
+test('setBasemap: hidden-by-default track checkbox remains unchecked after basemap switch', async ({ page }) => {
     await gotoMap(page);
     await switchBasemap(page, 'blueMarble');
     await page.locator('.np-track-legend .np-day-header').nth(1).click();
@@ -436,7 +436,7 @@ test('setBasemap: defaultVisible false track checkbox remains unchecked after ba
     expect(await checkbox.isChecked()).toBe(false);
 });
 
-test('setBasemap: defaultVisible true track checkbox remains checked after basemap switch', async ({ page }) => {
+test('setBasemap: visible-by-default track checkbox remains checked after basemap switch', async ({ page }) => {
     await gotoMap(page);
     await switchBasemap(page, 'blueMarble');
     await page.locator('.np-track-legend .np-day-header').first().click();
