@@ -20,6 +20,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse as parseYAML } from 'yaml';
 
@@ -288,5 +289,28 @@ describe(`--init ${CONFIG_FILE} template`, () => {
         expect(parsed.groups).toHaveProperty('drafts-2026');
         // Empty body — `{}` in flow style — parses to empty object.
         expect(parsed.groups['flights-2025']).toEqual({});
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Tilde expansion in path args
+// ---------------------------------------------------------------------------
+//
+// The shell strips a leading ~ only when the arg is unquoted. Quoted args
+// reach Node as a literal ~, which fs operations don't expand. Regression
+// test: passing -i "~/<nonexistent>" must fail with an error that names
+// the EXPANDED path (proving the helper ran before the fs lookup).
+
+describe('tilde expansion in -i argument', () => {
+    it('expands ~ before resolving the input directory', () => {
+        // Use a long unlikely path so the "no such file" error from fs
+        // names the home-expanded location. We expect a non-zero exit.
+        const r = runBuild(['-i', '~/np-tilde-test-doesnt-exist']);
+
+        expect(r.status).not.toBe(0);
+        // The expanded form must appear in stderr; literal "~" must not
+        // be relative to cwd in the error.
+        expect(r.stderr).toContain(homedir());
+        expect(r.stderr).not.toMatch(/[^a-zA-Z]~\/np-tilde-test-doesnt-exist/);
     });
 });

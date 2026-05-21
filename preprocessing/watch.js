@@ -3,7 +3,9 @@ import chokidar from 'chokidar';
 import { execFileSync, spawn } from 'child_process';
 import { statSync, unlinkSync } from 'fs';
 import { parseArgs } from 'util';
-import { dirname, resolve } from 'path';
+import { dirname } from 'path';
+
+import { expandPath } from './lib/paths.js';
 
 const USAGE = `
 Usage: npm run watch -- -i <dir> [-o <file>] [-p <port>] [-n <name>]
@@ -54,8 +56,8 @@ if (!values.input) {
     process.exit(1);
 }
 
-const INPUT     = resolve(values.input);
-const OUTPUT    = resolve(values.output ?? 'demo/trip-data.geojson');
+const INPUT     = expandPath(values.input);
+const OUTPUT    = expandPath(values.output ?? 'demo/trip-data.geojson');
 const SERVE_DIR = dirname(OUTPUT);
 const PORT      = values.port;
 

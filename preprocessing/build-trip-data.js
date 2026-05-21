@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
-import { resolve, join, relative, dirname, basename } from 'path';
+import { join, relative, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { parseArgs } from 'util';
 
@@ -13,6 +13,7 @@ import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
 import { buildGeoJSON } from './lib/output.js';
+import { expandPath } from './lib/paths.js';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -53,8 +54,8 @@ if (!values.input) {
     process.exit(1);
 }
 
-const inputDir   = resolve(values.input);
-const outputFile = resolve(values.output ?? join(values.input, 'trip-data.geojson'));
+const inputDir   = expandPath(values.input);
+const outputFile = expandPath(values.output) ?? join(inputDir, 'trip-data.geojson');
 
 // Invariant: output is library-compatible-or-absent. Any non-success exit
 // must remove a prior output file before terminating, so the consumer never
