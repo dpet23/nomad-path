@@ -49,11 +49,11 @@ test/           All browser-level tests and fixtures (see Testing Architecture b
 - Flight day keys: `flight-YYYY-MM-DD-name-slug` — embed date for chronological sorting in legend
 
 ## Group / Visibility System
-Named immediate subfolders define track groups. Optional `nomadpath.yaml` at input root:
+Named immediate subfolders define track groups. Optional `nomadpath.yaml` at input root (only list folders that need a non-default setting):
 ```yaml
 groups:
   flights-2025:
-    defaultVisible: false
+    hidden: true
 ```
 Generate template: `npm run build:data -- -i <dir> --init`
 

@@ -67,26 +67,42 @@ npm run build:data -- -i ./trips/japan-2024/tracks --init
 # Writes nomadpath.yaml to the input directory and exits
 ```
 
-Example `nomadpath.yaml`:
+The convention is **only list folders that need a non-default setting**. Folders
+omitted from `nomadpath.yaml` inherit the defaults. Example:
 
 ```yaml
 # nomadpath.yaml — Nomad Path preprocessing configuration
 
 groups:
-  # Transport flight legs — hidden by default so the day-by-day view
-  # isn't dominated by flight arcs. Toggle on in the map legend to see them.
+  # Transport flight legs — hidden so the day-by-day view isn't
+  # dominated by flight arcs. Toggle on in the map legend to see them.
   flights-2025:
-    defaultVisible: false
+    hidden: true
 ```
 
 ### Group options
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `defaultVisible` | boolean | `true` | Whether tracks in this group are visible when the map first loads |
+| `hidden` | boolean | `false` | When `true`, tracks in this group are hidden at map load (still toggleable from the legend) |
+| `excludeFromAutoBounds` | boolean | `false` | When `true`, this group is excluded from the initial viewport fit even if visible |
 
 > **Tip:** Only immediate subdirectories form groups. Deeper nesting is fine for
 > organisation but the group is always determined by the first subfolder component.
+
+### POI category options
+
+POI categories from waypoint `<type>` tags use the same shape under `poi_categories`:
+
+```yaml
+poi_categories:
+  landmark:
+    hidden: true
+```
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `hidden` | boolean | `false` | When `true`, POIs in this category are hidden at map load |
 
 ---
 
@@ -228,7 +244,6 @@ The output is a GeoJSON `FeatureCollection` with embedded metadata:
         "type": "track",
         "name": "Morning Drive",
         "day": "2024-03-15",
-        "defaultVisible": true,
         "group": null,
         "transportMode": "drive",
         "times":      [1710489600000, 1710489900000, ...],
