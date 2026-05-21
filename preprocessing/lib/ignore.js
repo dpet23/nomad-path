@@ -18,9 +18,11 @@
  */
 
 import { readFileSync } from 'fs';
-import { join, relative, sep } from 'path';
+import { relative, sep } from 'path';
 import picomatch from 'picomatch';
 import { parse as parseYAML } from 'yaml';
+
+import { CONFIG_FILE, configPath } from './config.js';
 
 /**
  * Read nomadpath.yaml from inputDir, validate the `ignore:` list, and
@@ -37,15 +39,16 @@ import { parse as parseYAML } from 'yaml';
  * @throws {Error} if `ignore` exists but is not an array of strings.
  */
 export function loadIgnore(inputDir) {
+    const path = configPath(inputDir);
     let parsed;
     try {
-        parsed = parseYAML(readFileSync(join(inputDir, 'nomadpath.yaml'), 'utf8'));
+        parsed = parseYAML(readFileSync(path, 'utf8'));
     } catch (err) {
         if (err.code === 'ENOENT') return emptyResult();
         // Re-throw parse / IO errors — caller decides whether to surface or warn.
         // (build-trip-data.js's existing yaml block warns + continues; we
         // intentionally do the same shape here.)
-        throw new Error(`failed to read ${join(inputDir, 'nomadpath.yaml')}: ${err.message}`);
+        throw new Error(`failed to read ${path}: ${err.message}`);
     }
 
     if (!parsed || parsed.ignore === undefined || parsed.ignore === null) return emptyResult();
@@ -73,19 +76,19 @@ function emptyResult() {
 function validatePatterns(raw) {
     if (!Array.isArray(raw)) {
         throw new Error(
-            `nomadpath.yaml: \`ignore\` must be a list of glob patterns; ` +
+            `${CONFIG_FILE}: \`ignore\` must be a list of glob patterns; ` +
             `got ${describeType(raw)} (${JSON.stringify(raw)})`,
         );
     }
     for (let i = 0; i < raw.length; i++) {
         if (typeof raw[i] !== 'string') {
             throw new Error(
-                `nomadpath.yaml: \`ignore[${i}]\` must be a string; ` +
+                `${CONFIG_FILE}: \`ignore[${i}]\` must be a string; ` +
                 `got ${describeType(raw[i])} (${JSON.stringify(raw[i])})`,
             );
         }
         if (raw[i].length === 0) {
-            throw new Error(`nomadpath.yaml: \`ignore[${i}]\` is an empty string`);
+            throw new Error(`${CONFIG_FILE}: \`ignore[${i}]\` is an empty string`);
         }
     }
     return raw;

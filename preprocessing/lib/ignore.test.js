@@ -10,6 +10,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { CONFIG_FILE } from './config.js';
 import { loadIgnore } from './ignore.js';
 
 let tmp;
@@ -22,9 +23,9 @@ afterEach(() => {
     rmSync(tmp, { recursive: true, force: true });
 });
 
-/** Write a nomadpath.yaml to the temp input dir. */
+/** Write a config file to the temp input dir. */
 function writeYaml(body) {
-    writeFileSync(join(tmp, 'nomadpath.yaml'), body);
+    writeFileSync(join(tmp, CONFIG_FILE), body);
 }
 
 // ---------------------------------------------------------------------------

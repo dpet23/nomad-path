@@ -23,6 +23,8 @@ import { fileURLToPath } from 'url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse as parseYAML } from 'yaml';
 
+import { CONFIG_FILE } from './lib/config.js';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(HERE, 'build-trip-data.js');
 const FIXTURES = join(HERE, 'fixtures');
@@ -193,15 +195,15 @@ describe('no-tracks-found removes stale output', () => {
 // --init template generation
 // ---------------------------------------------------------------------------
 
-describe('--init nomadpath.yaml template', () => {
-    it('writes nomadpath.yaml at <input>/ and exits 0', () => {
+describe(`--init ${CONFIG_FILE} template`, () => {
+    it(`writes ${CONFIG_FILE} at <input>/ and exits 0`, () => {
         const input = join(tmp, 'input');
         mkdirSync(input);
 
         const r = runBuild(['-i', input, '--init']);
 
         expect(r.status, r.stderr).toBe(0);
-        expect(existsSync(join(input, 'nomadpath.yaml'))).toBe(true);
+        expect(existsSync(join(input, CONFIG_FILE))).toBe(true);
     });
 
     it('includes the legend header listing all available settings', () => {
@@ -209,7 +211,7 @@ describe('--init nomadpath.yaml template', () => {
         mkdirSync(input);
 
         runBuild(['-i', input, '--init']);
-        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+        const yaml = readFileSync(join(input, CONFIG_FILE), 'utf8');
 
         // Legend header must mention each setting by name so a user
         // editing on a phone (vim, no autocomplete) can read it in-file.
@@ -227,7 +229,7 @@ describe('--init nomadpath.yaml template', () => {
         mkdirSync(join(input, 'australia'));
 
         runBuild(['-i', input, '--init']);
-        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+        const yaml = readFileSync(join(input, CONFIG_FILE), 'utf8');
 
         // Each subdir appears as `  <name>: {}` (two-space indent under groups:).
         expect(yaml).toMatch(/^ {2}australia: \{\}$/m);
@@ -251,7 +253,7 @@ describe('--init nomadpath.yaml template', () => {
         mkdirSync(join(input, 'flights'));
 
         runBuild(['-i', input, '--init']);
-        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+        const yaml = readFileSync(join(input, CONFIG_FILE), 'utf8');
 
         expect(yaml).toMatch(/^ {2}flights: \{\}$/m);
         // Hidden dirs must not become group entries.
@@ -264,7 +266,7 @@ describe('--init nomadpath.yaml template', () => {
         mkdirSync(input);
 
         runBuild(['-i', input, '--init']);
-        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+        const yaml = readFileSync(join(input, CONFIG_FILE), 'utf8');
 
         // No real entries; show the user what one would look like.
         expect(yaml).toMatch(/^ {2}#.*my-flights/m);
@@ -277,7 +279,7 @@ describe('--init nomadpath.yaml template', () => {
         mkdirSync(join(input, 'drafts-2026'));
 
         runBuild(['-i', input, '--init']);
-        const yaml = readFileSync(join(input, 'nomadpath.yaml'), 'utf8');
+        const yaml = readFileSync(join(input, CONFIG_FILE), 'utf8');
 
         // Must parse without throwing, and yield the expected scaffold.
         const parsed = parseYAML(yaml);

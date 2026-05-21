@@ -8,6 +8,7 @@ import { parse as parseYAML } from 'yaml';
 
 import { validate } from '../dist/contract.js';
 
+import { CONFIG_FILE, configPath } from './lib/config.js';
 import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
@@ -24,7 +25,7 @@ Options:
   -i, --input  <dir>   Directory to scan for GPS files (recursive) [required]
   -o, --output <file>  Output path (default: <input>/trip-data.geojson)
   -n, --name   <name>  Trip name in GeoJSON metadata (default: parent dir name, title-cased)
-      --init           Write a nomadpath.yaml template to <input>/ and exit
+      --init           Write a ${CONFIG_FILE} template to <input>/ and exit
 
 Example:
   npm run build:data -- -i ./trips/japan-2024/tracks
@@ -76,11 +77,11 @@ const tripName   = values.name ?? basename(dirname(inputDir))
     .replace(/\b\w/g, c => c.toUpperCase());
 
 // ---------------------------------------------------------------------------
-// --init: generate nomadpath.yaml template
+// --init: generate config template
 // ---------------------------------------------------------------------------
 
 if (values.init) {
-    const configPath = join(inputDir, 'nomadpath.yaml');
+    const outPath = configPath(inputDir);
 
     // Discover immediate subdirectories to seed the scaffold. Hidden
     // dirs (.git, .DS_Store, ...) are skipped — they're never groups.
@@ -103,14 +104,14 @@ if (values.init) {
         : '  # my-flights: { hidden: true }';
     const rendered = template.replace(/^[ \t]*#[ \t]*<<subdirs>>[ \t]*$/m, scaffold);
 
-    writeFileSync(configPath, rendered);
-    console.log(`Created: ${configPath}`);
+    writeFileSync(outPath, rendered);
+    console.log(`Created: ${outPath}`);
     console.log(`Edit the file, then re-run without --init to build your trip data.`);
     process.exit(0);
 }
 
 // ---------------------------------------------------------------------------
-// nomadpath.yaml config
+// Config file
 // ---------------------------------------------------------------------------
 
 /**
@@ -124,15 +125,14 @@ let groupConfig = {};
 /** @type {Record<string, POICategoryConfig>} */
 let poiCategoryConfig = {};
 
-const configPath = join(inputDir, 'nomadpath.yaml');
 try {
-    const raw = readFileSync(configPath, 'utf8');
+    const raw = readFileSync(configPath(inputDir), 'utf8');
     const parsed = parseYAML(raw);
     groupConfig = parsed?.groups ?? {};
     poiCategoryConfig = parsed?.poi_categories ?? {};
 } catch (err) {
     if (err.code !== 'ENOENT') {
-        console.error(`Warning: failed to load nomadpath.yaml: ${err.message}`);
+        console.error(`Warning: failed to load ${CONFIG_FILE}: ${err.message}`);
     }
 }
 
