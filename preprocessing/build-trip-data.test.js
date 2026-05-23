@@ -193,6 +193,95 @@ describe('no-tracks-found removes stale output', () => {
 });
 
 // ---------------------------------------------------------------------------
+// ignore: list filters the recursive scan
+//
+// The `ignore:` key in nomadpath.yaml feeds buildIgnoreMatcher, which is
+// applied INSIDE collectFiles before statSync / recursion. That means
+// ignored directories (notably .git, which floods watch mode with events)
+// are never opened, not just filtered out after the walk.
+// ---------------------------------------------------------------------------
+
+describe('nomadpath.yaml ignore: filters file collection', () => {
+    /** Build a tmp input dir with a valid GPX, plus extra dirs/files
+     *  that may or may not get ignored depending on the yaml config. */
+    function setupTmpInput({ yaml }) {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        // Drop a .git/HEAD and a drafts/scratch.gpx to test ignore patterns.
+        mkdirSync(join(input, '.git'));
+        writeFileSync(join(input, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+        mkdirSync(join(input, 'drafts'));
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'drafts', 'mid-trip.gpx'));
+        if (yaml !== null) writeFileSync(join(input, CONFIG_FILE), yaml);
+        return input;
+    }
+
+    it('without ignore config, .git/HEAD is reached and produces an "Unsupported file format" warning', () => {
+        // Sanity check pinning today's behaviour: with no ignore list, the
+        // walker enters .git and hits HEAD as an unsupported file. The
+        // config file itself is never counted as a skipped input.
+        const input = setupTmpInput({ yaml: 'groups: {}\n' });
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output]);
+
+        expect(r.status, r.stderr).toBe(0);
+        // 2 GPX parsed (track.gpx + drafts/mid-trip.gpx), 1 unsupported (.git/HEAD)
+        expect(r.stdout).toMatch(/2 file\(s\) parsed, 1 skipped/);
+    });
+
+    it('with ignore: [.git/], the walker never opens .git', () => {
+        const input = setupTmpInput({ yaml: 'ignore:\n  - .git/\n' });
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output]);
+
+        expect(r.status, r.stderr).toBe(0);
+        // .git is excluded entirely; only the 2 GPX files remain.
+        expect(r.stdout).toMatch(/2 file\(s\) parsed, 0 skipped/);
+    });
+
+    it('with ignore: [drafts/], drafts subdir contents are excluded', () => {
+        const input = setupTmpInput({ yaml: 'ignore:\n  - drafts/\n' });
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output]);
+
+        expect(r.status, r.stderr).toBe(0);
+        const json = JSON.parse(readFileSync(output, 'utf8'));
+        const names = json.features.map(f => f.properties.name);
+        // drafts/mid-trip.gpx must not be in the output.
+        // (sample-track.gpx contains a track called "Morning Drive".)
+        expect(names).toContain('Morning Drive');
+        expect(names.filter(n => n === 'Morning Drive')).toHaveLength(1);
+    });
+
+    it('malformed ignore: (string instead of list) exits non-zero with a clear error', () => {
+        const input = setupTmpInput({ yaml: 'ignore: drafts/\n' });
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output]);
+
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toMatch(/ignore.*must be a list/);
+        // Invariant: failed builds leave no output.
+        expect(existsSync(output)).toBe(false);
+    });
+
+    it('a non-string entry in ignore: also fails loudly with index', () => {
+        const input = setupTmpInput({ yaml: 'ignore:\n  - 42\n' });
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output]);
+
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toMatch(/ignore\[0\].*must be a string/);
+        expect(existsSync(output)).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // --init template generation
 // ---------------------------------------------------------------------------
 

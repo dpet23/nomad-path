@@ -12,6 +12,7 @@ import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
 import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
+import { buildIgnoreMatcher } from './lib/ignore.js';
 import { buildGeoJSON } from './lib/output.js';
 import { expandPath } from './lib/paths.js';
 
@@ -126,11 +127,16 @@ let groupConfig = {};
 /** @type {Record<string, POICategoryConfig>} */
 let poiCategoryConfig = {};
 
+/** Raw `ignore:` value from the yaml, passed to buildIgnoreMatcher in
+ * the file-discovery section below. */
+let rawIgnore;
+
 try {
     const raw = readFileSync(configPath(inputDir), 'utf8');
     const parsed = parseYAML(raw);
     groupConfig = parsed?.groups ?? {};
     poiCategoryConfig = parsed?.poi_categories ?? {};
+    rawIgnore = parsed?.ignore;
 } catch (err) {
     if (err.code !== 'ENOENT') {
         console.error(`Warning: failed to load ${CONFIG_FILE}: ${err.message}`);
@@ -175,8 +181,21 @@ function augmentTrack(track, filePath) {
 // File discovery (recursive)
 // ---------------------------------------------------------------------------
 
+// Predicate sourced from the yaml `ignore:` list. Applied inside collectFiles
+// before statSync / recursion, so ignored directories (e.g. .git on the
+// user's workflow) are never opened — not just filtered out after the walk.
+// Malformed config fails the build loudly: a silent typo that re-enables
+// .git scanning would be worse than a clear error.
+let isInputIgnored;
+try {
+    isInputIgnored = buildIgnoreMatcher(rawIgnore, inputDir);
+} catch (err) {
+    failExit(err.message);
+}
+
 /**
- * Recursively collect all file paths under a directory.
+ * Recursively collect all file paths under a directory, skipping anything
+ * the user listed under `ignore:` in nomadpath.yaml.
  *
  * @param {string} dir
  * @returns {string[]}
@@ -184,8 +203,9 @@ function augmentTrack(track, filePath) {
 function collectFiles(dir) {
     const files = [];
     for (const entry of readdirSync(dir)) {
-        if (entry.startsWith('.')) continue; // skip hidden files and dirs (e.g. .git)
         const full = join(dir, entry);
+        if (isInputIgnored(full)) continue;
+        if (full === configPath(inputDir)) continue;
         if (statSync(full).isDirectory()) {
             files.push(...collectFiles(full));
         } else {
