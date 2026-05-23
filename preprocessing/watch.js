@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import chokidar from 'chokidar';
 import { execFileSync, spawn } from 'child_process';
-import { statSync, unlinkSync } from 'fs';
+import { readFileSync, statSync, unlinkSync } from 'fs';
 import { parseArgs } from 'util';
 import { dirname, join } from 'path';
 
-import { OUTPUT_FILE } from './lib/config.js';
+import { parse as parseYAML } from 'yaml';
+
+import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
+import { buildIgnoreMatcher } from './lib/ignore.js';
 import { expandPath } from './lib/paths.js';
 
 const USAGE = `
@@ -133,6 +136,36 @@ process.on('uncaughtException', crashCleanup);
 process.on('unhandledRejection', crashCleanup);
 
 // ---------------------------------------------------------------------------
+// Ignore patterns (shared with build-trip-data.js via buildIgnoreMatcher)
+//
+// Read once at startup. Editing nomadpath.yaml mid-watch is a documented
+// "restart required" case — hot reload would surprise more than it'd help.
+// Malformed config is loud: a silent typo that re-enables .git scanning
+// would defeat the whole point of this feature.
+// ---------------------------------------------------------------------------
+
+const CONFIG_PATH = configPath(INPUT);
+
+let rawIgnore;
+try {
+    const parsed = parseYAML(readFileSync(CONFIG_PATH, 'utf8'));
+    rawIgnore = parsed?.ignore;
+} catch (err) {
+    if (err.code !== 'ENOENT') {
+        console.error(`[watch] Failed to load ${CONFIG_FILE}: ${err.message}`);
+        process.exit(1);
+    }
+}
+
+let isInputIgnored;
+try {
+    isInputIgnored = buildIgnoreMatcher(rawIgnore, INPUT);
+} catch (err) {
+    console.error(`[watch] ${err.message}`);
+    process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
 // Initial build + watcher
 // ---------------------------------------------------------------------------
 
@@ -141,7 +174,11 @@ build();
 chokidar
     .watch(INPUT, {
         ignoreInitial: true,
-        ignored: OUTPUT,
+        // Skip user-ignored paths, the config file itself (events on it
+        // are restart-required, not rebuild-required), and our own output
+        // (so writing the geojson doesn't re-trigger a build).
+        ignored: (absPath) =>
+            absPath === OUTPUT || absPath === CONFIG_PATH || isInputIgnored(absPath),
         awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
     })
     .on('add',    () => build())
