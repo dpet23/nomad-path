@@ -251,9 +251,18 @@ const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripNam
 
 // Validate against the capability contract before writing. Failures route
 // through failExit so the output file is never left in an invalid state.
+// The producer of `ValidationResult` is ../src/contract/validate.ts; the
+// shape (discriminated union of `kind: 'feature' | 'top-level' | 'metadata'`)
+// is imported via JSDoc rather than redeclared here.
+/** @type {import('../src/contract/validate.js').ValidationResult} */
 const validation = validate(geojson);
 if (!validation.ok) {
-    failExit(`Validation failed:\n  ${validation.errors.join('\n  ')}`);
+    const lines = validation.failures.map(f => {
+        if (f.kind === 'feature') return `features[${f.featureIndex}]: ${f.checks.join(', ')}`;
+        if (f.kind === 'top-level') return f.message;
+        return `metadata: ${f.message}`;
+    });
+    failExit(`Validation failed:\n  ${lines.join('\n  ')}`);
 }
 
 // Atomic write: write to a sibling temp path and rename onto the output.
