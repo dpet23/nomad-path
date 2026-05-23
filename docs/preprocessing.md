@@ -24,8 +24,10 @@ node preprocessing/build-trip-data.js -i ./trips/japan-2024/tracks
 ```
 
 The input directory is scanned **recursively** for `.gpx` and `.kml` files. All other file types
-are skipped with a warning. Hidden files and directories (starting with `.`) are skipped silently —
-this means `.git` directories are safe inside the input folder.
+are skipped with a warning. Files and folders listed under `ignore:` in `nomadpath.yaml`
+(see [Ignored paths](#ignored-paths-nomadpathyaml) below) are skipped entirely — they're not
+walked at all, so a `.git/` repo inside the input folder won't trip up the recursive scan or
+flood watch mode with rebuild events.
 
 
 ---
@@ -103,6 +105,52 @@ poi_categories:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `hidden` | boolean | `false` | When `true`, POIs in this category are hidden at map load |
+
+---
+
+## Ignored paths (nomadpath.yaml)
+
+Use `ignore:` in `nomadpath.yaml` to list files and folders the preprocessor should skip
+entirely — they're never opened, statted, or watched. The fresh `--init` template seeds a
+default list covering common noise (`.git/`, OS metadata files, editor swap files); edit
+or remove entries to suit your workflow.
+
+```yaml
+ignore:
+  - .git/
+  - .DS_Store
+  - Thumbs.db
+  - "**/*.swp"
+  - drafts/
+```
+
+### Pattern semantics
+
+- **Globs**, chokidar/picomatch compatible.
+- **Anchored to the input root.** `drafts/` matches `<input>/drafts/` only; use `**/drafts/`
+  to match at any depth. This is intentionally stricter than `.gitignore` — it makes patterns
+  unambiguous when you read them in isolation.
+- **Directory patterns implicitly cover descendants.** `.git/` (or `.git`) excludes the
+  directory and everything under it; you don't need `.git/**`.
+
+Removing an entry from `ignore:` means those paths *will* be scanned. The config is the
+single source of truth — there is no hardcoded backup ignore list. If you delete the `.git/`
+entry from your trip's config, `git status` operations will trigger watch rebuilds.
+
+### Honoured by both build and watch
+
+`ignore:` is read by `npm run build:data` (filtering the recursive file scan) and by
+`npm run watch` (passed to chokidar's `ignored` option). Both use the same matcher, so a
+file you've ignored will never appear in the output and never trigger a rebuild.
+
+Config is read **once at watch startup** — editing `nomadpath.yaml` while watch is running
+requires a restart for the new patterns to take effect.
+
+### Malformed config fails loudly
+
+A typo that turns `ignore:` into a non-list (e.g. `ignore: drafts/` instead of `ignore: [drafts/]`)
+causes the build to exit non-zero with a clear error message. A silent failure mode would
+let a stray colon re-enable `.git/` scanning without you noticing.
 
 ---
 
