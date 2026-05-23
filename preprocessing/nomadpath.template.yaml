@@ -9,6 +9,10 @@
 #
 # POI category settings (under poi_categories.<category>):
 #   hidden                true|false (default false) — hidden at map load
+#
+# Other:
+#   ignore                list of glob patterns anchored to the input root,
+#                         skipped during scan and watch (use **/ for any-depth)
 
 groups:
   # <<subdirs>>
@@ -16,3 +20,13 @@ groups:
 # poi_categories:
 #   accommodation:
 #     hidden: true
+
+# Files and folders skipped during preprocessing and watch. Edit or remove
+# entries to suit your workflow. Patterns are anchored to the input root —
+# use `**/<pat>` to match at any depth.
+ignore:
+  - .git/
+  - .DS_Store
+  - Thumbs.db
+  - "**/*.swp"
+  - "**/*~"

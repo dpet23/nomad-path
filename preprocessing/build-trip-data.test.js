@@ -308,6 +308,42 @@ describe(`--init ${CONFIG_FILE} template`, () => {
         expect(yaml).toMatch(/hidden/);
         expect(yaml).toMatch(/excludeFromAutoBounds/);
         expect(yaml).toMatch(/poi_categories/);
+        expect(yaml).toMatch(/ignore/);
+    });
+
+    it('seeds a non-empty default ignore list', () => {
+        // The exact list is a UX choice that may shift over time; the
+        // contract is that the template ships *some* defaults so a fresh
+        // --init isn't a blank slate. Behaviour for the headline case
+        // (.git filtered out of the box) is asserted end-to-end below.
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+
+        runBuild(['-i', input, '--init']);
+        const parsed = parseYAML(readFileSync(join(input, CONFIG_FILE), 'utf8'));
+
+        expect(Array.isArray(parsed.ignore)).toBe(true);
+        expect(parsed.ignore.length).toBeGreaterThan(0);
+    });
+
+    it('default ignore list filters .git out of the box (end-to-end)', () => {
+        // The reason this epic exists: a fresh --init template should
+        // make watch mode immune to .git noise without any user edits.
+        // Build pipeline mirror: --init then build with .git/HEAD and
+        // a real GPX → 0 skipped, .git untouched.
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        mkdirSync(join(input, '.git'));
+        writeFileSync(join(input, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+
+        const initR = runBuild(['-i', input, '--init']);
+        expect(initR.status, initR.stderr).toBe(0);
+
+        const output = join(tmp, OUTPUT_FILE);
+        const buildR = runBuild(['-i', input, '-o', output]);
+        expect(buildR.status, buildR.stderr).toBe(0);
+        expect(buildR.stdout).toMatch(/1 file\(s\) parsed, 0 skipped/);
     });
 
     it('emits one uncommented `<subdir>: {}` line per immediate subdirectory, sorted', () => {
