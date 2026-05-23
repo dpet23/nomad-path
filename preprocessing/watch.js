@@ -9,6 +9,7 @@ import { parse as parseYAML } from 'yaml';
 
 import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
 import { buildIgnoreMatcher } from './lib/ignore.js';
+import { logFail } from './lib/log.js';
 import { expandPath } from './lib/paths.js';
 
 const USAGE = `
@@ -34,6 +35,18 @@ Or with tmux:
   tmux new -s watch
   npm run watch -- -i <dir>
   # Ctrl+B then D to detach; reconnect with: tmux attach -t watch
+
+Reading the log remotely (e.g. from a phone over ssh):
+
+  tail -50 watch.log                       # most recent activity
+  grep '\\[FAIL\\]' watch.log              # every preprocessing failure
+  grep '\\[FAIL\\]' watch.log | tail       # most recent failures
+  grep -E '\\[OK\\]|\\[FAIL\\]' watch.log | tail -5
+                                           # last 5 outcomes (success or failure).
+                                           # An [OK] line means the build recovered;
+                                           # any [FAIL] after the most recent [OK]
+                                           # is an unresolved problem.
+  grep -E ' (4|5)[0-9]{2} ' watch.log      # serve HTTP errors (4xx/5xx)
 `.trim();
 
 // ---------------------------------------------------------------------------
@@ -84,23 +97,21 @@ function removeOutputIfExists() {
         unlinkSync(OUTPUT);
     } catch (err) {
         if (err.code !== 'ENOENT') {
-            console.error(`[watch] Failed to remove stale output: ${err.message}`);
+            logFail('Cleanup', `failed to remove stale output ${OUTPUT}: ${err.message}`);
         }
     }
 }
 
 function build() {
-    console.log('[watch] Building…');
     try {
         execFileSync('node', buildArgs, { stdio: 'inherit' });
-        console.log('[watch] Done.');
     } catch {
         // build-trip-data.js handles its own failures by unlinking OUTPUT
         // before exiting non-zero. But if the spawned process died abnormally
         // (signalled, OOM, etc.) it may not have run that cleanup. Belt-and-
-        // braces: ensure stale output is gone before reporting failure.
+        // braces: ensure stale output is gone. The child has already printed
+        // its own [FAIL] line(s); no extra summary needed.
         removeOutputIfExists();
-        console.error('[watch] Build failed — watching for more changes');
     }
 }
 
@@ -114,7 +125,7 @@ if (PORT) serveArgs.push('-l', String(PORT));
 const serve = spawn('npx', serveArgs, { stdio: 'inherit', shell: false });
 serve.on('exit', (code) => {
     if (!exiting) {
-        console.error(`[watch] Server exited unexpectedly (code ${code}) — shutting down`);
+        logFail('Server', `serve exited unexpectedly with code ${code}`);
         process.exit(1);
     }
 });
@@ -129,7 +140,7 @@ process.on('SIGTERM', () => { exiting = true; serve.kill(); process.exit(0); });
 function crashCleanup(err) {
     exiting = true;
     try { serve.kill(); } catch { /* ignore */ }
-    console.error(err);
+    logFail('Crash', err?.stack ?? err?.message ?? String(err));
     process.exit(1);
 }
 process.on('uncaughtException', crashCleanup);
@@ -152,7 +163,7 @@ try {
     rawIgnore = parsed?.ignore;
 } catch (err) {
     if (err.code !== 'ENOENT') {
-        console.error(`[watch] Failed to load ${CONFIG_FILE}: ${err.message}`);
+        logFail('Config', `${CONFIG_PATH}: ${err.message}`);
         process.exit(1);
     }
 }
@@ -161,7 +172,7 @@ let isInputIgnored;
 try {
     isInputIgnored = buildIgnoreMatcher(rawIgnore, INPUT);
 } catch (err) {
-    console.error(`[watch] ${err.message}`);
+    logFail('Config', `${CONFIG_PATH}: ${err.message}`);
     process.exit(1);
 }
 
