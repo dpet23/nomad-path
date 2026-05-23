@@ -249,6 +249,21 @@ if (allTracks.length === 0) {
 const grouped = groupTracks(allTracks);
 const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName, poiCategoryConfig });
 
+// `featureSource[i]` maps validator featureIndex → input filename (relative to
+// inputDir, forward slashes). Mirrors buildGeoJSON's feature ordering: tracks
+// sorted by day (flight-prefix stripped for sort key) then waypoints. Built
+// here rather than in output.js so source-file knowledge stays inside the
+// preprocessing entry point — buildGeoJSON's contract is "geojson only".
+const sortedGrouped = [...grouped].sort((a, b) => {
+    const keyA = a.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? a.day;
+    const keyB = b.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? b.day;
+    return keyA.localeCompare(keyB);
+});
+const featureSource = [
+    ...sortedGrouped.map(t => relative(inputDir, t.sourceFile).replace(/\\/g, '/')),
+    ...allWaypoints.map(() => null),
+];
+
 // Validate against the capability contract before writing. Failures route
 // through failExit so the output file is never left in an invalid state.
 // The producer of `ValidationResult` is ../src/contract/validate.ts; the
@@ -258,7 +273,10 @@ const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripNam
 const validation = validate(geojson);
 if (!validation.ok) {
     const lines = validation.failures.map(f => {
-        if (f.kind === 'feature') return `features[${f.featureIndex}]: ${f.checks.join(', ')}`;
+        if (f.kind === 'feature') {
+            const src = featureSource[f.featureIndex] ?? `features[${f.featureIndex}]`;
+            return `${src}: ${f.checks.join(', ')}`;
+        }
         if (f.kind === 'top-level') return f.message;
         return `metadata: ${f.message}`;
     });
