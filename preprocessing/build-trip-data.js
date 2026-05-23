@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
-import { join, relative, dirname, basename } from 'path';
+import { extname, join, relative, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { parseArgs } from 'util';
 
@@ -13,6 +13,7 @@ import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
 import { buildIgnoreMatcher } from './lib/ignore.js';
+import { logFail, logOK } from './lib/log.js';
 import { buildGeoJSON } from './lib/output.js';
 import { expandPath } from './lib/paths.js';
 
@@ -69,8 +70,9 @@ function removeOutputIfExists() {
     }
 }
 
-function failExit(message) {
-    console.error(message);
+/** Emit a [FAIL] line, remove any stale output, exit non-zero. */
+function failExit(kind, detail) {
+    logFail(kind, detail);
     removeOutputIfExists();
     process.exit(1);
 }
@@ -138,8 +140,11 @@ try {
     poiCategoryConfig = parsed?.poi_categories ?? {};
     rawIgnore = parsed?.ignore;
 } catch (err) {
+    // ENOENT means no config file at all — that's a documented valid state.
+    // Any other failure (parse error, permission denied) is fatal: a silent
+    // partial-config build would mask a real misconfiguration.
     if (err.code !== 'ENOENT') {
-        console.error(`Warning: failed to load ${CONFIG_FILE}: ${err.message}`);
+        failExit('Config', `${configPath(inputDir)}: ${err.message}`);
     }
 }
 
@@ -190,7 +195,7 @@ let isInputIgnored;
 try {
     isInputIgnored = buildIgnoreMatcher(rawIgnore, inputDir);
 } catch (err) {
-    failExit(err.message);
+    failExit('Config', `${configPath(inputDir)}: ${err.message}`);
 }
 
 /**
@@ -223,27 +228,27 @@ const allFiles = collectFiles(inputDir);
 
 const allTracks = [];
 const allWaypoints = [];
-let skipped = 0;
-let parsed = 0;
+/** Map<lowercase-extension-or-'no-ext', count> for the skip breakdown in the [OK] line. */
+const skippedByExt = new Map();
 
 for (const filePath of allFiles) {
     try {
         const { tracks, waypoints } = parseFile(filePath);
         allTracks.push(...tracks.map(t => augmentTrack(enrichTrack(t), filePath)));
         allWaypoints.push(...waypoints);
-        parsed++;
     } catch (err) {
         if (err.message?.startsWith('Unsupported file format')) {
-            skipped++;
+            const ext = extname(filePath).toLowerCase() || 'no-ext';
+            skippedByExt.set(ext, (skippedByExt.get(ext) ?? 0) + 1);
         } else {
             // Real parse failure — surface it with context and abort
-            failExit(`Error parsing ${filePath}: ${err.message}`);
+            failExit('Parse', `${relative(inputDir, filePath).replace(/\\/g, '/')}: ${err.message}`);
         }
     }
 }
 
 if (allTracks.length === 0) {
-    failExit(`No tracks found in ${inputDir}. Check that the directory contains GPX or KML files.`);
+    failExit('Empty', `${inputDir}: no tracks found (directory contains no parseable GPX or KML files)`);
 }
 
 const grouped = groupTracks(allTracks);
@@ -272,15 +277,20 @@ const featureSource = [
 /** @type {import('../src/contract/validate.js').ValidationResult} */
 const validation = validate(geojson);
 if (!validation.ok) {
-    const lines = validation.failures.map(f => {
+    for (const f of validation.failures) {
+        let detail;
         if (f.kind === 'feature') {
             const src = featureSource[f.featureIndex] ?? `features[${f.featureIndex}]`;
-            return `${src}: ${f.checks.join(', ')}`;
+            detail = `${src}: ${f.checks.join(', ')}`;
+        } else if (f.kind === 'top-level') {
+            detail = `top-level: ${f.message}`;
+        } else {
+            detail = `metadata: ${f.message}`;
         }
-        if (f.kind === 'top-level') return f.message;
-        return `metadata: ${f.message}`;
-    });
-    failExit(`Validation failed:\n  ${lines.join('\n  ')}`);
+        logFail('Validation', detail);
+    }
+    removeOutputIfExists();
+    process.exit(1);
 }
 
 // Atomic write: write to a sibling temp path and rename onto the output.
@@ -292,18 +302,30 @@ try {
     renameSync(tmpOutput, outputFile);
 } catch (err) {
     try { unlinkSync(tmpOutput); } catch { /* ignore */ }
-    failExit(`Error writing output ${outputFile}: ${err.message}`);
+    failExit('IO', `${outputFile}: ${err.message}`);
 }
 
 const { stats } = geojson.metadata;
-const modesSummary = Object.entries(stats.transportModes)
+const modesBreakdown = Object.entries(stats.transportModes)
     .sort((a, b) => b[1] - a[1])
     .map(([mode, count]) => `${count} ${mode}`)
     .join(', ');
-const rangeSummary = stats.dateRange
-    ? ` · ${stats.dateRange.start} → ${stats.dateRange.end}`
+
+// Skip breakdown: one bucket → bare extension `(.txt)`; multiple buckets →
+// `(.ext: count, ...)` sorted by count desc. No cap on bucket count; a long
+// line is itself a diagnostic signal that ignore: needs more entries.
+const skipTotal = [...skippedByExt.values()].reduce((a, b) => a + b, 0);
+let skipClause = '';
+if (skipTotal > 0) {
+    const entries = [...skippedByExt.entries()].sort((a, b) => b[1] - a[1]);
+    const breakdown = entries.length === 1
+        ? entries[0][0]
+        : entries.map(([ext, n]) => `${ext}: ${n}`).join(', ');
+    skipClause = ` | ${skipTotal} skipped (${breakdown})`;
+}
+
+const rangeClause = stats.dateRange
+    ? ` | ${stats.dateRange.start} → ${stats.dateRange.end}`
     : '';
 
-console.log(`Done: ${parsed} file(s) parsed, ${skipped} skipped.`);
-console.log(`Output: ${stats.trackCount} track(s)${rangeSummary}, ${stats.waypointCount} POI(s) → ${outputFile}`);
-console.log(`Modes:  ${modesSummary}`);
+logOK(`${outputFile} | ${stats.trackCount} tracks | ${stats.waypointCount} POI | ${modesBreakdown}${rangeClause}${skipClause}`);

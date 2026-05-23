@@ -106,8 +106,9 @@ describe('successful build', () => {
 
         const json = JSON.parse(readFileSync(output, 'utf8'));
         expect(json.features.length).toBeGreaterThan(0);
-        // The summary reports 1 parsed and 1 skipped.
-        expect(r.stdout).toMatch(/1 file\(s\) parsed, 1 skipped/);
+        // [OK] summary surfaces the skip breakdown with the extension bucket.
+        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).toMatch(/1 skipped \(\.txt\)/);
     });
 });
 
@@ -228,7 +229,9 @@ describe('nomadpath.yaml ignore: filters file collection', () => {
 
         expect(r.status, r.stderr).toBe(0);
         // 2 GPX parsed (track.gpx + drafts/mid-trip.gpx), 1 unsupported (.git/HEAD)
-        expect(r.stdout).toMatch(/2 file\(s\) parsed, 1 skipped/);
+        // — HEAD has no extension, so it lands in the `no-ext` bucket.
+        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).toMatch(/1 skipped \(no-ext\)/);
     });
 
     it('with ignore: [.git/], the walker never opens .git', () => {
@@ -238,8 +241,9 @@ describe('nomadpath.yaml ignore: filters file collection', () => {
         const r = runBuild(['-i', input, '-o', output]);
 
         expect(r.status, r.stderr).toBe(0);
-        // .git is excluded entirely; only the 2 GPX files remain.
-        expect(r.stdout).toMatch(/2 file\(s\) parsed, 0 skipped/);
+        // .git is excluded entirely; only the 2 GPX files remain — no skips.
+        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).not.toMatch(/skipped/);
     });
 
     it('with ignore: [drafts/], drafts subdir contents are excluded', () => {
@@ -264,6 +268,7 @@ describe('nomadpath.yaml ignore: filters file collection', () => {
         const r = runBuild(['-i', input, '-o', output]);
 
         expect(r.status).not.toBe(0);
+        expect(r.stderr).toMatch(/^\[FAIL\] Config: /m);
         expect(r.stderr).toMatch(/ignore.*must be a list/);
         // Invariant: failed builds leave no output.
         expect(existsSync(output)).toBe(false);
@@ -276,6 +281,7 @@ describe('nomadpath.yaml ignore: filters file collection', () => {
         const r = runBuild(['-i', input, '-o', output]);
 
         expect(r.status).not.toBe(0);
+        expect(r.stderr).toMatch(/^\[FAIL\] Config: /m);
         expect(r.stderr).toMatch(/ignore\[0\].*must be a string/);
         expect(existsSync(output)).toBe(false);
     });
@@ -343,7 +349,9 @@ describe(`--init ${CONFIG_FILE} template`, () => {
         const output = join(tmp, OUTPUT_FILE);
         const buildR = runBuild(['-i', input, '-o', output]);
         expect(buildR.status, buildR.stderr).toBe(0);
-        expect(buildR.stdout).toMatch(/1 file\(s\) parsed, 0 skipped/);
+        // Default ignore: list covers .git, so no skips. [OK] line has no skip clause.
+        expect(buildR.stdout).toMatch(/^\[OK\] /);
+        expect(buildR.stdout).not.toMatch(/skipped/);
     });
 
     it('emits one uncommented `<subdir>: {}` line per immediate subdirectory, sorted', () => {
