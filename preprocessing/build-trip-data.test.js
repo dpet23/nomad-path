@@ -110,6 +110,31 @@ describe('successful build', () => {
         expect(r.stdout).toMatch(/^\[OK\] /);
         expect(r.stdout).toMatch(/1 skipped \(\.txt\)/);
     });
+
+    it('does not count its own output file as a skipped input', () => {
+        // Regression: when -o points inside -i (the default when -o is
+        // omitted, or when a previous run left an output behind), the file
+        // walker used to re-discover the geojson and bucket it as `.geojson`
+        // skipped. Output count was misleading and noisy.
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        // Output written inside the input dir.
+        const output = join(input, 'trip-data.geojson');
+        // Simulate a prior run by pre-creating the output file.
+        writeFileSync(output, '{"type":"FeatureCollection","features":[]}');
+
+        const r = runBuild(['-i', input, '-o', output]);
+
+        expect(r.status, r.stderr).toBe(0);
+        // Output is rewritten; the prior content is gone (atomic rename).
+        // No skip clause at all — the walker must not see its own output.
+        // (The [OK] line itself contains the output path, which ends in
+        // .geojson — that's fine; we only care that there's no `skipped (...)`
+        // clause naming the geojson bucket.)
+        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).not.toMatch(/skipped/);
+    });
 });
 
 // ---------------------------------------------------------------------------

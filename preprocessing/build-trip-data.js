@@ -211,6 +211,11 @@ function collectFiles(dir) {
         const full = join(dir, entry);
         if (isInputIgnored(full)) continue;
         if (full === configPath(inputDir)) continue;
+        // Skip our own output file. If outputFile lives inside inputDir
+        // (the default when -o is unspecified, or when a previous run
+        // wrote here), reading it as input would count it as "skipped"
+        // (geojson isn't gpx/kml) — misleading and noisy.
+        if (full === outputFile) continue;
         if (statSync(full).isDirectory()) {
             files.push(...collectFiles(full));
         } else {
