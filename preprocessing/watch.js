@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import chokidar from 'chokidar';
-import { execFileSync, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import { readFileSync, statSync, unlinkSync } from 'fs';
 import { parseArgs } from 'util';
 import { dirname, join } from 'path';
@@ -102,17 +102,41 @@ function removeOutputIfExists() {
     }
 }
 
+// Coalesce file-event bursts. chokidar's awaitWriteFinish handles per-file
+// debouncing (one event per file, only after that file stops changing).
+// What it doesn't do is coalesce across files or across builds — a `git push`
+// landing 50 files fires 50 events, and without queueing each one would start
+// its own build.
+//
+//   - At most one build in flight.
+//   - At most one rebuild queued. Events arriving during a build collapse
+//     into a single follow-up build that picks up the full state.
+//
+// No wall-clock timer: the queued build fires when the current one exits, so
+// a 50-file burst produces at most 2 builds total.
+let buildInFlight = false;
+let rebuildPending = false;
+
 function build() {
-    try {
-        execFileSync('node', buildArgs, { stdio: 'inherit' });
-    } catch {
+    if (buildInFlight) {
+        rebuildPending = true;
+        return;
+    }
+    buildInFlight = true;
+    rebuildPending = false;
+    // spawn (not execFile) — execFile buffers stdio and ignores 'inherit'.
+    // We want the child's [OK]/[FAIL] lines streamed through to the log.
+    const child = spawn('node', buildArgs, { stdio: 'inherit' });
+    child.on('exit', (code) => {
         // build-trip-data.js handles its own failures by unlinking OUTPUT
         // before exiting non-zero. But if the spawned process died abnormally
         // (signalled, OOM, etc.) it may not have run that cleanup. Belt-and-
-        // braces: ensure stale output is gone. The child has already printed
-        // its own [FAIL] line(s); no extra summary needed.
-        removeOutputIfExists();
-    }
+        // braces: ensure stale output is gone on any non-zero exit. The child
+        // has already printed its own [FAIL] line(s); no extra summary needed.
+        if (code !== 0) removeOutputIfExists();
+        buildInFlight = false;
+        if (rebuildPending) build();
+    });
 }
 
 // ---------------------------------------------------------------------------
