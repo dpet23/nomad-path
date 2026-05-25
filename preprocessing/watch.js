@@ -9,7 +9,7 @@ import { parse as parseYAML } from 'yaml';
 
 import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
 import { buildIgnoreMatcher } from './lib/ignore.js';
-import { logFail } from './lib/log.js';
+import { logFail, logWatchEvent } from './lib/log.js';
 import { expandPath } from './lib/paths.js';
 
 const USAGE = `
@@ -230,6 +230,6 @@ chokidar
             absPath === OUTPUT || absPath === CONFIG_PATH || isInputIgnored(absPath),
         awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
     })
-    .on('add',    () => { pendingEvents.added++;   build(); })
-    .on('change', () => { pendingEvents.changed++; build(); })
-    .on('unlink', () => { pendingEvents.removed++; build(); });
+    .on('add',    (p) => { logWatchEvent('add', p);    pendingEvents.added++;   build(); })
+    .on('change', (p) => { logWatchEvent('change', p); pendingEvents.changed++; build(); })
+    .on('unlink', (p) => { logWatchEvent('unlink', p); pendingEvents.removed++; build(); });

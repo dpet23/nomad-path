@@ -60,3 +60,19 @@ export function logBuildStart(cause) {
     }
     console.log(`[BUILD] Starting${clause}`);
 }
+
+/**
+ * Emit a single chokidar event for diagnostics. Gated on
+ * NOMADPATH_WATCH_DEBUG — off by default. Used to chase "why did this
+ * build fire" on platforms with surprising event behaviour (macOS fsevents
+ * in particular).
+ *
+ * @param {string} event  chokidar event name ('add' | 'change' | 'unlink')
+ * @param {string} path   absolute path the event fired on
+ */
+export function logWatchEvent(event, path) {
+    if (process.env.NOMADPATH_WATCH_DEBUG) {
+        console.log(`[watch] ${event} ${path}`);
+    }
+}
+

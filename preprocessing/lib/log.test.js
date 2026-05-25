@@ -6,7 +6,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { logBuildStart, logFail, logOK } from './log.js';
+import { logBuildStart, logFail, logOK, logWatchEvent } from './log.js';
 
 /** Capture a single console.log call's argument as a string. */
 function captureLog(fn) {
@@ -70,5 +70,32 @@ describe('logBuildStart', () => {
     it('omits zero counts from the cause clause', () => {
         const line = captureLog(() => logBuildStart({ added: 0, changed: 5, removed: 0 }));
         expect(line).toBe('[BUILD] Starting | 5 changed');
+    });
+});
+
+describe('logWatchEvent', () => {
+    it('emits nothing when NOMADPATH_WATCH_DEBUG is unset', () => {
+        const prev = process.env.NOMADPATH_WATCH_DEBUG;
+        delete process.env.NOMADPATH_WATCH_DEBUG;
+        const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        try {
+            logWatchEvent('add', '/some/path');
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+            if (prev !== undefined) process.env.NOMADPATH_WATCH_DEBUG = prev;
+        }
+    });
+
+    it('emits [watch] <event> <path> when NOMADPATH_WATCH_DEBUG is set', () => {
+        const prev = process.env.NOMADPATH_WATCH_DEBUG;
+        process.env.NOMADPATH_WATCH_DEBUG = '1';
+        try {
+            const line = captureLog(() => logWatchEvent('add', '/some/path'));
+            expect(line).toBe('[watch] add /some/path');
+        } finally {
+            if (prev === undefined) delete process.env.NOMADPATH_WATCH_DEBUG;
+            else process.env.NOMADPATH_WATCH_DEBUG = prev;
+        }
     });
 });
