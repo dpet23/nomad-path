@@ -56,9 +56,6 @@ if (!values.input) {
     process.exit(1);
 }
 
-const causeRaw = process.env.NOMADPATH_BUILD_CAUSE;
-logBuildStart(causeRaw ? JSON.parse(causeRaw) : undefined);
-
 const inputDir   = expandPath(values.input);
 const outputFile = expandPath(values.output) ?? join(inputDir, OUTPUT_FILE);
 
@@ -231,6 +228,9 @@ function collectFiles(dir) {
 // ---------------------------------------------------------------------------
 // Pipeline
 // ---------------------------------------------------------------------------
+
+const causeRaw = process.env.NOMADPATH_BUILD_CAUSE;
+logBuildStart(causeRaw ? JSON.parse(causeRaw) : undefined);
 
 const startNs = process.hrtime.bigint();
 
