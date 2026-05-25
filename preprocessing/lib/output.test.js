@@ -272,25 +272,12 @@ describe('buildGeoJSON -- stats', () => {
         expect(stats.transportModes.drive).toBe(1);
     });
 
-    it('exposes poiCategories on stats', () => {
-        expect(stats.poiCategories).toBeDefined();
-        expect(typeof stats.poiCategories).toBe('object');
-    });
-
     it('counts POI categories from waypoints', () => {
-        // Use a fixture that yields waypoints. The existing waypoint fixture
-        // is loaded by the runPipeline call below; we re-run with a waypoints
-        // file so we can assert non-empty category counts.
+        // Concrete counts pin both the bucketing logic AND that the parser's
+        // `category` field flows through to `stats.poiCategories`.
         const r = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')]);
         const cats = r.metadata.stats.poiCategories;
-        // sample-waypoints.gpx contains at least one waypoint; its category must
-        // appear with a positive count. Assertion form keeps the test resilient
-        // to fixture edits — we're pinning the SHAPE, not exact category names.
-        expect(Object.keys(cats).length).toBeGreaterThan(0);
-        for (const [cat, count] of Object.entries(cats)) {
-            expect(typeof cat).toBe('string');
-            expect(count).toBeGreaterThan(0);
-        }
+        expect(cats).toEqual({ accommodation: 1, landmark: 1 });
     });
 
     it('poiCategories is an empty object when waypointCount is zero', () => {
