@@ -114,8 +114,16 @@ function removeOutputIfExists() {
 //
 // No wall-clock timer: the queued build fires when the current one exits, so
 // a 50-file burst produces at most 2 builds total.
+//
+// Cause tracking: chokidar event handlers increment pendingEvents. When build()
+// fires, the snapshot is reset and (when any count > 0) handed to the spawned
+// child via NOMADPATH_BUILD_CAUSE. The child emits the [BUILD] start line.
+// Events arriving while a build is in-flight accumulate into the next snapshot,
+// so a queued rebuild's start line shows cumulative cause across the in-flight
+// window.
 let buildInFlight = false;
 let rebuildPending = false;
+let pendingEvents = { added: 0, changed: 0, removed: 0 };
 
 function build() {
     if (buildInFlight) {
@@ -124,9 +132,15 @@ function build() {
     }
     buildInFlight = true;
     rebuildPending = false;
+    const cause = pendingEvents;
+    pendingEvents = { added: 0, changed: 0, removed: 0 };
+    const childEnv = { ...process.env };
+    if (cause.added || cause.changed || cause.removed) {
+        childEnv.NOMADPATH_BUILD_CAUSE = JSON.stringify(cause);
+    }
     // spawn (not execFile) — execFile buffers stdio and ignores 'inherit'.
-    // We want the child's [OK]/[FAIL] lines streamed through to the log.
-    const child = spawn('node', buildArgs, { stdio: 'inherit' });
+    // We want the child's [BUILD]/[OK]/[FAIL] lines streamed through to the log.
+    const child = spawn('node', buildArgs, { stdio: 'inherit', env: childEnv });
     child.on('exit', (code) => {
         // build-trip-data.js handles its own failures by unlinking OUTPUT
         // before exiting non-zero. But if the spawned process died abnormally
@@ -216,6 +230,6 @@ chokidar
             absPath === OUTPUT || absPath === CONFIG_PATH || isInputIgnored(absPath),
         awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
     })
-    .on('add',    () => build())
-    .on('change', () => build())
-    .on('unlink', () => build());
+    .on('add',    () => { pendingEvents.added++;   build(); })
+    .on('change', () => { pendingEvents.changed++; build(); })
+    .on('unlink', () => { pendingEvents.removed++; build(); });
