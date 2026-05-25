@@ -13,7 +13,7 @@ import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
 import { buildIgnoreMatcher } from './lib/ignore.js';
-import { logFail, logOK } from './lib/log.js';
+import { logBuildStart, logFail, logOK } from './lib/log.js';
 import { buildGeoJSON } from './lib/output.js';
 import { expandPath } from './lib/paths.js';
 
@@ -55,6 +55,9 @@ if (!values.input) {
     console.error(`Error: --input is required.\n\n${USAGE}`);
     process.exit(1);
 }
+
+const causeRaw = process.env.NOMADPATH_BUILD_CAUSE;
+logBuildStart(causeRaw ? JSON.parse(causeRaw) : undefined);
 
 const inputDir   = expandPath(values.input);
 const outputFile = expandPath(values.output) ?? join(inputDir, OUTPUT_FILE);

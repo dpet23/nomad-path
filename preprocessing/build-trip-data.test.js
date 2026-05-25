@@ -71,6 +71,38 @@ describe('successful build', () => {
         expect(json.features.length).toBeGreaterThan(0);
     });
 
+    it('emits a [BUILD] Starting line on standalone runs', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output, '-n', 'Test Trip']);
+
+        expect(r.status, r.stderr).toBe(0);
+        // [BUILD] is the first line of stdout — emitted before any parse/validate work.
+        expect(r.stdout.split('\n')[0]).toBe('[BUILD] Starting');
+    });
+
+    it('emits [BUILD] Starting with cause when NOMADPATH_BUILD_CAUSE is set', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = spawnSync('node', [SCRIPT, '-i', input, '-o', output, '-n', 'Test Trip'], {
+            encoding: 'utf8',
+            timeout: 15_000,
+            env: {
+                ...process.env,
+                NOMADPATH_BUILD_CAUSE: JSON.stringify({ added: 3, changed: 1, removed: 0 }),
+            },
+        });
+
+        expect(r.status, r.stderr).toBe(0);
+        expect(r.stdout.split('\n')[0]).toBe('[BUILD] Starting | 3 added, 1 changed');
+    });
+
     it('overwrites an existing output file with new content', () => {
         const input = join(tmp, 'input');
         mkdirSync(input);
@@ -107,7 +139,7 @@ describe('successful build', () => {
         const json = JSON.parse(readFileSync(output, 'utf8'));
         expect(json.features.length).toBeGreaterThan(0);
         // [OK] summary surfaces the skip breakdown with the extension bucket.
-        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).toMatch(/^\[OK\] /m);
         expect(r.stdout).toMatch(/1 skipped \(\.txt\)/);
     });
 
@@ -132,7 +164,7 @@ describe('successful build', () => {
         // (The [OK] line itself contains the output path, which ends in
         // .geojson — that's fine; we only care that there's no `skipped (...)`
         // clause naming the geojson bucket.)
-        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).toMatch(/^\[OK\] /m);
         expect(r.stdout).not.toMatch(/skipped/);
     });
 });
@@ -255,7 +287,7 @@ describe('nomadpath.yaml ignore: filters file collection', () => {
         expect(r.status, r.stderr).toBe(0);
         // 2 GPX parsed (track.gpx + drafts/mid-trip.gpx), 1 unsupported (.git/HEAD)
         // — HEAD has no extension, so it lands in the `no-ext` bucket.
-        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).toMatch(/^\[OK\] /m);
         expect(r.stdout).toMatch(/1 skipped \(no-ext\)/);
     });
 
@@ -267,7 +299,7 @@ describe('nomadpath.yaml ignore: filters file collection', () => {
 
         expect(r.status, r.stderr).toBe(0);
         // .git is excluded entirely; only the 2 GPX files remain — no skips.
-        expect(r.stdout).toMatch(/^\[OK\] /);
+        expect(r.stdout).toMatch(/^\[OK\] /m);
         expect(r.stdout).not.toMatch(/skipped/);
     });
 
@@ -375,7 +407,7 @@ describe(`--init ${CONFIG_FILE} template`, () => {
         const buildR = runBuild(['-i', input, '-o', output]);
         expect(buildR.status, buildR.stderr).toBe(0);
         // Default ignore: list covers .git, so no skips. [OK] line has no skip clause.
-        expect(buildR.stdout).toMatch(/^\[OK\] /);
+        expect(buildR.stdout).toMatch(/^\[OK\] /m);
         expect(buildR.stdout).not.toMatch(/skipped/);
     });
 
