@@ -158,6 +158,11 @@ export function buildGeoJSON({ tracks, waypoints, tripName, poiCategoryConfig = 
         const mode = t.transportMode ?? 'unknown';
         transportModes[mode] = (transportModes[mode] ?? 0) + 1;
     }
+    const poiCategories = {};
+    for (const w of waypoints) {
+        const cat = w.category ?? 'unknown';
+        poiCategories[cat] = (poiCategories[cat] ?? 0) + 1;
+    }
     const groundDays = [...new Set(
         tracks.map(t => t.day).filter(d => !d.startsWith('flight-')),
     )].sort();
@@ -166,6 +171,7 @@ export function buildGeoJSON({ tracks, waypoints, tripName, poiCategoryConfig = 
         waypointCount: waypoints.length,
         dayCount: groundDays.length,
         transportModes,
+        poiCategories,
         ...(groundDays.length > 0 && {
             dateRange: { start: groundDays[0], end: groundDays[groundDays.length - 1] },
         }),
