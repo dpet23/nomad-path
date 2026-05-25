@@ -39,3 +39,24 @@ export function logOK(summary) {
 export function logFail(kind, detail) {
     console.error(`${MARKER_FAIL} ${kind}: ${detail}`);
 }
+
+/**
+ * Emit a build-start marker. `cause` is an optional snapshot of file events
+ * that triggered this build (from the watcher). The line is omitted from the
+ * `grep -E '\[OK\]|\[FAIL\]'` outcome scan recipe — `[BUILD]` is a different
+ * marker. Format-truth lives here so watch.js and build-trip-data.js both
+ * produce identical lines.
+ *
+ * @param {{ added?: number, changed?: number, removed?: number } | undefined} cause
+ */
+export function logBuildStart(cause) {
+    let clause = '';
+    if (cause) {
+        const parts = [];
+        if (cause.added)   parts.push(`${cause.added} added`);
+        if (cause.changed) parts.push(`${cause.changed} changed`);
+        if (cause.removed) parts.push(`${cause.removed} removed`);
+        if (parts.length) clause = ` | ${parts.join(', ')}`;
+    }
+    console.log(`[BUILD] Starting${clause}`);
+}
