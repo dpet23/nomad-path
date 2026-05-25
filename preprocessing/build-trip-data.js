@@ -316,29 +316,42 @@ try {
 }
 
 const { stats } = geojson.metadata;
-const modesBreakdown = Object.entries(stats.transportModes)
+
+const modesBreakdown = ` (${Object.entries(stats.transportModes)
     .sort((a, b) => b[1] - a[1])
     .map(([mode, count]) => `${count} ${mode}`)
-    .join(', ');
+    .join(', ')})`;
+const tracksClause = `${stats.trackCount} tracks${modesBreakdown}`;
+
+let poiClause = null;
+if (stats.waypointCount > 0) {
+    const categoriesBreakdown = ` (${Object.entries(stats.poiCategories)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, count]) => `${count} ${cat}`)
+        .join(', ')})`;
+    poiClause = `${stats.waypointCount} POI${categoriesBreakdown}`;
+}
 
 // Skip breakdown: one bucket → bare extension `(.txt)`; multiple buckets →
 // `(.ext: count, ...)` sorted by count desc. No cap on bucket count; a long
 // line is itself a diagnostic signal that ignore: needs more entries.
 const skipTotal = [...skippedByExt.values()].reduce((a, b) => a + b, 0);
-let skipClause = '';
+let skipClause = null;
 if (skipTotal > 0) {
     const entries = [...skippedByExt.entries()].sort((a, b) => b[1] - a[1]);
     const breakdown = entries.length === 1
-        ? entries[0][0]
-        : entries.map(([ext, n]) => `${ext}: ${n}`).join(', ');
-    skipClause = ` | ${skipTotal} skipped (${breakdown})`;
+        ? ` (${entries[0][0]})`
+        : ` (${entries.map(([ext, n]) => `${ext}: ${n}`).join(', ')})`;
+    skipClause = `${skipTotal} skipped${breakdown}`;
 }
 
 const rangeClause = stats.dateRange
-    ? ` | ${stats.dateRange.start} → ${stats.dateRange.end}`
-    : '';
+    ? `${stats.dateRange.start} → ${stats.dateRange.end}`
+    : null;
 
 const elapsedMs = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
 const runtime = elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`;
 
-logOK(`${outputFile} | ${stats.trackCount} tracks | ${stats.waypointCount} POI | ${modesBreakdown}${rangeClause}${skipClause} | ${runtime}`);
+const clauses = [outputFile, tracksClause, poiClause, rangeClause, skipClause, runtime]
+    .filter(c => c !== null);
+logOK(clauses.join(' | '));

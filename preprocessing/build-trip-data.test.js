@@ -159,6 +159,34 @@ describe('successful build', () => {
         expect(okLine).toMatch(/\| (\d+ms|\d+\.\d+s)$/);
     });
 
+    it('formats tracks with a modes breakdown in parentheses', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output, '-n', 'Test Trip']);
+
+        expect(r.status, r.stderr).toBe(0);
+        const okLine = r.stdout.split('\n').find(l => l.startsWith('[OK] '));
+        // `<N> tracks (<modes>)` — single mode renders as e.g. `1 tracks (1 drive)`.
+        expect(okLine).toMatch(/\| \d+ tracks \([^)]+\) \|/);
+    });
+
+    it('omits the POI clause when there are no waypoints', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output, '-n', 'Test Trip']);
+
+        expect(r.status, r.stderr).toBe(0);
+        const okLine = r.stdout.split('\n').find(l => l.startsWith('[OK] '));
+        // No `N POI (...)` clause and no bare `0 POI` clause when waypointCount is 0.
+        expect(okLine).not.toMatch(/\bPOI\b/);
+    });
+
     it('does not count its own output file as a skipped input', () => {
         // Regression: when -o points inside -i (the default when -o is
         // omitted, or when a previous run left an output behind), the file
