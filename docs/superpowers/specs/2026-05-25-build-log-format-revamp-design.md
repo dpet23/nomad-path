@@ -77,12 +77,16 @@ The first build at watch startup has an all-zero snapshot — the cause clause i
 
 ## Architectural decision: who emits `[BUILD]`
 
-The cause information lives in the watcher; the start line should carry it. Two emit sites cooperate:
+Single emit site: **`build-trip-data.js`** emits the `[BUILD] Starting [| cause]` line near the top of the script, every run. The cause data lives in the watcher and is handed to the child through a private parent→child env var (`NOMADPATH_BUILD_CAUSE`), JSON-encoded.
 
-- **`watch.js`** emits `[BUILD] Starting [| cause]` before spawning the child, then sets `NOMADPATH_SUPPRESS_BUILD_START=1` in the child's env.
-- **`build-trip-data.js`** emits `[BUILD] Starting` near the top of the script *only if* `NOMADPATH_SUPPRESS_BUILD_START` is unset — i.e., on standalone runs.
+- The watcher accumulates file events and, when `build()` fires, snapshots the counts and passes them via `spawn`'s `env` option *only when at least one count is non-zero*. Initial watch build and standalone `npm run build:data` runs leave the var unset.
+- The child reads `process.env.NOMADPATH_BUILD_CAUSE`. If present, `JSON.parse` it (the watcher is the only setter — no defensive try/catch needed; a bug in our own encode is a test-caught failure, not a runtime concern). Pass the parsed object (or `undefined`) to `logBuildStart`.
 
-Result: exactly one `[BUILD]` line per build, with cause when the watcher knows it. The CLI surface stays clean (no `--cause-*` flags). Format truth lives in `log.js`.
+Result: one `[BUILD]` line per build, owned by the process doing the work, with cause when the watcher knows it. No CLI surface change, no user-facing IPC, no two-emit-site coordination, no suppression handshake.
+
+**Why not a shared encode/decode module:** the encoding is two lines on each side — overkill to extract.
+
+**Why env var is safe here:** `spawn`'s `env` block is set at process creation by the kernel from what the parent hands it. Nothing between the watcher's `spawn` call and the child's `process.env` read can mutate it. The namespaced var (`NOMADPATH_BUILD_CAUSE`) has no other setter in the system.
 
 ## Components changed
 
@@ -125,7 +129,7 @@ Parallel to `transportModes`. No fallback to a placeholder string when `category
 ### `preprocessing/build-trip-data.js`
 
 - Capture `process.hrtime.bigint()` as the very first executable statement.
-- After arg parsing, call `logBuildStart()` unless `process.env.NOMADPATH_SUPPRESS_BUILD_START` is set.
+- After arg parsing, read `process.env.NOMADPATH_BUILD_CAUSE`; if set, `JSON.parse` it; pass the result (or `undefined`) to `logBuildStart`.
 - Compute the new modes parenthetical and POI parenthetical clauses.
 - Compute elapsed time from `hrtime.bigint()` delta; format with auto-unit.
 - Update the `logOK` call to the new shape:
@@ -136,10 +140,11 @@ Parallel to `transportModes`. No fallback to a placeholder string when `category
 
 ### `preprocessing/watch.js`
 
-- Add the `pendingEvents` accumulator at module scope.
+- Add the `pendingEvents = { added, changed, removed }` accumulator at module scope.
 - Wire `add`/`change`/`unlink` handlers to increment counters as well as call `build()`.
-- In `build()` (before the `spawn` call), snapshot the counts, reset to zero, and call `logBuildStart(snapshot)` from this process. The snapshot is what's passed; the helper formats the cause clause (omitting when all zero).
-- Pass `NOMADPATH_SUPPRESS_BUILD_START=1` to the child via `spawn`'s `env` option: `{ env: { ...process.env, NOMADPATH_SUPPRESS_BUILD_START: '1' } }`.
+- In `build()` (before the `spawn` call), snapshot the counts and reset to zero.
+- Pass the snapshot to the child via `spawn`'s `env` option *only when at least one count is non-zero*: `{ env: { ...process.env, NOMADPATH_BUILD_CAUSE: JSON.stringify(snapshot) } }`. Initial watch build → all zeros → leave env unset → child emits bare `[BUILD] Starting`.
+- The watcher does NOT emit any log line itself.
 
 ## Edge cases
 
@@ -164,15 +169,15 @@ Parallel to `transportModes`. No fallback to a placeholder string when `category
   - `logBuildStart({ added: 0, changed: 0, removed: 0 })` emits `[BUILD] Starting\n` (treated as no cause).
 
 - **`preprocessing/build-trip-data.test.js`** — extend:
-  - Standalone run emits a `[BUILD] Starting\n` line as the first stdout line.
-  - When `NOMADPATH_SUPPRESS_BUILD_START=1` is set, no `[BUILD]` line is emitted.
+  - Standalone run (no `NOMADPATH_BUILD_CAUSE`) emits a bare `[BUILD] Starting\n` line as the first stdout line.
+  - Run with `NOMADPATH_BUILD_CAUSE='{"added":3,"changed":1,"removed":0}'` emits `[BUILD] Starting | 3 added, 1 changed\n` as the first stdout line.
   - `[OK]` line matches the new shape: contains `<N> tracks (<...>)`, contains `<N> POI (<...>)` when waypoints exist, ends with a runtime token (`/\d+ms$|\d+\.\d+s$/`).
 
 - **Watcher cause-tracking tests** — out of scope. Deferred to the future watcher harness epic. The current watcher coverage stays at manual smoke until that epic builds the harness.
 
 ## Out of scope
 
-- Watcher harness tests for the env-var coordination, cause aggregation across in-flight bursts, or the new `[BUILD]` line lifecycle. All deferred to the future watcher harness epic (sequenced in front of Epic 12 per `CLAUDE.md`).
+- Watcher harness tests for cause aggregation across in-flight bursts and the new `[BUILD]` line lifecycle. All deferred to the future watcher harness epic (sequenced in front of Epic 12 per `CLAUDE.md`).
 - Renaming or restructuring existing `stats` fields. The change is strictly additive (`poiCategories`).
 - Changing the `[FAIL]` line format.
 - Adding the `[BUILD]` marker to the watch.js USAGE grep recipes — the existing recipes (`grep '\[FAIL\]'`, `grep -E '\[OK\]|\[FAIL\]'`) still work; users who want start lines can add `\[BUILD\]` themselves.
