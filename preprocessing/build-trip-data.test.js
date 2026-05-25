@@ -143,6 +143,22 @@ describe('successful build', () => {
         expect(r.stdout).toMatch(/1 skipped \(\.txt\)/);
     });
 
+    it('appends a runtime token to the [OK] line', () => {
+        const input = join(tmp, 'input');
+        mkdirSync(input);
+        cpSync(join(FIXTURES, 'sample-track.gpx'), join(input, 'track.gpx'));
+        const output = join(tmp, OUTPUT_FILE);
+
+        const r = runBuild(['-i', input, '-o', output, '-n', 'Test Trip']);
+
+        expect(r.status, r.stderr).toBe(0);
+        const okLine = r.stdout.split('\n').find(l => l.startsWith('[OK] '));
+        expect(okLine).toBeDefined();
+        // Runtime is the last `|`-separated field, formatted as `<N>ms` (integer)
+        // or `<N.N>s` (one decimal).
+        expect(okLine).toMatch(/\| (\d+ms|\d+\.\d+s)$/);
+    });
+
     it('does not count its own output file as a skipped input', () => {
         // Regression: when -o points inside -i (the default when -o is
         // omitted, or when a previous run left an output behind), the file

@@ -232,6 +232,8 @@ function collectFiles(dir) {
 // Pipeline
 // ---------------------------------------------------------------------------
 
+const startNs = process.hrtime.bigint();
+
 const allFiles = collectFiles(inputDir);
 
 const allTracks = [];
@@ -336,4 +338,7 @@ const rangeClause = stats.dateRange
     ? ` | ${stats.dateRange.start} → ${stats.dateRange.end}`
     : '';
 
-logOK(`${outputFile} | ${stats.trackCount} tracks | ${stats.waypointCount} POI | ${modesBreakdown}${rangeClause}${skipClause}`);
+const elapsedMs = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+const runtime = elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`;
+
+logOK(`${outputFile} | ${stats.trackCount} tracks | ${stats.waypointCount} POI | ${modesBreakdown}${rangeClause}${skipClause} | ${runtime}`);
