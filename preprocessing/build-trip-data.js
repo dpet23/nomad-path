@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 import { readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
-import { resolve, join, relative, dirname, basename } from 'path';
+import { extname, join, relative, dirname, basename } from 'path';
+import { fileURLToPath } from 'url';
 import { parseArgs } from 'util';
 
 import { parse as parseYAML } from 'yaml';
 
 import { validate } from '../dist/contract.js';
 
+import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
 import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
+import { buildIgnoreMatcher } from './lib/ignore.js';
+import { logBuildStart, logFail, logOK } from './lib/log.js';
 import { buildGeoJSON } from './lib/output.js';
+import { expandPath } from './lib/paths.js';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -21,14 +26,14 @@ Usage: node preprocessing/build-trip-data.js -i <dir> [-o <file>] [-n <name>] [-
 
 Options:
   -i, --input  <dir>   Directory to scan for GPS files (recursive) [required]
-  -o, --output <file>  Output path (default: <input>/trip-data.geojson)
+  -o, --output <file>  Output path (default: <input>/${OUTPUT_FILE})
   -n, --name   <name>  Trip name in GeoJSON metadata (default: parent dir name, title-cased)
-      --init           Write a nomadpath.yaml template to <input>/ and exit
+      --init           Write a ${CONFIG_FILE} template to <input>/ and exit
 
 Example:
   npm run build:data -- -i ./trips/japan-2024/tracks
   npm run build:data -- -i ./trips/japan-2024/tracks --init
-  npm run build:data -- -i ./trips/japan-2024/tracks -n "Japan 2024" -o ./public/trip-data.geojson
+  npm run build:data -- -i ./trips/japan-2024/tracks -n "Japan 2024" -o ./public/${OUTPUT_FILE}
 `.trim();
 
 let values;
@@ -51,8 +56,8 @@ if (!values.input) {
     process.exit(1);
 }
 
-const inputDir   = resolve(values.input);
-const outputFile = resolve(values.output ?? join(values.input, 'trip-data.geojson'));
+const inputDir   = expandPath(values.input);
+const outputFile = expandPath(values.output) ?? join(inputDir, OUTPUT_FILE);
 
 // Invariant: output is library-compatible-or-absent. Any non-success exit
 // must remove a prior output file before terminating, so the consumer never
@@ -65,8 +70,9 @@ function removeOutputIfExists() {
     }
 }
 
-function failExit(message) {
-    console.error(message);
+/** Emit a [FAIL] line, remove any stale output, exit non-zero. */
+function failExit(kind, detail) {
+    logFail(kind, detail);
     removeOutputIfExists();
     process.exit(1);
 }
@@ -75,56 +81,46 @@ const tripName   = values.name ?? basename(dirname(inputDir))
     .replace(/\b\w/g, c => c.toUpperCase());
 
 // ---------------------------------------------------------------------------
-// --init: generate nomadpath.yaml template
+// --init: generate config template
 // ---------------------------------------------------------------------------
 
 if (values.init) {
-    const configPath = join(inputDir, 'nomadpath.yaml');
+    const outPath = configPath(inputDir);
 
-    // Discover immediate subdirectories to pre-populate the template.
+    // Discover immediate subdirectories to seed the scaffold. Hidden
+    // dirs (.git, .DS_Store, ...) are skipped — they're never groups.
     let subdirs = [];
     try {
         subdirs = readdirSync(inputDir)
-            .filter(e => !e.startsWith('.') && statSync(join(inputDir, e)).isDirectory());
+            .filter(e => !e.startsWith('.') && statSync(join(inputDir, e)).isDirectory())
+            .sort();
     } catch { /* ignore scan errors */ }
 
-    const groupEntries = subdirs.length > 0
-        ? subdirs.map(d => `  ${d}:\n    defaultVisible: true`).join('\n')
-        : '  # my-flights:\n  #   defaultVisible: false';
+    // Read the on-disk template and substitute the `# <<subdirs>>` marker
+    // with one `<name>: {}` line per discovered subdir (empty body — user
+    // adds settings inline only when they want a non-default). If no
+    // subdirs exist, leave a commented example so the file isn't bare.
+    const templatePath = join(dirname(fileURLToPath(import.meta.url)), 'nomadpath.template.yaml');
+    const template = readFileSync(templatePath, 'utf8');
 
-    const template = `\
-# nomadpath.yaml — Nomad Path preprocessing configuration
-# See: preprocessing/README.md for full documentation.
-#
-# Groups correspond to immediate subdirectories of your input directory.
-# Tracks at the root level (not in any subfolder) are always visible.
-#
-# Available group options:
-#   defaultVisible:        true | false   — whether tracks are shown at map load (default: true)
-#   excludeFromAutoBounds: true | false   — exclude from initial viewport fit even when visible (default: false)
+    const scaffold = subdirs.length > 0
+        ? subdirs.map(d => `  ${d}: {}`).join('\n')
+        : '  # my-flights: { hidden: true }';
+    const rendered = template.replace(/^[ \t]*#[ \t]*<<subdirs>>[ \t]*$/m, scaffold);
 
-groups:
-${groupEntries}
-
-# POI category visibility at map load. Category names come from waypoint <type> tags.
-# poi_categories:
-#   accommodation:
-#     defaultVisible: false
-`;
-
-    writeFileSync(configPath, template);
-    console.log(`Created: ${configPath}`);
+    writeFileSync(outPath, rendered);
+    console.log(`Created: ${outPath}`);
     console.log(`Edit the file, then re-run without --init to build your trip data.`);
     process.exit(0);
 }
 
 // ---------------------------------------------------------------------------
-// nomadpath.yaml config
+// Config file
 // ---------------------------------------------------------------------------
 
 /**
- * @typedef {{ defaultVisible?: boolean, excludeFromAutoBounds?: boolean }} GroupConfig
- * @typedef {{ defaultVisible?: boolean }} POICategoryConfig
+ * @typedef {{ hidden?: boolean, excludeFromAutoBounds?: boolean }} GroupConfig
+ * @typedef {{ hidden?: boolean }} POICategoryConfig
  */
 
 /** @type {Record<string, GroupConfig>} */
@@ -133,15 +129,22 @@ let groupConfig = {};
 /** @type {Record<string, POICategoryConfig>} */
 let poiCategoryConfig = {};
 
-const configPath = join(inputDir, 'nomadpath.yaml');
+/** Raw `ignore:` value from the yaml, passed to buildIgnoreMatcher in
+ * the file-discovery section below. */
+let rawIgnore;
+
 try {
-    const raw = readFileSync(configPath, 'utf8');
+    const raw = readFileSync(configPath(inputDir), 'utf8');
     const parsed = parseYAML(raw);
     groupConfig = parsed?.groups ?? {};
     poiCategoryConfig = parsed?.poi_categories ?? {};
+    rawIgnore = parsed?.ignore;
 } catch (err) {
+    // ENOENT means no config file at all — that's a documented valid state.
+    // Any other failure (parse error, permission denied) is fatal: a silent
+    // partial-config build would mask a real misconfiguration.
     if (err.code !== 'ENOENT') {
-        console.error(`Warning: failed to load nomadpath.yaml: ${err.message}`);
+        failExit('Config', `${configPath(inputDir)}: ${err.message}`);
     }
 }
 
@@ -150,19 +153,18 @@ try {
 // ---------------------------------------------------------------------------
 
 /**
- * Augment an enriched track with `group` and `defaultVisible` fields derived
- * from the file's position relative to the input directory.
+ * Augment an enriched track with `group` and `hidden` fields derived from
+ * the file's position relative to the input directory.
  *
  * The group is the first subfolder component under inputDir (e.g. "flights-2025"
  * for a file at "flights-2025/QFA468.kml"). Files at the root level have group = null.
  *
- * defaultVisible priority:
- *   1. Group config in nomadpath.yaml
- *   2. true (default — show everything unless told otherwise)
+ * `hidden` defaults to false (visible). Set true only when the group's
+ * nomadpath.yaml entry specifies `hidden: true`.
  *
  * @param {import('./lib/enrichment.js').EnrichedTrack} track
  * @param {string} filePath
- * @returns {import('./lib/enrichment.js').EnrichedTrack & { group: string|null, defaultVisible: boolean }}
+ * @returns {import('./lib/enrichment.js').EnrichedTrack & { group: string|null, hidden: boolean, excludeFromAutoBounds: boolean }}
  */
 function augmentTrack(track, filePath) {
     const rel = relative(inputDir, filePath).replace(/\\/g, '/');
@@ -174,18 +176,31 @@ function augmentTrack(track, filePath) {
     const group = isSubdir ? firstComponent : null;
 
     const cfg = (group && groupConfig[group]) ?? {};
-    const defaultVisible = cfg.defaultVisible ?? true;
+    const hidden = cfg.hidden === true;
     const excludeFromAutoBounds = cfg.excludeFromAutoBounds ?? false;
 
-    return { ...track, group: group ?? null, defaultVisible, excludeFromAutoBounds };
+    return { ...track, group: group ?? null, hidden, excludeFromAutoBounds };
 }
 
 // ---------------------------------------------------------------------------
 // File discovery (recursive)
 // ---------------------------------------------------------------------------
 
+// Predicate sourced from the yaml `ignore:` list. Applied inside collectFiles
+// before statSync / recursion, so ignored directories (e.g. .git on the
+// user's workflow) are never opened — not just filtered out after the walk.
+// Malformed config fails the build loudly: a silent typo that re-enables
+// .git scanning would be worse than a clear error.
+let isInputIgnored;
+try {
+    isInputIgnored = buildIgnoreMatcher(rawIgnore, inputDir);
+} catch (err) {
+    failExit('Config', `${configPath(inputDir)}: ${err.message}`);
+}
+
 /**
- * Recursively collect all file paths under a directory.
+ * Recursively collect all file paths under a directory, skipping anything
+ * the user listed under `ignore:` in nomadpath.yaml.
  *
  * @param {string} dir
  * @returns {string[]}
@@ -193,8 +208,14 @@ function augmentTrack(track, filePath) {
 function collectFiles(dir) {
     const files = [];
     for (const entry of readdirSync(dir)) {
-        if (entry.startsWith('.')) continue; // skip hidden files and dirs (e.g. .git)
         const full = join(dir, entry);
+        if (isInputIgnored(full)) continue;
+        if (full === configPath(inputDir)) continue;
+        // Skip our own output file. If outputFile lives inside inputDir
+        // (the default when -o is unspecified, or when a previous run
+        // wrote here), reading it as input would count it as "skipped"
+        // (geojson isn't gpx/kml) — misleading and noisy.
+        if (full === outputFile) continue;
         if (statSync(full).isDirectory()) {
             files.push(...collectFiles(full));
         } else {
@@ -208,41 +229,78 @@ function collectFiles(dir) {
 // Pipeline
 // ---------------------------------------------------------------------------
 
+const causeRaw = process.env.NOMADPATH_BUILD_CAUSE;
+logBuildStart(causeRaw ? JSON.parse(causeRaw) : undefined);
+
+const startNs = process.hrtime.bigint();
+
 const allFiles = collectFiles(inputDir);
 
 const allTracks = [];
 const allWaypoints = [];
-let skipped = 0;
-let parsed = 0;
+/** Map<lowercase-extension-or-'no-ext', count> for the skip breakdown in the [OK] line. */
+const skippedByExt = new Map();
 
 for (const filePath of allFiles) {
     try {
         const { tracks, waypoints } = parseFile(filePath);
         allTracks.push(...tracks.map(t => augmentTrack(enrichTrack(t), filePath)));
         allWaypoints.push(...waypoints);
-        parsed++;
     } catch (err) {
         if (err.message?.startsWith('Unsupported file format')) {
-            skipped++;
+            const ext = extname(filePath).toLowerCase() || 'no-ext';
+            skippedByExt.set(ext, (skippedByExt.get(ext) ?? 0) + 1);
         } else {
             // Real parse failure — surface it with context and abort
-            failExit(`Error parsing ${filePath}: ${err.message}`);
+            failExit('Parse', `${relative(inputDir, filePath).replace(/\\/g, '/')}: ${err.message}`);
         }
     }
 }
 
 if (allTracks.length === 0) {
-    failExit(`No tracks found in ${inputDir}. Check that the directory contains GPX or KML files.`);
+    failExit('Empty', `${inputDir}: no tracks found (directory contains no parseable GPX or KML files)`);
 }
 
 const grouped = groupTracks(allTracks);
 const geojson = buildGeoJSON({ tracks: grouped, waypoints: allWaypoints, tripName, poiCategoryConfig });
 
+// `featureSource[i]` maps validator featureIndex → input filename (relative to
+// inputDir, forward slashes). Mirrors buildGeoJSON's feature ordering: tracks
+// sorted by day (flight-prefix stripped for sort key) then waypoints. Built
+// here rather than in output.js so source-file knowledge stays inside the
+// preprocessing entry point — buildGeoJSON's contract is "geojson only".
+const sortedGrouped = [...grouped].sort((a, b) => {
+    const keyA = a.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? a.day;
+    const keyB = b.day.match(/^flight-(\d{4}-\d{2}-\d{2})/)?.[1] ?? b.day;
+    return keyA.localeCompare(keyB);
+});
+const featureSource = [
+    ...sortedGrouped.map(t => relative(inputDir, t.sourceFile).replace(/\\/g, '/')),
+    ...allWaypoints.map(() => null),
+];
+
 // Validate against the capability contract before writing. Failures route
 // through failExit so the output file is never left in an invalid state.
+// The producer of `ValidationResult` is ../src/contract/validate.ts; the
+// shape (discriminated union of `kind: 'feature' | 'top-level' | 'metadata'`)
+// is imported via JSDoc rather than redeclared here.
+/** @type {import('../src/contract/validate.js').ValidationResult} */
 const validation = validate(geojson);
 if (!validation.ok) {
-    failExit(`Validation failed:\n  ${validation.errors.join('\n  ')}`);
+    for (const f of validation.failures) {
+        let detail;
+        if (f.kind === 'feature') {
+            const src = featureSource[f.featureIndex] ?? `features[${f.featureIndex}]`;
+            detail = `${src}: ${f.checks.join(', ')}`;
+        } else if (f.kind === 'top-level') {
+            detail = `top-level: ${f.message}`;
+        } else {
+            detail = `metadata: ${f.message}`;
+        }
+        logFail('Validation', detail);
+    }
+    removeOutputIfExists();
+    process.exit(1);
 }
 
 // Atomic write: write to a sibling temp path and rename onto the output.
@@ -254,18 +312,46 @@ try {
     renameSync(tmpOutput, outputFile);
 } catch (err) {
     try { unlinkSync(tmpOutput); } catch { /* ignore */ }
-    failExit(`Error writing output ${outputFile}: ${err.message}`);
+    failExit('IO', `${outputFile}: ${err.message}`);
 }
 
 const { stats } = geojson.metadata;
-const modesSummary = Object.entries(stats.transportModes)
+
+const modesBreakdown = ` (${Object.entries(stats.transportModes)
     .sort((a, b) => b[1] - a[1])
     .map(([mode, count]) => `${count} ${mode}`)
-    .join(', ');
-const rangeSummary = stats.dateRange
-    ? ` · ${stats.dateRange.start} → ${stats.dateRange.end}`
-    : '';
+    .join(', ')})`;
+const tracksClause = `${stats.trackCount} tracks${modesBreakdown}`;
 
-console.log(`Done: ${parsed} file(s) parsed, ${skipped} skipped.`);
-console.log(`Output: ${stats.trackCount} track(s)${rangeSummary}, ${stats.waypointCount} POI(s) → ${outputFile}`);
-console.log(`Modes:  ${modesSummary}`);
+let poiClause = null;
+if (stats.waypointCount > 0) {
+    const categoriesBreakdown = ` (${Object.entries(stats.poiCategories)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, count]) => `${count} ${cat}`)
+        .join(', ')})`;
+    poiClause = `${stats.waypointCount} POI${categoriesBreakdown}`;
+}
+
+// Skip breakdown: one bucket → bare extension `(.txt)`; multiple buckets →
+// `(.ext: count, ...)` sorted by count desc. No cap on bucket count; a long
+// line is itself a diagnostic signal that ignore: needs more entries.
+const skipTotal = [...skippedByExt.values()].reduce((a, b) => a + b, 0);
+let skipClause = null;
+if (skipTotal > 0) {
+    const entries = [...skippedByExt.entries()].sort((a, b) => b[1] - a[1]);
+    const breakdown = entries.length === 1
+        ? ` (${entries[0][0]})`
+        : ` (${entries.map(([ext, n]) => `${ext}: ${n}`).join(', ')})`;
+    skipClause = `${skipTotal} skipped${breakdown}`;
+}
+
+const rangeClause = stats.dateRange
+    ? `${stats.dateRange.start} → ${stats.dateRange.end}`
+    : null;
+
+const elapsedMs = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+const runtime = elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`;
+
+const clauses = [outputFile, tracksClause, poiClause, rangeClause, skipClause, runtime]
+    .filter(c => c !== null);
+logOK(clauses.join(' | '));

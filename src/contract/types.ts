@@ -65,7 +65,8 @@ export interface TrackProperties {
     name: string;
     day: string;
     type: 'track';
-    defaultVisible: boolean;
+    /** When true, this track is hidden at map load. Absent or false means visible. */
+    hidden?: boolean;
     /** When true, this track is excluded from the initial auto-fit bounds even if visible. */
     excludeFromAutoBounds?: boolean;
     transportMode?: 'walk' | 'drive' | 'flight' | 'boat' | string;
@@ -102,6 +103,6 @@ export interface POIProperties {
     type: 'poi';
     category: string;
     label?: string;
-    /** Whether this POI's category is shown at map load. Defaults to true when absent. */
-    defaultVisible?: boolean;
+    /** When true, this POI's category is hidden at map load. Absent or false means visible. */
+    hidden?: boolean;
 }

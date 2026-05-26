@@ -26,7 +26,7 @@ import { gotoMap } from './helpers';
 //   2 ground days: 2025-06-10 (drive + walk), 2025-06-11 (drive)
 //   1 flight day key: flight-2025-06-09-0600-tst101-lebl-lfpg
 //   groups: flights (excludeFromAutoBounds), root-level ground tracks
-//   yaml: landmark POI defaultVisible: false
+//   yaml: landmark POI hidden: true
 // ---------------------------------------------------------------------------
 
 test.describe('pipeline metadata', () => {
@@ -101,7 +101,7 @@ test.describe('library renders pipeline data', () => {
         expect(lowerCategories).toContain('landmark');
     });
 
-    test('landmark POI category is hidden at load (defaultVisible: false)', async ({ page }) => {
+    test('landmark POI category is hidden at load (hidden: true)', async ({ page }) => {
         await gotoMap(page);
         const isVisible = await page.evaluate(() => {
             return (window as any).nomadMap.isPOICategoryVisible('landmark');

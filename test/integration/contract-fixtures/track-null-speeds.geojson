@@ -19,7 +19,6 @@
                 "name": "Patchy Speed Drive",
                 "day": "2024-01-01",
                 "transportMode": "drive",
-                "defaultVisible": true,
                 "group": null,
                 "speeds": [100, null, null, 50]
             }

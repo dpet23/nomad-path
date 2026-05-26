@@ -322,12 +322,12 @@ test.describe('Output ⟷ input contract', () => {
     });
 
     // -----------------------------------------------------------------------
-    // Gap 15: defaultVisible undefined (track property absent) is the
+    // Gap 15: `hidden` undefined (track property absent) is the
     // documented "default to visible" semantic. Library uses
-    // `defaultVisible !== false` to decide.
+    // `!properties.hidden` to decide.
     // -----------------------------------------------------------------------
-    test('Gap 15: library treats track with no defaultVisible as visible', async ({ page }) => {
-        await gotoMapWithFixture(page, `${FX}/track-no-defaultvisible.geojson`);
+    test('Gap 15: library treats track with no hidden property as visible', async ({ page }) => {
+        await gotoMapWithFixture(page, `${FX}/track-no-hidden.geojson`);
         const ready = await page.evaluate(() => (window as any).nomadMapReady);
         expect(ready).toBe(true);
         const visibleIds = await page.evaluate(() => [

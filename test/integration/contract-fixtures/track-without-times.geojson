@@ -16,7 +16,6 @@
                 "name": "No Times Drive",
                 "day": "2024-01-01",
                 "transportMode": "drive",
-                "defaultVisible": true,
                 "group": null,
                 "elevations": [100, 300]
             }

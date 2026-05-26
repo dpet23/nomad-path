@@ -42,7 +42,8 @@
     "@turf/bbox": "^7.0.0",
     "@turf/helpers": "^7.3.4",
     "@turf/length": "^7.0.0",
-    "maplibre-gl": "^4.0.0"
+    "maplibre-gl": "^4.0.0",
+    "untildify": "^6.0.0"
   },
   "devDependencies": {
     "@mapbox/geojsonhint": "^3.3.0",

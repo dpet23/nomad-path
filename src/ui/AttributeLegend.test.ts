@@ -29,7 +29,7 @@ function makeTrack(name: string, elevations: number[], visible = true): TrackFea
             type: 'track',
             name,
             day: DAY,
-            defaultVisible: visible,
+            hidden: !visible,
             transportMode: 'drive',
             elevations,
         },

@@ -25,7 +25,6 @@ const makeTrack = (day: string, name: string, overrides: Partial<TrackFeature['p
         type: 'track',
         name,
         day,
-        defaultVisible: true,
         transportMode: 'drive',
         ...overrides,
     },

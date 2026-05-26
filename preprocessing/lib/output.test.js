@@ -20,7 +20,7 @@ const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures');
  * @param {string[]} gpxPaths
  * @param {string[]} kmlPaths
  * @param {string[]} waypointPaths
- * @param {Record<string, { defaultVisible?: boolean }>} [poiCategoryConfig]
+ * @param {Record<string, { hidden?: boolean }>} [poiCategoryConfig]
  */
 function runPipeline(gpxPaths = [], kmlPaths = [], waypointPaths = [], poiCategoryConfig = {}) {
     const allTracks = [];
@@ -87,7 +87,8 @@ describe('buildGeoJSON -- track features', () => {
         expect(track.properties.type).toBe('track');
         expect(track.properties.transportMode).toBe('drive');
         expect(track.properties.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        expect(track.properties.defaultVisible).toBe(true);
+        // hidden is omitted from output when false (the visible default).
+        expect(track.properties.hidden).toBeUndefined();
     });
 
     it('coordinates are [lon, lat] pairs', () => {
@@ -177,24 +178,40 @@ describe('buildGeoJSON -- POI features', () => {
         expect(pois[0].properties.category).toBe('accommodation');
     });
 
-    it('defaultVisible is true when no poi_categories config is provided', () => {
-        expect(pois[0].properties.defaultVisible).toBe(true);
+    it('hidden is omitted when no poi_categories config is provided', () => {
+        expect(pois[0].properties.hidden).toBeUndefined();
     });
 
-    it('defaultVisible is false when category is configured as hidden', () => {
+    it('hidden is true when category config has hidden: true', () => {
         const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
-            accommodation: { defaultVisible: false },
+            accommodation: { hidden: true },
         });
         const poi = result.features.find(f => f.properties.type === 'poi' && f.properties.category === 'accommodation');
-        expect(poi.properties.defaultVisible).toBe(false);
+        expect(poi.properties.hidden).toBe(true);
     });
 
-    it('defaultVisible is true for categories not in poi_categories config', () => {
+    it('hidden is omitted when category config has hidden: false (explicit)', () => {
         const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
-            other: { defaultVisible: false },
+            accommodation: { hidden: false },
         });
         const poi = result.features.find(f => f.properties.type === 'poi' && f.properties.category === 'accommodation');
-        expect(poi.properties.defaultVisible).toBe(true);
+        expect(poi.properties.hidden).toBeUndefined();
+    });
+
+    it('hidden is omitted for categories not in poi_categories config', () => {
+        const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
+            other: { hidden: true },
+        });
+        const poi = result.features.find(f => f.properties.type === 'poi' && f.properties.category === 'accommodation');
+        expect(poi.properties.hidden).toBeUndefined();
+    });
+
+    it('hidden is omitted when category config entry is empty (no hidden key)', () => {
+        const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
+            accommodation: {},
+        });
+        const poi = result.features.find(f => f.properties.type === 'poi' && f.properties.category === 'accommodation');
+        expect(poi.properties.hidden).toBeUndefined();
     });
 });
 
@@ -203,29 +220,29 @@ describe('buildGeoJSON -- POI features', () => {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// group and defaultVisible passthrough
+// group and hidden passthrough
 // ---------------------------------------------------------------------------
 
-describe('buildGeoJSON -- group and defaultVisible', () => {
-    it('passes group and defaultVisible from augmented track to feature properties', () => {
+describe('buildGeoJSON -- group and hidden', () => {
+    it('passes group and hidden from augmented track to feature properties', () => {
         const { tracks } = parseGPX(join(FIXTURES, 'sample-track.gpx'));
         const augmented = tracks.map(t => enrichTrack(t)).map(t => ({
             ...t,
             group: 'my-group',
-            defaultVisible: false,
+            hidden: true,
         }));
         const grouped = groupTracks(augmented);
         const result = buildGeoJSON({ tracks: grouped, waypoints: [], tripName: 'Test' });
         const track = result.features.find(f => f.properties.type === 'track');
         expect(track.properties.group).toBe('my-group');
-        expect(track.properties.defaultVisible).toBe(false);
+        expect(track.properties.hidden).toBe(true);
     });
 
-    it('defaults group to null and defaultVisible to true when not set', () => {
+    it('defaults group to null and omits hidden when not set', () => {
         const result = runPipeline([join(FIXTURES, 'sample-track.gpx')]);
         const track = result.features.find(f => f.properties.type === 'track');
         expect(track.properties.group).toBeNull();
-        expect(track.properties.defaultVisible).toBe(true);
+        expect(track.properties.hidden).toBeUndefined();
     });
 });
 
@@ -253,6 +270,19 @@ describe('buildGeoJSON -- stats', () => {
     it('counts transport modes', () => {
         expect(stats.transportModes).toHaveProperty('drive');
         expect(stats.transportModes.drive).toBe(1);
+    });
+
+    it('counts POI categories from waypoints', () => {
+        // Concrete counts pin both the bucketing logic AND that the parser's
+        // `category` field flows through to `stats.poiCategories`.
+        const r = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')]);
+        const cats = r.metadata.stats.poiCategories;
+        expect(cats).toEqual({ accommodation: 1, landmark: 1 });
+    });
+
+    it('poiCategories is an empty object when waypointCount is zero', () => {
+        expect(stats.waypointCount).toBe(0);
+        expect(stats.poiCategories).toEqual({});
     });
 
     it('includes dateRange for ground tracks', () => {
@@ -285,7 +315,6 @@ describe('buildGeoJSON -- track ordering', () => {
             transportMode: 'drive',
             day,
             group: null,
-            defaultVisible: true,
             points: [
                 { lon: 0, lat: 0, elevation: 10, speedKmh: 30, time: null, sunAngle: null },
                 { lon: 1, lat: 1, elevation: 10, speedKmh: 30, time: null, sunAngle: null },
@@ -349,14 +378,14 @@ describe('buildGeoJSON -- empty input', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildGeoJSON -- poiCategoryConfig edge cases', () => {
-    it('treats a null config entry as defaultVisible: true', () => {
+    it('treats a null config entry as visible (hidden absent on output)', () => {
         const result = runPipeline([], [], [join(FIXTURES, 'sample-waypoints.gpx')], {
             accommodation: null,
         });
         const poi = result.features.find(
             f => f.properties.type === 'poi' && f.properties.category === 'accommodation',
         );
-        expect(poi.properties.defaultVisible).toBe(true);
+        expect(poi.properties.hidden).toBeUndefined();
     });
 });
 
@@ -372,7 +401,7 @@ describe('buildGeoJSON -- excludeFromAutoBounds', () => {
             transportMode: 'flight',
             day,
             group: 'flights-2025',
-            defaultVisible: false,
+            hidden: true,
             excludeFromAutoBounds,
             points: [
                 { lon: 0, lat: 0, elevation: 5000, speedKmh: 800, time: null, sunAngle: null },

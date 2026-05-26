@@ -68,6 +68,18 @@ try {
     // Expose on window for browser console debugging
     window.nomadMap = nomadMap;
 
+    // If any loaded trip has a name, surface it in the page title and toolbar.
+    const names = [];
+    for (const trip of nomadMap.trips) {
+        const name = trip.metadata?.tripName;
+        if (name && !names.includes(name)) names.push(name);
+    }
+    if (names.length) {
+        const combined = names.join(' / ');
+        document.title = combined;
+        document.querySelector('#toolbar h1').textContent = combined;
+    }
+
     // Log trip summary to console
     for (const trip of nomadMap.trips) {
         const tracks = trip.features.filter(f => f.properties.type === 'track');

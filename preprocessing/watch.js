@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 import chokidar from 'chokidar';
-import { execFileSync, spawn } from 'child_process';
-import { statSync, unlinkSync } from 'fs';
+import { spawn } from 'child_process';
+import { readFileSync, statSync, unlinkSync } from 'fs';
 import { parseArgs } from 'util';
-import { dirname, resolve } from 'path';
+import { dirname, join } from 'path';
+
+import { parse as parseYAML } from 'yaml';
+
+import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
+import { buildIgnoreMatcher } from './lib/ignore.js';
+import { logFail, logWatchEvent } from './lib/log.js';
+import { expandPath } from './lib/paths.js';
 
 const USAGE = `
 Usage: npm run watch -- -i <dir> [-o <file>] [-p <port>] [-n <name>]
@@ -13,7 +20,7 @@ Starts a local dev server. Open the printed URL to view the map.
 
 Options:
   -i, --input  <dir>   Directory to watch for GPS files [required]
-  -o, --output <file>  Output path for trip-data.geojson (default: ./demo/trip-data.geojson)
+  -o, --output <file>  Output path for the geojson (default: ./demo/${OUTPUT_FILE})
                        The dev server serves the directory containing this file.
   -p, --port   <n>     Port for the local dev server (default: serve's default, 3000)
   -n, --name   <name>  Trip name in GeoJSON metadata
@@ -28,6 +35,18 @@ Or with tmux:
   tmux new -s watch
   npm run watch -- -i <dir>
   # Ctrl+B then D to detach; reconnect with: tmux attach -t watch
+
+Reading the log remotely (e.g. from a phone over ssh):
+
+  tail -50 watch.log                       # most recent activity
+  grep '\\[FAIL\\]' watch.log              # every preprocessing failure
+  grep '\\[FAIL\\]' watch.log | tail       # most recent failures
+  grep -E '\\[OK\\]|\\[FAIL\\]' watch.log | tail -5
+                                           # last 5 outcomes (success or failure).
+                                           # An [OK] line means the build recovered;
+                                           # any [FAIL] after the most recent [OK]
+                                           # is an unresolved problem.
+  grep -E ' (4|5)[0-9]{2} ' watch.log      # serve HTTP errors (4xx/5xx)
 `.trim();
 
 // ---------------------------------------------------------------------------
@@ -54,8 +73,8 @@ if (!values.input) {
     process.exit(1);
 }
 
-const INPUT     = resolve(values.input);
-const OUTPUT    = resolve(values.output ?? 'demo/trip-data.geojson');
+const INPUT     = expandPath(values.input);
+const OUTPUT    = expandPath(values.output ?? join('demo', OUTPUT_FILE));
 const SERVE_DIR = dirname(OUTPUT);
 const PORT      = values.port;
 
@@ -78,24 +97,60 @@ function removeOutputIfExists() {
         unlinkSync(OUTPUT);
     } catch (err) {
         if (err.code !== 'ENOENT') {
-            console.error(`[watch] Failed to remove stale output: ${err.message}`);
+            logFail('Cleanup', `failed to remove stale output ${OUTPUT}: ${err.message}`);
         }
     }
 }
 
+// Coalesce file-event bursts. chokidar's awaitWriteFinish handles per-file
+// debouncing (one event per file, only after that file stops changing).
+// What it doesn't do is coalesce across files or across builds — a `git push`
+// landing 50 files fires 50 events, and without queueing each one would start
+// its own build.
+//
+//   - At most one build in flight.
+//   - At most one rebuild queued. Events arriving during a build collapse
+//     into a single follow-up build that picks up the full state.
+//
+// No wall-clock timer: the queued build fires when the current one exits, so
+// a 50-file burst produces at most 2 builds total.
+//
+// Cause tracking: chokidar event handlers increment pendingEvents. When build()
+// fires, the snapshot is reset and (when any count > 0) handed to the spawned
+// child via NOMADPATH_BUILD_CAUSE. The child emits the [BUILD] start line.
+// Events arriving while a build is in-flight accumulate into the next snapshot,
+// so a queued rebuild's start line shows cumulative cause across the in-flight
+// window.
+let buildInFlight = false;
+let rebuildPending = false;
+let pendingEvents = { added: 0, changed: 0, removed: 0 };
+
 function build() {
-    console.log('[watch] Building…');
-    try {
-        execFileSync('node', buildArgs, { stdio: 'inherit' });
-        console.log('[watch] Done.');
-    } catch {
+    if (buildInFlight) {
+        rebuildPending = true;
+        return;
+    }
+    buildInFlight = true;
+    rebuildPending = false;
+    const cause = pendingEvents;
+    pendingEvents = { added: 0, changed: 0, removed: 0 };
+    const childEnv = { ...process.env };
+    if (cause.added || cause.changed || cause.removed) {
+        childEnv.NOMADPATH_BUILD_CAUSE = JSON.stringify(cause);
+    }
+    // spawn (not execFile) — execFile buffers stdio and ignores 'inherit'.
+    // We want the child's [BUILD]/[OK]/[FAIL] lines streamed through to the log.
+    const child = spawn('node', buildArgs, { stdio: 'inherit', env: childEnv });
+    child.on('exit', (code) => {
         // build-trip-data.js handles its own failures by unlinking OUTPUT
         // before exiting non-zero. But if the spawned process died abnormally
         // (signalled, OOM, etc.) it may not have run that cleanup. Belt-and-
-        // braces: ensure stale output is gone before reporting failure.
-        removeOutputIfExists();
-        console.error('[watch] Build failed — watching for more changes');
-    }
+        // braces: ensure stale output is gone on any non-zero exit. The child
+        // has already printed its own [FAIL] line(s); no extra summary needed.
+        if (code !== 0) removeOutputIfExists();
+        buildInFlight = false;
+        if (rebuildPending) build();
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +163,7 @@ if (PORT) serveArgs.push('-l', String(PORT));
 const serve = spawn('npx', serveArgs, { stdio: 'inherit', shell: false });
 serve.on('exit', (code) => {
     if (!exiting) {
-        console.error(`[watch] Server exited unexpectedly (code ${code}) — shutting down`);
+        logFail('Server', `serve exited unexpectedly with code ${code}`);
         process.exit(1);
     }
 });
@@ -123,11 +178,41 @@ process.on('SIGTERM', () => { exiting = true; serve.kill(); process.exit(0); });
 function crashCleanup(err) {
     exiting = true;
     try { serve.kill(); } catch { /* ignore */ }
-    console.error(err);
+    logFail('Crash', err?.stack ?? err?.message ?? String(err));
     process.exit(1);
 }
 process.on('uncaughtException', crashCleanup);
 process.on('unhandledRejection', crashCleanup);
+
+// ---------------------------------------------------------------------------
+// Ignore patterns (shared with build-trip-data.js via buildIgnoreMatcher)
+//
+// Read once at startup. Editing nomadpath.yaml mid-watch is a documented
+// "restart required" case — hot reload would surprise more than it'd help.
+// Malformed config is loud: a silent typo that re-enables .git scanning
+// would defeat the whole point of this feature.
+// ---------------------------------------------------------------------------
+
+const CONFIG_PATH = configPath(INPUT);
+
+let rawIgnore;
+try {
+    const parsed = parseYAML(readFileSync(CONFIG_PATH, 'utf8'));
+    rawIgnore = parsed?.ignore;
+} catch (err) {
+    if (err.code !== 'ENOENT') {
+        logFail('Config', `${CONFIG_PATH}: ${err.message}`);
+        process.exit(1);
+    }
+}
+
+let isInputIgnored;
+try {
+    isInputIgnored = buildIgnoreMatcher(rawIgnore, INPUT);
+} catch (err) {
+    logFail('Config', `${CONFIG_PATH}: ${err.message}`);
+    process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // Initial build + watcher
@@ -138,9 +223,13 @@ build();
 chokidar
     .watch(INPUT, {
         ignoreInitial: true,
-        ignored: OUTPUT,
+        // Skip user-ignored paths, the config file itself (events on it
+        // are restart-required, not rebuild-required), and our own output
+        // (so writing the geojson doesn't re-trigger a build).
+        ignored: (absPath) =>
+            absPath === OUTPUT || absPath === CONFIG_PATH || isInputIgnored(absPath),
         awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
     })
-    .on('add',    () => build())
-    .on('change', () => build())
-    .on('unlink', () => build());
+    .on('add',    (p) => { logWatchEvent('add', p);    pendingEvents.added++;   build(); })
+    .on('change', (p) => { logWatchEvent('change', p); pendingEvents.changed++; build(); })
+    .on('unlink', (p) => { logWatchEvent('unlink', p); pendingEvents.removed++; build(); });

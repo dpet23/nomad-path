@@ -14,7 +14,6 @@
                 "name": "Tokyo Drive",
                 "day": "2024-01-01",
                 "transportMode": "drive",
-                "defaultVisible": true,
                 "group": null
             }
         },
@@ -24,8 +23,7 @@
             "properties": {
                 "type": "poi",
                 "name": "Mystery Spot",
-                "category": "",
-                "defaultVisible": true
+                "category": ""
             }
         }
     ]
