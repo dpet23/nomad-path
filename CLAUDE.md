@@ -127,7 +127,7 @@ Fixtures must use NON-OVERLAPPING attribute ranges per track so any hidden-track
 
 ## npm Scripts
 See [docs/developer.md](docs/developer.md) for full descriptions.
-Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:library` / `test:e2e` / `test:all` / `test:all:browsers` / `test:library:debug` / `test:e2e:debug` / `test:library:install` / `clean`
+Scripts: `build:lib` / `build:data` / `build:demo` / `demo` / `watch` / `git:enable` / `typecheck` / `lint` / `lint:fix` / `format` / `test:unit` / `test:coverage` / `test:unit:watch` / `test:library` / `test:e2e` / `test:all` / `test:all:browsers` / `test:library:debug` / `test:e2e:debug` / `test:library:install` / `clean`
 Private (composition only): `_copy:demo` / `_copy:library` / `_build:library`
 Pre-commit hook: lint-staged → typecheck → test:coverage (fails if thresholds drop).
 Dev process: `test:unit` or `test:library` during development. `test:all` before merge/end of epic. `test:all:browsers` before major milestones.

@@ -21,6 +21,7 @@
     "build:demo": "npm run build:lib && npm run _copy:demo",
     "demo": "npm run build:demo && npx serve ./demo",
     "watch": "npm run build:demo && node preprocessing/watch.js",
+    "git:enable": "node preprocessing/enable-git-rebuilds.js",
     "lint": "eslint src --ext .ts",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier --write 'src/**/*.{ts,css}'",

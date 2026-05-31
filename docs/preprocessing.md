@@ -154,6 +154,86 @@ let a stray colon re-enable `.git/` scanning without you noticing.
 
 ---
 
+## Git-triggered rebuilds
+
+If the input directory is also a git repo, you can rebuild on every `git push` instead of
+running `npm run watch` with chokidar. Useful when you commit GPS files from one machine
+(say, a phone) and push them to a dev box that serves the map — the build runs on the
+dev box and its output streams back as `remote: ...` lines in the `git push` output, so
+the pushing client sees `[BUILD] Starting` / `[OK]` / `[FAIL]` without having to log
+into the dev box to read a log file.
+
+### Setup
+
+One-time, on the dev box that will serve the map:
+
+```bash
+npm run git:enable -- -i /path/to/trip-repo [-o ./demo/trip-data.geojson] [-n "Hawaii 2025"]
+```
+
+This does everything needed to make `<repo>` a working push target:
+1. Creates `nomadpath.yaml` in the repo (via `build:data --init`) so the build has a
+   config to read. Skipped if the file already exists, so re-running `git:enable` never
+   clobbers your edits.
+2. Sets `receive.denyCurrentBranch updateInstead` on the repo, so pushes update its
+   working tree (required — pushes to the currently-checked-out branch are otherwise
+   rejected by default).
+3. Writes two hooks under `<repo>/.git/hooks/`:
+   - `pre-receive` — prints a "Writing changes" line so the pusher sees activity
+     immediately, before the working-tree update (which can take a while on slow
+     networks).
+   - `post-receive` — prints "Changes saved, running build" then invokes
+     `build-trip-data.js` with the resolved input/output/name baked in.
+4. Sets `core.hooksPath` on the repo to the absolute path of `<repo>/.git/hooks`. This
+   overrides any global `core.hooksPath` you might have set (e.g. a system-wide hooks
+   directory in your `~/.gitconfig`), so the hooks we just wrote actually fire.
+
+Run separately to serve the map (the watch / git workflows are independent):
+
+```bash
+npm run demo
+```
+
+### Daily use
+
+From the other machine (phone, laptop, etc.) push as normal:
+
+```bash
+git push origin master
+# remote: Writing changes
+# remote: Changes saved, running build
+# remote: [BUILD] Starting
+# remote: [OK] 12 tracks (drive: 8, walk: 4) | 3 POIs (landmark: 3) | 1.2s
+```
+
+Refresh the browser tab serving the map to see the new tracks.
+
+### Updating the hook
+
+The post-receive hook bakes in absolute paths to node, `build-trip-data.js`, and the
+input/output. If you change `-o` or `-n`, or your node version moves (e.g. an OS
+upgrade or `nvm uninstall`-ing the version you set up with), re-run `npm run git:enable`
+with the desired args.
+
+### Hook safety
+
+`git:enable` refuses to overwrite any existing hook (pre- or post-receive) that wasn't
+written by it (identified by a marker comment). Move or delete the existing hook to
+proceed.
+
+### Undoing
+
+There's no `--uninstall` flag. To revert manually:
+
+```bash
+rm <repo>/.git/hooks/pre-receive <repo>/.git/hooks/post-receive
+git -C <repo> config --unset core.hooksPath
+git -C <repo> config --unset receive.denyCurrentBranch
+# leave nomadpath.yaml in place — it's a normal project config file
+```
+
+---
+
 ## GPX file conventions
 
 ### Transport mode detection

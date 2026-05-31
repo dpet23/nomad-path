@@ -37,6 +37,7 @@ Scripts prefixed with `_` are internal composition helpers — they exist only t
 | `build:demo` | `build:lib` + copy to `demo/dist/` (prepares demo without serving) |
 | `demo` | `build:demo` + `npx serve ./demo` (requires `demo/trip-data.geojson`) |
 | `watch` | `build:demo` + file watcher for incremental GPS builds |
+| `git:enable` | Configure a git repo so pushes trigger a rebuild (see `docs/preprocessing.md` → Git-triggered rebuilds) |
 | `lint` | ESLint |
 | `lint:fix` | ESLint with auto-fix |
 | `format` | Prettier |
