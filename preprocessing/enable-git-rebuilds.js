@@ -3,16 +3,9 @@
  * Configure a directory as a git push target that rebuilds the trip-data
  * geojson on every push.
  *
- * Use case: the watched folder is a git repo cloned to a phone. While
- * away, push batches of GPX/KML files; the post-receive hook runs the
- * build, and its [BUILD]/[OK]/[FAIL] lines stream back to the phone as
- * `remote: ...` lines in the `git push` output. No local log file to
- * grep, no chokidar burst-coalescing — git serialises pushes, so one
- * push = one build by construction.
- *
- * This script is a one-shot setup. It does not run a dev server (use
- * `npm run demo` for that, separately) and it does not run an initial
- * build. Its only job is to install plumbing on a target repo.
+ * This script is a one-shot setup.
+ * It does not run a dev server and it does not run an initial build.
+ * Its only job is to install plumbing on a target repo.
  */
 import { spawnSync } from 'child_process';
 import { chmodSync, existsSync, readFileSync, statSync, writeFileSync } from 'fs';
@@ -55,9 +48,9 @@ let values;
 try {
     ({ values } = parseArgs({
         options: {
-            input:  { type: 'string', short: 'i' },
-            name:   { type: 'string', short: 'n' },
+            input: { type: 'string', short: 'i' },
             output: { type: 'string', short: 'o' },
+            name: { type: 'string', short: 'n' },
         },
     }));
 } catch {
@@ -70,9 +63,9 @@ if (!values.input) {
     process.exit(1);
 }
 
-const INPUT  = expandPath(values.input);
+const INPUT = expandPath(values.input);
 const OUTPUT = expandPath(values.output ?? join('demo', OUTPUT_FILE));
-const NAME   = values.name;
+const NAME = values.name;
 
 try {
     if (!statSync(INPUT).isDirectory()) throw new Error();
@@ -85,10 +78,8 @@ try {
 // Verify git repo
 // ---------------------------------------------------------------------------
 //
-// We require a regular .git directory. Worktrees (where .git is a file
-// pointing elsewhere) aren't part of the target workflow — and the hooks
-// directory lives somewhere different in that case. Bail early rather than
-// quietly write a hook the user can't find.
+// We require a regular .git directory.
+// Worktrees (where .git is a file pointing elsewhere) have their hooks directory somewhere else.
 
 const GIT_DIR = join(INPUT, '.git');
 let gitStat;
@@ -104,68 +95,67 @@ if (!gitStat.isDirectory()) {
 }
 
 // ---------------------------------------------------------------------------
-// Set receive.denyCurrentBranch = updateInstead
+// Write a config template to <input>
 // ---------------------------------------------------------------------------
-//
-// Without this, pushing to the currently checked-out branch is rejected by
-// default. `updateInstead` flips that to "accept the push and update the
-// working tree" (provided the worktree is clean), which is what makes the
-// phone workflow work at all. Idempotent — re-running this script leaves
-// the config in the same state.
 
-const configResult = spawnSync(
-    'git',
-    ['-C', INPUT, 'config', 'receive.denyCurrentBranch', 'updateInstead'],
-    { encoding: 'utf8' },
-);
-if (configResult.status !== 0) {
-    logFail('Git', `failed to set receive.denyCurrentBranch: ${configResult.stderr?.trim() || `exit ${configResult.status}`}`);
+const createConfigResult = spawnSync('npm', ['run', 'build:data', '--', '--init', '-i', INPUT], { encoding: 'utf8' });
+if (createConfigResult.status !== 0) {
+    logFail(
+        'NomadPath',
+        `failed to crate config: ${createConfigResult.stderr?.trim() || `exit ${createConfigResult.status}`}`,
+    );
     process.exit(1);
 }
-console.log(`[git:enable] set receive.denyCurrentBranch = updateInstead in ${INPUT}`);
+console.log('[git:enable] created nomadpath config');
 
 // ---------------------------------------------------------------------------
-// Hook content
+// Allow pushing new files.
+// Git setting: receive.denyCurrentBranch = updateInstead
 // ---------------------------------------------------------------------------
 //
-// The hook runs in a non-interactive, non-login SSH shell during `git push`.
-// That shell does NOT source ~/.bashrc / ~/.profile / nvm / asdf, so its
-// PATH is the bare sshd default — a `node` invocation by name would only
-// find node if it's in /usr/bin or similar. To avoid that, we bake in:
+// Without this, pushing to the currently checked-out branch is rejected.
+// This accepts the push and updates the working tree.
+// Idempotent: re-running this script leaves the config in the same state.
+
+const gitConfigResult = spawnSync('git', ['-C', INPUT, 'config', 'receive.denyCurrentBranch', 'updateInstead'], {
+    encoding: 'utf8',
+});
+if (gitConfigResult.status !== 0) {
+    logFail(
+        'Git',
+        `failed to set receive.denyCurrentBranch: ${gitConfigResult.stderr?.trim() || `exit ${gitConfigResult.status}`}`,
+    );
+    process.exit(1);
+}
+console.log('[git:enable] set git receive.denyCurrentBranch');
+
+// ---------------------------------------------------------------------------
+// Automatically rebuild on new files via a git hook.
+// ---------------------------------------------------------------------------
 //
-//   - the absolute path of THIS node (process.execPath) — the node version
-//     that ran `git:enable` is the one the hook will use,
-//   - the absolute path of build-trip-data.js, resolved from this script's
-//     location via import.meta.url.
+// The hook runs in a non-interactive, non-login SSH shell during `git push`,
+// so its PATH is the bare sshd default.
+// So we use the absolute path of THIS node (process.execPath)
+// and the absolute path of build-trip-data.js (import.meta.url).
 //
 // nvm note: process.execPath under nvm resolves to
-// ~/.nvm/versions/node/<version>/bin/node. That path keeps working across
-// node upgrades — nvm leaves old version directories in place. The hook
-// only breaks if the user explicitly `nvm uninstall <that version>`s, in
-// which case the push fails loudly ('no such file') and they re-run
-// `git:enable` to refresh with the current node. Same applies to OS-level
-// node upgrades that change install location.
+// ~/.nvm/versions/node/<version>/bin/node.
+// This keeps working across node upgrades.
+// The hook only breaks if the user explicitly runs `nvm uninstall <that version>`.
 //
-// Stream handling: `2>&1` merges stderr into stdout at the source. git
-// forwards both to the client as `remote: ...` lines, but stdout is block-
-// buffered when piped while stderr is unbuffered, so without merging a
-// [FAIL] line can land before earlier [BUILD] lines. Merging preserves
-// emit order. No `exec` — saves one process layer but adds nothing else;
-// reads simpler without it.
+// Stream handling: git forwards stdout and stderr to the client as `remote: ...` lines.
+// But stdout is block-buffered when piped, while stderr is unbuffered.
+// So merging preserves emit order.
 
 const HOOK_MARKER = '# generated by nomad-path enable-git-rebuilds';
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const BUILD_SCRIPT = pathResolve(THIS_DIR, 'build-trip-data.js');
 const NODE_BIN = process.execPath;
 
-// Quote only the values that could contain spaces in practice — the
-// absolute paths and the trip name. Flag tokens (-i, -o, -n) are literals
-// and read more clearly without quotes. Assumes paths and name do not
-// contain a single quote (filesystem paths and trip names with `'` are
-// pathological enough to warrant the assumption); validated at write time.
+/** Quote only the values that could contain spaces in practice. */
 function buildHookContent({ nodeBin, buildScript, input, output, name }) {
     for (const v of [nodeBin, buildScript, input, output, name]) {
-        if (v != null && String(v).includes(`'`)) {
+        if (v != null && String(v).includes("'")) {
             throw new Error(`hook content contains a single quote, refusing to embed: ${v}`);
         }
     }
@@ -180,46 +170,35 @@ function buildHookContent({ nodeBin, buildScript, input, output, name }) {
     ].join('\n');
 }
 
-const HOOK_PATH = join(GIT_DIR, 'hooks', 'post-receive');
+const GIT_HOOKS_PATH = join(GIT_DIR, 'hooks');
+const HOOK_PATH = join(GIT_HOOKS_PATH, 'post-receive');
 let HOOK_CONTENT;
 try {
     HOOK_CONTENT = buildHookContent({
-        nodeBin:     NODE_BIN,
+        nodeBin: NODE_BIN,
         buildScript: BUILD_SCRIPT,
-        input:       INPUT,
-        output:      OUTPUT,
-        name:        NAME,
+        input: INPUT,
+        output: OUTPUT,
+        name: NAME,
     });
 } catch (err) {
     logFail('Hook', err.message);
     process.exit(1);
 }
 
-// ---------------------------------------------------------------------------
-// Collision check
-// ---------------------------------------------------------------------------
-//
 // If a post-receive hook already exists and was NOT written by us, refuse
 // to overwrite. The marker comment is the only signal we trust here — a
 // user's hand-written hook (or one installed by another tool) gets left
 // alone. If they want our hook, they can move/delete theirs and re-run.
-
 if (existsSync(HOOK_PATH)) {
     const existing = readFileSync(HOOK_PATH, 'utf8');
     if (!existing.includes(HOOK_MARKER)) {
-        logFail(
-            'Hook',
-            `${HOOK_PATH} already exists and was not written by nomad-path. ` +
-                `Move or delete it and re-run.`,
-        );
+        logFail('Hook', `${HOOK_PATH} already exists and was not written by nomad-path. Move or delete it and re-run.`);
         process.exit(1);
     }
 }
 
-// ---------------------------------------------------------------------------
-// Write hook
-// ---------------------------------------------------------------------------
-
+// Write hook.
 try {
     writeFileSync(HOOK_PATH, HOOK_CONTENT);
     chmodSync(HOOK_PATH, 0o755);
@@ -227,10 +206,33 @@ try {
     logFail('Hook', `failed to write ${HOOK_PATH}: ${err.message}`);
     process.exit(1);
 }
-
 console.log(`[git:enable] wrote ${HOOK_PATH}`);
-console.log('');
-console.log('Setup complete. Run `npm run demo` to start the dev server;');
-console.log('push to this repo to trigger a rebuild.');
 
-export { buildHookContent, HOOK_MARKER };
+// ---------------------------------------------------------------------------
+// Use the local git hooks.
+// Git setting: core.hooksPath = .git/hooks
+// ---------------------------------------------------------------------------
+//
+// Use full paths for non-interactive, non-login SSH shells.
+
+const gitConfigHooksPathResult = spawnSync('git', ['-C', INPUT, 'config', 'core.hooksPath', GIT_HOOKS_PATH], {
+    encoding: 'utf8',
+});
+if (gitConfigHooksPathResult.status !== 0) {
+    logFail(
+        'Git',
+        `failed to set core.hooksPath: ${gitConfigHooksPathResult.stderr?.trim() || `exit ${gitConfigHooksPathResult.status}`}`,
+    );
+    process.exit(1);
+}
+console.log('[git:enable] set git core.hooksPath');
+
+// ---------------------------------------------------------------------------
+// Finish
+// ---------------------------------------------------------------------------
+
+console.log('');
+console.log('Setup complete.');
+console.log('Run `git config -l --local` to verify settings.');
+console.log('Run `npm run demo` to start the dev server;');
+console.log('push to this repo to trigger a rebuild.');
