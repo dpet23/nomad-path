@@ -13,7 +13,7 @@ import { dirname, join, resolve as pathResolve } from 'path';
 import { fileURLToPath } from 'url';
 import { parseArgs } from 'util';
 
-import { OUTPUT_FILE } from './lib/config.js';
+import { configPath, OUTPUT_FILE } from './lib/config.js';
 import { logFail } from './lib/log.js';
 import { expandPath } from './lib/paths.js';
 
@@ -97,16 +97,24 @@ if (!gitStat.isDirectory()) {
 // ---------------------------------------------------------------------------
 // Write a config template to <input>
 // ---------------------------------------------------------------------------
+//
+// Only on first run. `--init` always overwrites, so re-running git:enable
+// on a repo with an edited config would clobber the user's edits.
 
-const createConfigResult = spawnSync('npm', ['run', 'build:data', '--', '--init', '-i', INPUT], { encoding: 'utf8' });
-if (createConfigResult.status !== 0) {
-    logFail(
-        'NomadPath',
-        `failed to crate config: ${createConfigResult.stderr?.trim() || `exit ${createConfigResult.status}`}`,
-    );
-    process.exit(1);
+const CONFIG_PATH = configPath(INPUT);
+if (existsSync(CONFIG_PATH)) {
+    console.log(`[git:enable] WARNING: nomadpath config already exists at ${CONFIG_PATH}, leaving it alone`);
+} else {
+    const createConfigResult = spawnSync('npm', ['run', 'build:data', '--', '--init', '-i', INPUT], { encoding: 'utf8' });
+    if (createConfigResult.status !== 0) {
+        logFail(
+            'NomadPath',
+            `failed to create config: ${createConfigResult.stderr?.trim() || `exit ${createConfigResult.status}`}`,
+        );
+        process.exit(1);
+    }
+    console.log('[git:enable] created nomadpath config');
 }
-console.log('[git:enable] created nomadpath config');
 
 // ---------------------------------------------------------------------------
 // Allow pushing new files.
