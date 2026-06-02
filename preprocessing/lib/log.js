@@ -70,9 +70,8 @@ export function logBuildStart(cause) {
  * @param {string} event  chokidar event name ('add' | 'change' | 'unlink')
  * @param {string} path   absolute path the event fired on
  */
-export function logWatchEvent(event, path) {
+export function logDebugEvent(event, path) {
     if (process.env.NOMADPATH_WATCH_DEBUG) {
-        console.log(`[watch] ${event} ${path}`);
+        console.log(`[debug] ${event} ${path}`);
     }
 }
-

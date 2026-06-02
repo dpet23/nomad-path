@@ -25,3 +25,4 @@ test-results/
 
 # Generated trip data (built from real GPS files, not committed)
 demo/*.geojson
+logs/
