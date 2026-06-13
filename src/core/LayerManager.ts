@@ -2,6 +2,7 @@ import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, Map as MaplibreMap } from 'maplibre-gl';
 
 import type { AttributeRange, AttributeRanges, POIFeature, TrackFeature, TripData } from '../contract/types';
+import { profile } from '../profiling';
 import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
 
@@ -265,7 +266,9 @@ export class LayerManager {
         this._visibleIds = new Set(tracks.filter(t => !t.properties.hidden).map(deriveTrackId));
         this._visiblePOICategories = new Set(pois.filter(p => !p.properties.hidden).map(p => p.properties.category));
 
-        const { featureCollection, maxDayIndex } = buildSegmentFeatures(tracks);
+        const { featureCollection, maxDayIndex } = profile('nomadpath.buildSegmentFeatures', () =>
+            buildSegmentFeatures(tracks),
+        );
         this._maxDayIndex = maxDayIndex;
 
         // tolerance: 0 disables tile simplification, preventing short segments
