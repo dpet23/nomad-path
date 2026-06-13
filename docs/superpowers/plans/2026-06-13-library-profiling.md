@@ -14,7 +14,7 @@
 
 ## Cross-session execution protocol
 
-This plan runs as **5 stages, one fresh session per stage** (each independently green). Only **Stage 1** is fully expanded into bite-sized TDD tasks below; **Stages 2–5 are scoped briefs** — expand each into bite-sized tasks at the start of its own session, against the real code (the natural per-commit seams aren't knowable up front).
+This plan runs as **stages, one fresh session per stage** (each independently green). Only **Stage 1** is fully expanded into bite-sized TDD tasks below; the remaining stages are scoped briefs — expand each into bite-sized tasks at the start of its own session, against the real code (the natural per-commit seams aren't knowable up front). **Originally 5 stages; a mid–Stage 5 revision (2026-06-13) split the user-facing-timing work into a new Stage 6 — the epic now closes at Stage 6.** See the spec's "Revision (2026-06-13, mid–Stage 5)" section.
 
 **At the start of every stage session, read:**
 1. The design spec (`docs/superpowers/specs/2026-06-13-library-profiling-design.md`).
@@ -401,28 +401,71 @@ Append to the Stage log in `~/.claude/plans/i-m-working-on-this-zazzy-sutherland
 
 ---
 
-## STAGE 5 — Finish instrumenting remaining phases (BRIEF — expand at session start)
+## STAGE 5 — Sync marks for remaining phases (DONE — superseded by the revision)
 
-**Stage goal:** with real numbers from Stages 3–4, instrument the remaining meaningful phases and trim any that proved uninformative.
+**Original goal:** instrument remaining meaningful synchronous phases. **Shipped** (commits `3ea29af`, `5195df9`): `nomadpath.setColourAttribute`, `nomadpath.addLayers` (total), `nomadpath.updateRanges`; the perf test now drives colour-change + visibility-toggle and prints per-phase deltas.
 
-**Candidate phases (confirm against real numbers):** `addLayers` total (map.addSource/addLayer vs the already-timed segment build), initial colour render (`buildColourExpression` + `setPaintProperty` in `addLayers`), colour re-render (`LayerManager.setColourAttribute`, ~line 370). Pick what the numbers show is worth a mark; do not instrument for completeness.
+**Why this is not the epic close.** A read-through during this stage (and the Hawaii-data observation: a visibility toggle *feels* like a few seconds but every sync mark reports ~0.3 ms) showed the synchronous closure marks **under-report the user experience** — they time the schedule-the-instruction call, not the deferred MapLibre tessellation/repaint that the user actually waits for. See the spec's **"Revision (2026-06-13, mid–Stage 5)"** section for the full call-graph audit and the two findings. The shipped sync marks are KEPT (as nested detail, per the revision); the epic does not close here. Continue at Stage 6.
 
-**Files:** `src/core/LayerManager.ts` (and `src/index.ts` if the public `setColourAttribute` boundary is the better mark site).
+---
 
-**Verification gate:**
-- New marks appear in `dist/nomad-path.profiling.js` and in `test:perf` output.
-- Prod bundle grep gate still passes (extend the grep pattern to the new measure names).
-- `npm run test:all` green.
+## STAGE 6 — Time-to-rendered primitive + sync-coverage gaps (BRIEF — expand at session start)
 
-**Stage-end (epic close):** tick the `epic/profiling` entry in `CLAUDE.md` to `[x]` with a close-out note; append final Stage log line. Consider whether a `project_*` memory file is warranted (the strip-mechanism lesson + the harness-new-code-only convention are reusable).
+> **Read first:** the spec's **"Revision (2026-06-13, mid–Stage 5)"** section — it carries the under-the-hood explanation (fire-and-forget `map.set*` → deferred GPU work that *is* our deferred design cost), the two findings (A: sync gaps, B: wrong boundary), the full per-operation call-graph audit, and the four design decisions. This brief assumes that context.
 
-**Per-commit breakdown:** plan at session start (one commit per phase instrumented + the grep-pattern extension).
+**Stage goal:** make the reported timings reflect the **user-facing experience** (the optimisation target), by adding a *time-to-rendered* measurement axis (action → MapLibre `idle`) as the headline per operation, while keeping the existing synchronous `nomadpath.*` marks as nested detail. Also close the synchronous-coverage gaps from Finding A. **This is where the epic closes.**
+
+### Settled design decisions (from the revision — do NOT re-litigate)
+
+1. **Two axes, time-to-rendered is primary.** Keep the shipped sync closure marks (`loadTripData`, `buildSegmentFeatures`, `addLayers`, `setColourAttribute`, `updateRanges`) as nested sub-detail; add the action→`idle` marks as the headline.
+2. **New primitive lives in the same single `src/profiling.ts`, behind the same single flag, stripped from prod identically.** It is event-driven (end = a later map event), so it is NOT a `try/finally` closure — a distinct function from `profile`/`profileAsync`, but same file/flag/strip story.
+3. **Namespacing & how the two axes are *displayed* is deliberately left open** — settle it against real numbers when touching the widget/perf-test surface. The one hard rule: **never present the fast sync number as if it were the user-facing cost.**
+4. **Fill Finding-A sync gaps:** at minimum wrap `computeVisibleRanges`; consider the basemap switch and `fitToFeatures`.
+
+### Design work to do at session start (against the real code)
+
+These are genuine forks the spec leaves open *by design*; resolve them first, record the choice in the Stage log:
+
+- **The `idle`-based primitive's shape.** MapLibre fires `idle` once the map has finished rendering and no more transitions/tile loads are pending. Likely shape: a function that (a) records a start `performance.mark`, (b) registers `map.once('idle', …)`, (c) on idle emits `performance.measure(name, startMark)`. Open questions to settle against the code:
+  - **Coalescing / races.** A single user action triggers several `map.set*` calls (e.g. visibility toggle = `setFilter` + `setPaintProperty`); they share one render settle. The primitive must measure the *operation*, not each call — decide whether the call site wraps the whole operation once, or whether overlapping measures are acceptable. Beware: a *new* action arriving before `idle` fires (rapid toggling) — decide last-wins vs. ignore-while-pending vs. distinct names. Do NOT leak `once('idle')` handlers.
+  - **`idle` reliability in the harnesses.** Per `CLAUDE.md` Toolchain Gotchas: **"Playwright headless: `idle` event never fires with OSM basemap (tile fetches stay pending)."** This is load-bearing — the perf test (Stage 4) and the demo run against OSM. The characterization perf test reads `performance.measure` entries via `page.evaluate`; if `idle` never fires headlessly, the felt-marks will never resolve there. Decide the fix at session start: candidate options — (i) drive the perf harness on a basemap whose tiles settle (or a no-tile/blank style) so `idle` fires; (ii) use a more reliable settle signal than `idle` (e.g. `render` debounced, or `map.loaded()` polling) that works headless; (iii) cap the wait. The demo (real browser, mobile) likely sees `idle` fine; the *test* is the constrained environment. Whatever signal is chosen must be the SAME one the demo widget and the perf test read, or the two diverge.
+  - **Where the start mark is taken.** The felt clock should start at the *user action*, which is in the UI layer (e.g. the checkbox `change` handler in `TrackLegend`, the `select` `change` in `AttributeLegend`), not inside `LayerManager`. Decide whether the primitive is invoked from the UI handlers (truest "felt" boundary, but spreads profiling into `src/ui/`) or from the public `NomadPath`/`LayerManager` methods (one layer down, slightly understates, keeps profiling in core). The spec's intent is "the interactive one users feel" → favour the UI-handler boundary unless it muddies the single-flag story.
+
+- **Which operations get a felt mark.** Headline candidates (the user-felt set): initial load→first-render, colour change, visibility toggle (single + group), basemap switch, zoom/fit. Pick the ones that the real numbers + the show-and-tell care about; do not instrument for completeness. The basemap switch (Finding A: most expensive, currently unmarked) is a strong include.
+
+- **Sync-gap fills.** Wrap `computeVisibleRanges` (in `AttributeLegend.updateRanges`, `src/ui/AttributeLegend.ts:54` — note this is a `src/ui/` site, same boundary question as above) with a sync `profile('nomadpath.computeVisibleRanges', …)`. Consider a sync mark around the basemap-switch `addLayers` replay. Keep these as *detail*, consistent with decision 1.
+
+### Files (confirm at session start)
+
+- `src/profiling.ts` — add the time-to-rendered primitive (event-driven), same flag/strip story.
+- `src/profiling.test.ts` — unit test the new primitive's pass-through/no-op behaviour under the test context (flag off → no marks, returns/cleans up correctly), mirroring the existing `profile`/`profileAsync` tests.
+- `src/ui/AttributeLegend.ts`, `src/ui/TrackLegend.ts`, and/or `src/index.ts` / `src/core/LayerManager.ts` — call sites for the felt marks + the `computeVisibleRanges` sync mark, per the boundary decision.
+- `harness/perf/perf.spec.ts` + `harness/perf/test.html` and/or `harness/perf/playwright.perf.config.ts` — make `idle` (or the chosen settle signal) resolve in the test; print the felt marks alongside the sync ones.
+- `harness/demo/profiling-widget.js` — surface the felt marks; be careful in presentation not to conflate the two axes (decision 3). Reporting polish may be light — "modest but real."
+- Possibly `src/styling/ColorRamps.ts` is untouched; the expensive recolour is MapLibre's, captured by the felt mark, not a new sync mark.
+
+### Verification gate
+
+- **Felt marks resolve and are non-trivial.** On the profiling bundle, a colour change / visibility toggle / basemap switch produces a `performance.measure` whose duration reflects the render settle (materially larger than the ~0.3 ms sync mark on non-trivial data). The perf test (`npm run test:perf`) prints both axes; the felt rows are present (not empty — this is the `idle`-reliability fix working).
+- **Sync gaps filled.** `nomadpath.computeVisibleRanges` (and any other chosen sync fills) appear in the profiling bundle + `test:perf` output.
+- **Prod grep gate STILL passes** — extend the grep pattern to every new measure name (felt-mark names + new sync names); `grep` over `dist/nomad-path.js` = 0 matches; control-grep confirms the names exist in source.
+- **`npm run test:all` green** (integration + e2e remain on the prod bundle, untouched). If profiling call sites are added to `src/ui/`, confirm the prod build still strips them (the flag guard works regardless of file).
+- **Demo** (`npm run demo`) shows the felt number for an interactive action and does not mislabel it as the sync cost.
+
+### Stage-end (epic close)
+
+- Tick the `epic/profiling` entry in `CLAUDE.md` Epic Progress to `[x]` with a close-out note (mention the two-axis outcome + the mid-stage revision).
+- Append the final Stage log line (what shipped, the settled design decisions from "design work at session start", commit refs, any deviation).
+- Write a `project_*` memory file: the reusable lessons are (i) the strip-mechanism (`typeof` guard + `passes: 2` terser), (ii) the harness-new-code-only convention, and — most importantly — (iii) **the sync-vs-time-to-rendered lesson: profiling a fire-and-forget map API at the call boundary under-reports the user experience; the render cost is the deferred design cost and must be measured action→idle.**
+- Then invoke **superpowers:finishing-a-development-branch**.
+
+**Per-commit breakdown:** plan at session start (likely: idle-primitive + unit test → harness settle-signal fix → felt marks at chosen boundaries → sync-gap fills → grep-pattern extension + GATE → widget surfacing).
 
 ---
 
 ## Self-Review notes
 
-- **Spec coverage:** measurement primitive (Task 1.1), two outputs (Stage 1 prod / Stage 2 profiling), single flag (Task 1.1/1.2), demo widget (Stage 3), characterization test (Stage 4), `harness/` new-code-only (Stages 3–4), held-out items (no workspaces/validation — none planned). All spec sections map to a stage.
-- **Strip-mechanism risk:** Task 1.1's `typeof NOMADPATH_TIMING !== 'undefined'` guard is the one design subtlety — it lets the SAME source run under vitest (identifier undefined → `false`) AND fold correctly under rollup (identifier replaced by literal). The Stage 1 GATE (Task 1.4) is the explicit check that this folds to a clean prod bundle. If terser does not strip because the `typeof` guard blocks constant-folding, the fallback (noted in Task 1.4 Step 2) is to use a bare `NOMADPATH_TIMING` reference and provide a vitest-side define instead. This is the go/no-go.
-- **Type consistency:** `profile`/`profileAsync` signatures fixed in Task 1.1 and reused verbatim at call sites in Task 1.3.
-- **Deferred-by-design:** Stages 2–5 per-commit steps are intentionally not expanded (cross-session protocol); their gates ARE specified so each session knows "done."
+- **Spec coverage:** measurement primitive (Task 1.1), two outputs (Stage 1 prod / Stage 2 profiling), single flag (Task 1.1/1.2), demo widget (Stage 3), characterization test (Stage 4), sync marks for remaining phases (Stage 5), **time-to-rendered axis + sync-gap fills (Stage 6, per the spec revision)**, `harness/` new-code-only (Stages 3–4), held-out items (no workspaces/validation — none planned). All spec sections — including the 2026-06-13 revision — map to a stage.
+- **Strip-mechanism risk:** Task 1.1's `typeof NOMADPATH_PROFILING !== 'undefined'` guard is the one design subtlety — it lets the SAME source run under vitest (identifier undefined → `false`) AND fold correctly under rollup (identifier replaced by literal). The Stage 1 GATE (Task 1.4) is the explicit check that this folds to a clean prod bundle; Stage 1's log records the fix (`passes: 2` terser drops the dead string args). The new Stage 6 primitive rides the same mechanism. (Flag renamed `NOMADPATH_TIMING → NOMADPATH_PROFILING` in Stage 1.)
+- **Type consistency:** `profile`/`profileAsync` signatures fixed in Task 1.1 and reused verbatim. Stage 6's new primitive defines its own signature at session start; keep it in the same `src/profiling.ts` and unit-test it like the existing wrappers.
+- **Deferred-by-design:** Stages 2–6 per-commit steps are intentionally not expanded (cross-session protocol); their gates ARE specified so each session knows "done." Stage 6 additionally lists the genuine open design forks to settle at session start (the `idle`-reliability one is load-bearing — see `CLAUDE.md` headless gotcha).

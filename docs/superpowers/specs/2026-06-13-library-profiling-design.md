@@ -88,6 +88,46 @@ Candidates (confirm/trim after reading the code — pick what's genuinely meanin
 - **Initial colour render** — first `buildColourExpression` + `setPaintProperty` during initial setup.
 - **Re-render on colour change** — `setColourAttribute` (`src/index.ts:277` → `LayerManager.setColourAttribute` `src/core/LayerManager.ts:370`); the interactive one users feel.
 
+## Revision (2026-06-13, mid–Stage 5): synchronous marks under-report the user experience
+
+**Trigger.** With real Hawaii data, disabling the last international flight (hides a long line, recomputes elevation bounds, recolours for the new scale) takes a *noticeable few seconds* in the browser — but the instrumented marks report `setColourAttribute` ≈ `updateRanges` ≈ 0.3 ms. The numbers are honest for the function *bodies*, but they do not reflect the felt experience. A code read-through (the full call graph below) confirmed two distinct problems.
+
+### Under the hood — why fast JS, slow render
+
+Every `map.setFilter` / `map.setPaintProperty` / `map.setStyle` call is **fire-and-forget**: it stores a new instruction and returns immediately (hence ~0.3 ms). The expensive work happens **later, on MapLibre's own render loop**: for each affected segment feature it must re-evaluate the data-driven paint expression, re-run the filter predicate, re-tessellate the line geometry, and re-upload vertex buffers to the GPU.
+
+**That deferred cost is a direct consequence of our design choices**, not MapLibre being slow in the abstract:
+
+- **Per-segment explosion** — `buildSegmentFeatures` turns every track into N−1 two-point LineStrings, multiplying feature count massively (one long flight → thousands of features), and every one is re-evaluated/re-tessellated on each paint or filter change.
+- **Data-driven paint expressions** — colour is a MapLibre `interpolate`/`match` expression over `['get', …]`; changing the attribute or range bounds forces a **full per-feature re-evaluation**, not a cheap uniform swap.
+- **`tolerance: 0`** on the track source disables geometry simplification (deliberate, to stop short segments collapsing) → no vertex reduction, maximum tessellation cost.
+
+So the render time **is** a (deferred) measurement of our architecture. Measuring only the synchronous schedule-the-instruction call credits us for being fast when we have merely moved the bill downstream where a `try/finally` closure cannot see it.
+
+### Two findings
+
+- **Finding A — synchronous-coverage gaps.** Even on the "our JS" axis we miss the relevant work: `computeVisibleRanges` (scans every point of every visible track — the heavy synchronous step in a visibility toggle) is *uninstrumented*; the visibility-toggle mark sits on the *cheapest* step (`updateRanges`'s `setPaintProperty`); `AttributeLegend._refreshScale` (canvas redraw), `fitToFeatures` (turf bbox), and the **entire basemap switch** (`setStyle` + full `addLayers` replay + restore loop — the single most expensive user action) are unmarked.
+- **Finding B — wrong boundary for the optimisation target.** The closure model structurally cannot see the async tessellation/repaint/GPU cost — the seconds the user feels. Capturing that needs a different instrument: **start a mark on the user action, end it on MapLibre's next `idle` event** (fired when rendering settles).
+
+### Full call-graph audit (per user-facing operation)
+
+- **Initial load (`NomadPath.create`)** — `loadTripData` ✅ (boundary correct, genuinely async); `buildSegmentFeatures` ✅ + `addLayers` total ✅ (but `addSource`/`addLayer` only *schedule* GPU work); `computeVisibleRanges` in the `AttributeLegend` constructor ❌; `fitToFeatures` ❌; first paint ❌.
+- **Colour change (dropdown)** — `setColourAttribute` ✅ wraps `buildColourExpression` + `setPaintProperty`, but that is only the schedule call; the per-feature repaint is async ❌; `_refreshScale` canvas redraw outside the mark ❌.
+- **Visibility toggle (the trigger case)** — `setTrackVisible` → `setFilter` ❌ (schedules hide-repaint); `computeVisibleRanges` ❌ (heavy sync); `updateRanges` → `setPaintProperty` ✅ (only the 0.3 ms schedule); `_refreshScale` ❌; two async repaints (filter-hide + recolour) ❌.
+- **Basemap switch** — entirely unmarked; most expensive action.
+- **Zoom-to-track / fit** — `fitToFeatures` unmarked.
+
+### Revised design — two axes, time-to-rendered is primary
+
+Decisions (user, 2026-06-13):
+
+1. **Add a time-to-rendered primitive.** A second, event-driven measurement: mark on the user action → end on MapLibre's next `idle`. This is the headline per operation and the genuine optimisation signal, because the render cost *is* our deferred design cost. It is **not** a `try/finally` closure (the end is a later map event), so it is a distinct primitive from `profile`/`profileAsync` — but it lives in the same single `src/profiling.ts`, behind the same single flag, and is stripped from prod identically.
+2. **Keep the synchronous closure marks as nested detail.** `nomadpath.*` sync marks (already shipped: `loadTripData`, `buildSegmentFeatures`, `addLayers`, `setColourAttribute`, `updateRanges`) stay — useful for spotting a genuinely-heavy *synchronous* step (e.g. `computeVisibleRanges` on huge data). They are sub-detail under the felt number, **not** the headline.
+3. **Namespacing & how the two axes are reported is deliberately left open** — to be settled when the widget/test surface is built against real numbers. Be careful not to present the fast sync number as if it were the user-facing cost. (User: "be careful about how we report it … figure out later.")
+4. **Fill the synchronous-coverage gaps** identified in Finding A as part of the same work (at minimum wrap `computeVisibleRanges`; consider the basemap switch and fit).
+
+This supersedes the original "Phases to instrument" list above and the original Stage 5 brief. The strip mechanism, two-bundle scheme, `harness/` rule, and characterization-test approach are unchanged.
+
 ## Demo display widget
 
 - A small, **demo-only** widget (not in the prod library) surfacing the `performance` measurements on-page.
