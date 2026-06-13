@@ -44,7 +44,10 @@ export function mountProfilingWidget(toolbarEl) {
     });
 
     toolbarEl.appendChild(toggle);
-    document.body.appendChild(panel);
+    // Mount the panel in the positioned #stage (the map area below the
+    // toolbar) so its top-centre anchor sits under the toolbar, not over it.
+    // Fall back to body if the demo markup ever changes.
+    (document.getElementById('stage') ?? document.body).appendChild(panel);
 
     const render = () => {
         const phases = [...latest.keys()].sort();
