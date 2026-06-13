@@ -7,9 +7,11 @@ node_modules/
 # Build output
 dist/
 harness/demo/dist/
+harness/perf/dist/
 test/integration/dist/
 test/e2e/dist/
 test/e2e/fixture.geojson
+harness/perf/fixture.geojson
 coverage/
 
 # Environment
