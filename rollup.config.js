@@ -27,7 +27,11 @@ const library = {
         resolve({ browser: true }),
         commonjs(),
         typescript({ tsconfig: './tsconfig.rollup.json' }),
-        production && terser(),
+        // passes: 2 — the first compress pass folds the NOMADPATH_PROFILING
+        // ternary in src/profiling.ts down to an identity wrapper; the second
+        // pass then drops the now-dead phase-name string arguments at each
+        // call site, so the prod bundle is clean of profiling phase names too.
+        production && terser({ compress: { passes: 2 } }),
     ].filter(Boolean),
 };
 
