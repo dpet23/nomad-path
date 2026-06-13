@@ -1,0 +1,78 @@
+/* Styles for the demo-only profiling widget (profiling-widget.js). */
+
+.np-prof__toggle {
+    margin-left: auto;
+    padding: 4px 12px;
+    font: inherit;
+    font-size: 0.82rem;
+    color: #eee;
+    background: #2d2d4a;
+    border: 1px solid #44446a;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.np-prof__toggle:hover {
+    background: #3a3a5c;
+}
+
+/* Bottom-centre, mirroring the demo's #status toast — the one screen region
+   with no MapLibre/library control in it, so the panel never overlays an
+   interactive control and needs no per-corner pixel offsets. */
+.np-prof {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    min-width: 240px;
+    max-width: 360px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: #eee;
+    background: rgba(26, 26, 46, 0.95);
+    border: 1px solid #44446a;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.np-prof__title {
+    margin-bottom: 8px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9a9ac0;
+}
+
+.np-prof__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.np-prof__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 3px 0;
+}
+
+.np-prof__row + .np-prof__row {
+    border-top: 1px solid #2d2d4a;
+}
+
+.np-prof__phase {
+    color: #cfcfe8;
+    font-family: ui-monospace, monospace;
+}
+
+.np-prof__ms {
+    color: #8fe3a0;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.np-prof__empty {
+    color: #7a7a9a;
+    font-style: italic;
+}

@@ -35,6 +35,7 @@
 <!-- MapLibre CSS (needed for map controls) -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
 <link rel="stylesheet" href="../dist/nomad-path.css" />
+<link rel="stylesheet" href="./profiling-widget.css" />
 
 <script type="module">
 // ---------------------------------------------------------------------------
@@ -48,10 +49,14 @@ const DATA_URLS = [
 // Bootstrap
 // ---------------------------------------------------------------------------
 import { NomadPath, BASEMAPS } from '../dist/nomad-path.profiling.js';
+import { mountProfilingWidget } from './profiling-widget.js';
 
 const status = document.getElementById('status');
 const show = msg => { status.style.display = 'block'; status.textContent = msg; };
 const hide = () => { status.style.display = 'none'; };
+
+// Mount BEFORE create() so the observer captures the initial load/ingest marks.
+mountProfilingWidget(document.getElementById('toolbar'));
 
 show('Loading trip data…');
 
