@@ -27,7 +27,7 @@ output streams back to the pushing client as 'remote: [OK] ...' lines.
 Options:
   -i, --input  <dir>   Directory to configure (must contain a .git/ dir) [required]
   -o, --output <file>  Output path for the geojson the hook should build
-                       (default: ./demo/${OUTPUT_FILE})
+                       (default: ./harness/demo/${OUTPUT_FILE})
   -n, --name   <name>  Trip name passed to the build
 
 What this does:
@@ -64,7 +64,7 @@ if (!values.input) {
 }
 
 const INPUT = expandPath(values.input);
-const OUTPUT = expandPath(values.output ?? join('demo', OUTPUT_FILE));
+const OUTPUT = expandPath(values.output ?? join('harness', 'demo', OUTPUT_FILE));
 const NAME = values.name;
 
 try {

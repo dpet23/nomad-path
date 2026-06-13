@@ -6,7 +6,7 @@ node_modules/
 
 # Build output
 dist/
-demo/dist/
+harness/demo/dist/
 test/integration/dist/
 test/e2e/dist/
 test/e2e/fixture.geojson
@@ -24,4 +24,4 @@ playwright-report/
 test-results/
 
 # Generated trip data (built from real GPS files, not committed)
-demo/*.geojson
+harness/demo/*.geojson

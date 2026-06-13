@@ -14,7 +14,7 @@
     "dist/types"
   ],
   "scripts": {
-    "_copy:demo": "node -e \"const fs=require('fs');fs.mkdirSync('demo/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'demo/dist/'+f));\"",
+    "_copy:demo": "node -e \"const fs=require('fs');fs.mkdirSync('harness/demo/dist',{recursive:true});['nomad-path.profiling.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'harness/demo/dist/'+f));\"",
     "_copy:library": "node -e \"const fs=require('fs');fs.mkdirSync('test/integration/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'test/integration/dist/'+f));\"",
     "_copy:e2e": "node -e \"const fs=require('fs');fs.mkdirSync('test/e2e/dist',{recursive:true});['nomad-path.js','nomad-path.css'].forEach(f=>fs.cpSync('dist/'+f,'test/e2e/dist/'+f));\"",
     "_build:library": "npm run build:lib && npm run _copy:library",
@@ -24,7 +24,7 @@
     "build:contract": "rollup -c rollup.contract.config.js",
     "build:data": "npm run build:contract && node preprocessing/build-trip-data.js",
     "build:demo": "npm run build:lib && npm run _copy:demo",
-    "demo": "npm run build:demo && npx serve ./demo",
+    "demo": "npm run build:demo && npx serve ./harness/demo",
     "watch": "npm run build:demo && node preprocessing/watch.js",
     "git:enable": "node preprocessing/enable-git-rebuilds.js",
     "lint": "eslint src --ext .ts",
@@ -41,7 +41,7 @@
     "test:library:debug": "npm run _build:library && playwright test --ui",
     "test:e2e:debug": "npm run _build:e2e && playwright test -c playwright.e2e.config.ts --ui",
     "test:library:install": "playwright install chromium",
-    "clean": "node -e \"['dist','demo/dist','test/integration/dist','test/e2e/dist','coverage','playwright-report','test-results'].forEach(d=>require('fs').rmSync(d,{recursive:true,force:true}))\"",
+    "clean": "node -e \"['dist','harness/demo/dist','test/integration/dist','test/e2e/dist','coverage','playwright-report','test-results'].forEach(d=>require('fs').rmSync(d,{recursive:true,force:true}))\"",
     "prepare": "husky"
   },
   "dependencies": {
