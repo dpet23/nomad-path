@@ -249,50 +249,60 @@ export class LayerManager {
      * map's style has loaded.
      */
     addLayers(trips: TripData[]): void {
-        const tracks = trips.flatMap(t => t.features.filter((f): f is TrackFeature => f.properties.type === 'track'));
-        const pois = trips.flatMap(t => t.features.filter((f): f is POIFeature => f.properties.type === 'poi'));
+        profile('nomadpath.addLayers', () => {
+            const tracks = trips.flatMap(t =>
+                t.features.filter((f): f is TrackFeature => f.properties.type === 'track'),
+            );
+            const pois = trips.flatMap(t => t.features.filter((f): f is POIFeature => f.properties.type === 'poi'));
 
-        // Defensive cleanup: setStyle() clears sources/layers, but guard against
-        // any case where they still exist (e.g. race conditions or double calls).
-        for (const id of [POI_LABEL_LAYER, POI_LAYER, TRACK_LAYER]) {
-            if (this._map.getLayer(id)) this._map.removeLayer(id);
-        }
-        for (const id of [POI_LABEL_SOURCE, POI_SOURCE, TRACK_SOURCE]) {
-            if (this._map.getSource(id)) this._map.removeSource(id);
-        }
+            // Defensive cleanup: setStyle() clears sources/layers, but guard against
+            // any case where they still exist (e.g. race conditions or double calls).
+            for (const id of [POI_LABEL_LAYER, POI_LAYER, TRACK_LAYER]) {
+                if (this._map.getLayer(id)) this._map.removeLayer(id);
+            }
+            for (const id of [POI_LABEL_SOURCE, POI_SOURCE, TRACK_SOURCE]) {
+                if (this._map.getSource(id)) this._map.removeSource(id);
+            }
 
-        this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
-        // Respect the `hidden` flag set during preprocessing (absent/false = visible).
-        this._visibleIds = new Set(tracks.filter(t => !t.properties.hidden).map(deriveTrackId));
-        this._visiblePOICategories = new Set(pois.filter(p => !p.properties.hidden).map(p => p.properties.category));
+            this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
+            // Respect the `hidden` flag set during preprocessing (absent/false = visible).
+            this._visibleIds = new Set(tracks.filter(t => !t.properties.hidden).map(deriveTrackId));
+            this._visiblePOICategories = new Set(
+                pois.filter(p => !p.properties.hidden).map(p => p.properties.category),
+            );
 
-        const { featureCollection, maxDayIndex } = profile('nomadpath.buildSegmentFeatures', () =>
-            buildSegmentFeatures(tracks),
-        );
-        this._maxDayIndex = maxDayIndex;
+            const { featureCollection, maxDayIndex } = profile('nomadpath.buildSegmentFeatures', () =>
+                buildSegmentFeatures(tracks),
+            );
+            this._maxDayIndex = maxDayIndex;
 
-        // tolerance: 0 disables tile simplification, preventing short segments
-        // from being collapsed to dots at low zoom levels.
-        this._map.addSource(TRACK_SOURCE, { type: 'geojson', data: featureCollection, tolerance: 0 });
-        this._map.addLayer({
-            id: TRACK_LAYER,
-            type: 'line',
-            source: TRACK_SOURCE,
-            filter: buildVisibilityFilter(this._visibleIds),
-            paint: {
-                'line-color': buildColourExpression('day', this._ranges, this._maxDayIndex) as ExpressionSpecification,
-                'line-width': 3,
-                'line-opacity': 0.8,
-            },
-            layout: {
-                'line-cap': 'round',
-                'line-join': 'round',
-            },
+            // tolerance: 0 disables tile simplification, preventing short segments
+            // from being collapsed to dots at low zoom levels.
+            this._map.addSource(TRACK_SOURCE, { type: 'geojson', data: featureCollection, tolerance: 0 });
+            this._map.addLayer({
+                id: TRACK_LAYER,
+                type: 'line',
+                source: TRACK_SOURCE,
+                filter: buildVisibilityFilter(this._visibleIds),
+                paint: {
+                    'line-color': buildColourExpression(
+                        'day',
+                        this._ranges,
+                        this._maxDayIndex,
+                    ) as ExpressionSpecification,
+                    'line-width': 3,
+                    'line-opacity': 0.8,
+                },
+                layout: {
+                    'line-cap': 'round',
+                    'line-join': 'round',
+                },
+            });
+
+            if (pois.length > 0) {
+                this._addPoiLayers(pois);
+            }
         });
-
-        if (pois.length > 0) {
-            this._addPoiLayers(pois);
-        }
     }
 
     /** Add circle and label layers for POI features. */
@@ -393,11 +403,13 @@ export class LayerManager {
      */
     updateRanges(ranges: AttributeRanges): void {
         this._ranges = ranges;
-        this._map.setPaintProperty(
-            TRACK_LAYER,
-            'line-color',
-            buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
-        );
+        profile('nomadpath.updateRanges', () => {
+            this._map.setPaintProperty(
+                TRACK_LAYER,
+                'line-color',
+                buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
+            );
+        });
     }
 
     /** The current attribute ranges (for legend display). */
