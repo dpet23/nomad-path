@@ -1,4 +1,4 @@
-import { type BasemapId, BASEMAPS } from '../core/MapEngine';
+import { type BasemapRegistry, BASEMAPS } from '../core/MapEngine';
 
 // ---------------------------------------------------------------------------
 // MapControls
@@ -17,14 +17,17 @@ export class MapControls {
      *
      * @param mapContainer - the map's container element
      * @param onFit        - called when the user clicks the fit-to-visible button
-     * @param onBasemap    - called with the chosen basemap ID when the selector changes
-     * @param currentBasemap - the initially selected basemap (defaults to 'osm')
+     * @param onBasemap    - called with the chosen basemap id when the selector changes
+     * @param currentBasemap - the initially selected basemap id (defaults to 'osm')
+     * @param basemaps     - the basemap registry to populate the selector from
+     *                       (defaults to the built-in {@link BASEMAPS})
      */
     constructor(
         mapContainer: HTMLElement,
         onFit: () => void,
-        onBasemap: (id: BasemapId) => void,
-        currentBasemap: BasemapId = 'osm',
+        onBasemap: (id: string) => void,
+        currentBasemap = 'osm',
+        basemaps: BasemapRegistry = BASEMAPS,
     ) {
         this._root = document.createElement('div');
         this._root.className = 'np-map-controls';
@@ -38,14 +41,14 @@ export class MapControls {
 
         const select = document.createElement('select');
         select.className = 'np-basemap-select';
-        for (const [id, cfg] of Object.entries(BASEMAPS) as [BasemapId, (typeof BASEMAPS)[BasemapId]][]) {
+        for (const [id, cfg] of Object.entries(basemaps)) {
             const opt = document.createElement('option');
             opt.value = id;
             opt.textContent = cfg.label;
             select.appendChild(opt);
         }
         select.value = currentBasemap;
-        select.addEventListener('change', () => onBasemap(select.value as BasemapId));
+        select.addEventListener('change', () => onBasemap(select.value));
         this._root.appendChild(select);
 
         mapContainer.appendChild(this._root);

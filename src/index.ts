@@ -5,10 +5,13 @@ import { deriveTrackId, extractTracks, loadTripData } from './core/DataLoader';
 import { type ColourAttribute, LayerManager, TRANSPORT_MODE_COLOURS } from './core/LayerManager';
 import {
     type BasemapId,
+    type BasemapRegistry,
     BASEMAPS,
     createMap,
     fitToFeatures,
     fitToPOI as engineFitToPOI,
+    resolveBasemap,
+    resolveBasemaps,
     setBasemap as engineSetBasemap,
     waitForLoad,
 } from './core/MapEngine';
@@ -51,6 +54,7 @@ export class NomadPath {
     private readonly _map: MaplibreMap;
     private readonly _layers: LayerManager;
     private readonly _trips: TripData[];
+    private readonly _basemaps: BasemapRegistry;
     private _ui: UIComponents | null;
     /** Incremented on each setBasemap() call; stale handlers check and bail. */
     private _basemapGeneration = 0;
@@ -61,12 +65,20 @@ export class NomadPath {
      * @param map - initialised MapLibre map instance
      * @param layers - layer manager bound to the map
      * @param trips - loaded trip data
+     * @param basemaps - the resolved basemap registry (built-ins + custom)
      * @param ui - optional UI component references
      */
-    private constructor(map: MaplibreMap, layers: LayerManager, trips: TripData[], ui: UIComponents | null) {
+    private constructor(
+        map: MaplibreMap,
+        layers: LayerManager,
+        trips: TripData[],
+        basemaps: BasemapRegistry,
+        ui: UIComponents | null,
+    ) {
         this._map = map;
         this._layers = layers;
         this._trips = trips;
+        this._basemaps = basemaps;
         this._ui = ui;
     }
 
@@ -86,13 +98,17 @@ export class NomadPath {
      * ```
      */
     static async create(config: TravelMapConfig): Promise<NomadPath> {
-        const basemapId = (config.defaultBasemap as BasemapId | undefined) ?? 'osm';
+        // Merge any consumer-supplied basemaps over the built-in registry, then
+        // resolve the starting basemap from the combined set.
+        const basemaps = resolveBasemaps(config.basemaps);
+        const basemapId = config.defaultBasemap ?? 'osm';
+        const basemap = resolveBasemap(basemaps, basemapId);
 
         // Load trip data and initialise the map in parallel
         const [trips, map] = await Promise.all([
             loadTripData(config.dataUrls),
             (async () => {
-                const m = createMap(config.container, basemapId);
+                const m = createMap(config.container, basemap);
                 await waitForLoad(m);
                 return m;
             })(),
@@ -114,7 +130,7 @@ export class NomadPath {
             ]);
         }
 
-        const instance = new NomadPath(map, layers, trips, null);
+        const instance = new NomadPath(map, layers, trips, basemaps, null);
 
         // Wire legend UI if the map container element is available.
         const containerEl = map.getContainer();
@@ -141,6 +157,7 @@ export class NomadPath {
             () => instance.fitToTracks(),
             id => instance.setBasemap(id),
             basemapId,
+            basemaps,
         );
 
         instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu, mapControls };
@@ -156,7 +173,8 @@ export class NomadPath {
      * Switch the active basemap. Zoom is clamped to the new basemap's limits.
      * Track layers are automatically re-added after the style reloads.
      */
-    setBasemap(basemapId: BasemapId): this {
+    setBasemap(basemapId: string): this {
+        const basemap = resolveBasemap(this._basemaps, basemapId);
         const prevAttribute = this._layers.colourAttribute;
         const prevVisibleIds = new Set(this._layers.visibleIds);
         const prevVisiblePOICategories = new Set(this._layers.visiblePOICategories);
@@ -216,7 +234,7 @@ export class NomadPath {
         };
 
         this._map.once('styledata', onStyleData);
-        engineSetBasemap(this._map, basemapId);
+        engineSetBasemap(this._map, basemap);
 
         return this;
     }
