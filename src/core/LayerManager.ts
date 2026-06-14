@@ -382,11 +382,13 @@ export class LayerManager {
     /** Switch the colour attribute used to style the track layer. */
     setColourAttribute(attribute: ColourAttribute): void {
         this._colourAttribute = attribute;
-        this._map.setPaintProperty(
-            TRACK_LAYER,
-            'line-color',
-            buildColourExpression(attribute, this._ranges, this._maxDayIndex),
-        );
+        profile('nomadpath.setColourAttribute', () => {
+            this._map.setPaintProperty(
+                TRACK_LAYER,
+                'line-color',
+                buildColourExpression(attribute, this._ranges, this._maxDayIndex),
+            );
+        });
     }
 
     /** The currently active colour attribute. */
@@ -401,11 +403,13 @@ export class LayerManager {
      */
     updateRanges(ranges: AttributeRanges): void {
         this._ranges = ranges;
-        this._map.setPaintProperty(
-            TRACK_LAYER,
-            'line-color',
-            buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
-        );
+        profile('nomadpath.updateRanges', () => {
+            this._map.setPaintProperty(
+                TRACK_LAYER,
+                'line-color',
+                buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
+            );
+        });
     }
 
     /** The current attribute ranges (for legend display). */

@@ -1,7 +1,6 @@
 import type { AttributeRanges } from '../contract/types';
 import { computeVisibleRanges } from '../core/AttributeRanges';
 import type { LegendPanelConfig } from '../data/types';
-import { profile } from '../profiling';
 import {
     COLOUR_ATTRIBUTE_REGISTRY,
     type ColourAttribute,
@@ -40,9 +39,7 @@ export class AttributeLegend extends BasePanel {
     constructor(mapContainer: HTMLElement, ctx: UIContext, config?: LegendPanelConfig) {
         super(mapContainer, 'np-attr-legend', 'Colour', { position: 'bottomleft', ...config });
         this._ctx = ctx;
-        this._ranges = profile('nomadpath.computeVisibleRanges', () =>
-            computeVisibleRanges(ctx.trips, ctx.layers.visibleIds),
-        );
+        this._ranges = computeVisibleRanges(ctx.trips, ctx.layers.visibleIds);
         ctx.layers.updateRanges(this._ranges);
         this._render();
     }
@@ -54,9 +51,7 @@ export class AttributeLegend extends BasePanel {
      * @param visibleIds - set of currently visible track IDs
      */
     updateRanges(visibleIds: ReadonlySet<string>): void {
-        this._ranges = profile('nomadpath.computeVisibleRanges', () =>
-            computeVisibleRanges(this._ctx.trips, visibleIds),
-        );
+        this._ranges = computeVisibleRanges(this._ctx.trips, visibleIds);
         this._ctx.layers.updateRanges(this._ranges);
         this._refreshScale();
     }

@@ -1,5 +1,3 @@
-import type { BasemapConfig } from '../core/MapEngine';
-
 /**
  * Configuration object passed to TravelMap.create().
  */
@@ -10,17 +8,8 @@ export interface TravelMapConfig {
     dataUrls: string[];
     /** Initial map bounds, or 'auto' to fit all visible tracks. */
     initialBounds?: 'auto' | [[number, number], [number, number]];
-    /**
-     * Id of the basemap to show first. Defaults to `'osm'`. May reference a
-     * built-in id (`'osm'`, `'blueMarble'`) or any id added via {@link basemaps}.
-     */
-    defaultBasemap?: string;
-    /**
-     * Additional basemaps, merged over the built-in registry (consumer entries
-     * win on id collision). Lets consumers register custom styles selectable
-     * via {@link defaultBasemap} and the basemap switcher.
-     */
-    basemaps?: Record<string, BasemapConfig>;
+    /** Default basemap style. */
+    defaultBasemap?: 'osm' | 'satellite' | 'terrain';
     /** Legend panel configuration. */
     legends?: LegendsConfig;
     /** Mobile layout configuration. */

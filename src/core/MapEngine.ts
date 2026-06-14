@@ -7,11 +7,9 @@ import maplibregl, { type Map, type StyleSpecification } from 'maplibre-gl';
 // Basemap registry
 // ---------------------------------------------------------------------------
 
-/** Built-in basemap ids. Consumers may register additional ids via config. */
 export type BasemapId = 'osm' | 'blueMarble';
 
-/** A basemap definition: its style plus the metadata the UI and map need. */
-export interface BasemapConfig {
+interface BasemapConfig {
     /** Human-readable label shown in the basemap selector UI. */
     label: string;
     /** MapLibre style URL or inline style object. */
@@ -20,9 +18,6 @@ export interface BasemapConfig {
     maxZoom: number;
     attribution: string;
 }
-
-/** A resolved basemap registry: built-ins plus any consumer-supplied entries. */
-export type BasemapRegistry = Record<string, BasemapConfig>;
 
 /**
  * Build a minimal MapLibre style for NASA GIBS Blue Marble raster tiles.
@@ -74,33 +69,16 @@ export const BASEMAPS: Record<BasemapId, BasemapConfig> = {
     },
 };
 
-/**
- * Merge consumer-supplied basemaps over the built-in {@link BASEMAPS} registry.
- * Consumer entries win on id collision (so a consumer may override `osm`). The
- * built-in registry is never mutated. Returns a fresh registry.
- */
-export function resolveBasemaps(custom?: BasemapRegistry): BasemapRegistry {
-    return { ...BASEMAPS, ...custom };
-}
-
-/** Look up a basemap by id, throwing a clear error if the id is not registered. */
-export function resolveBasemap(registry: BasemapRegistry, id: string): BasemapConfig {
-    const basemap = registry[id];
-    if (!basemap) {
-        throw new Error(`Unknown basemap "${id}". Registered: ${Object.keys(registry).join(', ')}.`);
-    }
-    return basemap;
-}
-
 // ---------------------------------------------------------------------------
 // Map initialisation
 // ---------------------------------------------------------------------------
 
 /**
- * Create and return a MapLibre Map instance for the given container and basemap.
+ * Create and return a MapLibre Map instance for the given container.
  * The map is not yet ready for layer operations; await {@link waitForLoad}.
  */
-export function createMap(container: string, basemap: BasemapConfig): Map {
+export function createMap(container: string, basemapId: BasemapId = 'osm'): Map {
+    const basemap = BASEMAPS[basemapId];
     return new maplibregl.Map({
         container,
         style: basemap.style,
@@ -128,7 +106,9 @@ export function waitForLoad(map: Map): Promise<void> {
 /**
  * Switch the active basemap. Clamps current zoom to the new basemap's limits.
  */
-export function setBasemap(map: Map, basemap: BasemapConfig): void {
+export function setBasemap(map: Map, basemapId: BasemapId): void {
+    const basemap = BASEMAPS[basemapId];
+
     map.setStyle(basemap.style);
     // setMinZoom/setMaxZoom clamp the current zoom automatically.
     map.setMinZoom(basemap.minZoom);
