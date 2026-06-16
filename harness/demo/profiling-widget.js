@@ -84,7 +84,9 @@ export function mountProfilingWidget(toolbarEl) {
         '<li class="np-prof__row np-prof__row--head">' +
         '<span class="np-prof__phase"></span>' +
         '<span class="np-prof__ms">sync</span>' +
-        '<span class="np-prof__ff">1st frame</span>' +
+        // NOT "done": the first composited paint. The GPU keeps painting for up
+        // to ~2s after on heavy actions; the segment count is that cost's proxy.
+        '<span class="np-prof__ff">to 1st paint</span>' +
         '</li>';
 
     const render = () => {
@@ -105,13 +107,16 @@ export function mountProfilingWidget(toolbarEl) {
                     const parts = rowPath.split('/');
                     const depth = parts.length - 1; // 0 = top-level, 1 = nested phase
                     const label = parts[parts.length - 1]; // leaf name, shown verbatim
-                    // sync ms is the row's own duration; for a synthesized group
-                    // header without its own measure, sum its children's sync times.
-                    const sync = data.sync ?? sumChildSync(rowPath);
+                    // A row's own measured sync, or — for a group header with no
+                    // measure of its own — the SUM of its children. The sum
+                    // overstates wall-clock (load phases overlap), so mark it.
+                    const ownSync = typeof data.sync === 'number';
+                    const sync = ownSync ? data.sync : sumChildSync(rowPath);
+                    const syncText = ownSync ? fmtMs(sync) : sync === undefined ? '' : `~${fmtMs(sync)} (sum)`;
                     return (
                         `<li class="np-prof__row" data-depth="${depth}">` +
                         `<span class="np-prof__phase">${label}</span>` +
-                        `<span class="np-prof__ms">${fmtMs(sync)}</span>` +
+                        `<span class="np-prof__ms">${syncText}</span>` +
                         `<span class="np-prof__ff">${fmtMs(data.columns.firstFrame)}</span>` +
                         `</li>`
                     );
