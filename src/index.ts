@@ -9,10 +9,12 @@ import {
     createMap,
     fitToFeatures,
     fitToPOI as engineFitToPOI,
+    measureToFirstFrame,
     setBasemap as engineSetBasemap,
     waitForLoad,
 } from './core/MapEngine';
 import type { TravelMapConfig } from './data/types';
+import { profile } from './profiling';
 import { AttributeLegend } from './ui/AttributeLegend';
 import { MapControls } from './ui/MapControls';
 import { MobileMenu } from './ui/MobileMenu';
@@ -128,22 +130,31 @@ export class NomadPath {
         };
 
         const legendCfg = config.legends ?? {};
-        const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
-        const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
-            onVisibilityChange: () => {
-                attrLegend.updateRanges(layers.visibleIds);
-            },
-        });
-        const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
-        const mobileMenu = new MobileMenu(containerEl, [trackLegend, attrLegend, poiLegend]);
-        const mapControls = new MapControls(
-            containerEl,
-            () => instance.fitToTracks(),
-            id => instance.setBasemap(id),
-            basemapId,
-        );
+        // Load-time phase: build the legend UI components.
+        profile('nomadpath.mountUI', () => {
+            const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
+            const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
+                onVisibilityChange: () => {
+                    // A track toggle's dominant cost is the range-driven re-paint of
+                    // the visible set (the prior setTrackVisible setFilter is cheap).
+                    // Bracket it for to-first-frame; the post-toggle segment count
+                    // rides the sync nomadpath.updateRanges measure inside LayerManager.
+                    measureToFirstFrame(map, 'nomadpath.action.visibilityToggle', () => {
+                        attrLegend.updateRanges(layers.visibleIds);
+                    });
+                },
+            });
+            const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
+            const mobileMenu = new MobileMenu(containerEl, [trackLegend, attrLegend, poiLegend]);
+            const mapControls = new MapControls(
+                containerEl,
+                () => instance.fitToTracks(),
+                id => instance.setBasemap(id),
+                basemapId,
+            );
 
-        instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu, mapControls };
+            instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu, mapControls };
+        });
 
         return instance;
     }
@@ -275,7 +286,11 @@ export class NomadPath {
 
     /** Switch the colour attribute used to style the track layer. */
     setColourAttribute(attribute: ColourAttribute): this {
-        this._layers.setColourAttribute(attribute);
+        // The sync cost (setPaintProperty + segment-count detail) is measured
+        // inside LayerManager; bracket the whole action for to-first-frame too.
+        measureToFirstFrame(this._map, 'nomadpath.action.colourAttribute', () => {
+            this._layers.setColourAttribute(attribute);
+        });
         return this;
     }
 

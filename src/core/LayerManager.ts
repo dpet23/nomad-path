@@ -411,13 +411,19 @@ export class LayerManager {
     /** Switch the colour attribute used to style the track layer. */
     setColourAttribute(attribute: ColourAttribute): void {
         this._colourAttribute = attribute;
-        profile('nomadpath.setColourAttribute', () => {
-            this._map.setPaintProperty(
-                TRACK_LAYER,
-                'line-color',
-                buildColourExpression(attribute, this._ranges, this._maxDayIndex),
-            );
-        });
+        // A colour change re-paints every currently-visible segment, so the
+        // visible-segment count is the cost driver carried as measure detail.
+        profile(
+            'nomadpath.setColourAttribute',
+            () => {
+                this._map.setPaintProperty(
+                    TRACK_LAYER,
+                    'line-color',
+                    buildColourExpression(attribute, this._ranges, this._maxDayIndex),
+                );
+            },
+            { segments: this.visibleSegmentCount },
+        );
     }
 
     /** The currently active colour attribute. */
@@ -432,13 +438,19 @@ export class LayerManager {
      */
     updateRanges(ranges: AttributeRanges): void {
         this._ranges = ranges;
-        profile('nomadpath.updateRanges', () => {
-            this._map.setPaintProperty(
-                TRACK_LAYER,
-                'line-color',
-                buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
-            );
-        });
+        // Called after a visibility change, so visibleSegmentCount reflects the
+        // post-toggle visible set — the count the backend must now paint.
+        profile(
+            'nomadpath.updateRanges',
+            () => {
+                this._map.setPaintProperty(
+                    TRACK_LAYER,
+                    'line-color',
+                    buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
+                );
+            },
+            { segments: this.visibleSegmentCount },
+        );
     }
 
     /** The current attribute ranges (for legend display). */
