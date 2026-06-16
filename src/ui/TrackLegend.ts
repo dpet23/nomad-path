@@ -1,6 +1,8 @@
 import type { TrackFeature } from '../contract/types';
 import { deriveTrackId, extractTracks } from '../core/DataLoader';
+import { measureToFirstFrame } from '../core/MapEngine';
 import type { LegendPanelConfig } from '../data/types';
+import { profile } from '../profiling';
 import { TRANSPORT_MODE_FALLBACK_INFO, TRANSPORT_MODES } from '../styling/ColorRamps';
 import { BasePanel } from './BasePanel';
 import type { UIContext } from './UIContext';
@@ -233,10 +235,22 @@ export class TrackLegend extends BasePanel {
         zoomBtn.textContent = '\u{1F50D}';
         zoomBtn.disabled = !visible;
         checkbox.addEventListener('change', () => {
-            this._ctx.layers.setTrackVisible(trackId, checkbox.checked);
-            zoomBtn.disabled = !checkbox.checked;
-            onGroupUpdate?.();
-            this._callbacks.onVisibilityChange?.(trackId, checkbox.checked);
+            // Profile the WHOLE toggle action — setFilter + range recompute +
+            // repaint + scale refresh (via onVisibilityChange) — to its first
+            // composited frame. Measured at the UI handler, not the storm-called
+            // layer mutators. Segment count is read after the visible set updates.
+            measureToFirstFrame(this._ctx.map, 'nomadpath.Toggle track', () => {
+                profile(
+                    'nomadpath.Toggle track',
+                    () => {
+                        this._ctx.layers.setTrackVisible(trackId, checkbox.checked);
+                        zoomBtn.disabled = !checkbox.checked;
+                        onGroupUpdate?.();
+                        this._callbacks.onVisibilityChange?.(trackId, checkbox.checked);
+                    },
+                    { segments: this._ctx.layers.visibleSegmentCount },
+                );
+            });
         });
         zoomBtn.addEventListener('click', e => {
             e.stopPropagation();

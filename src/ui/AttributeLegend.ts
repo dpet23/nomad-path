@@ -1,6 +1,8 @@
 import type { AttributeRanges } from '../contract/types';
 import { computeVisibleRanges } from '../core/AttributeRanges';
+import { measureToFirstFrame } from '../core/MapEngine';
 import type { LegendPanelConfig } from '../data/types';
+import { profile } from '../profiling';
 import {
     COLOUR_ATTRIBUTE_REGISTRY,
     type ColourAttribute,
@@ -77,8 +79,19 @@ export class AttributeLegend extends BasePanel {
         select.value = this._attribute;
         select.addEventListener('change', () => {
             this._attribute = select.value as ColourAttribute;
-            this._ctx.layers.setColourAttribute(this._attribute);
-            this._refreshScale();
+            // Profile the WHOLE action (paint + scale refresh), not just the
+            // setPaintProperty step, and to its first composited frame. Measured
+            // at this UI handler — the layer mutators are storm-called elsewhere.
+            measureToFirstFrame(this._ctx.map, 'nomadpath.Colour change', () => {
+                profile(
+                    'nomadpath.Colour change',
+                    () => {
+                        this._ctx.layers.setColourAttribute(this._attribute);
+                        this._refreshScale();
+                    },
+                    { segments: this._ctx.layers.visibleSegmentCount },
+                );
+            });
         });
         this.bodyEl.appendChild(select);
 

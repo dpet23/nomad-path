@@ -5,7 +5,6 @@ import type { AttributeRange, AttributeRanges, POIFeature, TrackFeature, TripDat
 import { profile, PROFILING_ON } from '../profiling';
 import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
-import { measureToFirstFrame } from './MapEngine';
 
 // Re-export for consumers that imported from LayerManager previously.
 export type { ColourAttribute, MaplibreExpression };
@@ -410,27 +409,20 @@ export class LayerManager {
         return this._visibleIds;
     }
 
-    /** Switch the colour attribute used to style the track layer. */
+    /**
+     * Switch the colour attribute used to style the track layer.
+     *
+     * NOT profiled here: this is one step of a user action and is also called
+     * during basemap restore. The action is measured at the UI handler that
+     * triggers it (see AttributeLegend) so the measure covers the whole action.
+     */
     setColourAttribute(attribute: ColourAttribute): void {
         this._colourAttribute = attribute;
-        // Measured here (not at the public NomadPath method) because the legend
-        // dropdown calls this directly. The sync measure and its .firstFrame
-        // share the base name so the widget pairs them into one action row.
-        // A colour change re-paints every visible segment → segments is the cost
-        // driver, carried as detail on the sync measure.
-        measureToFirstFrame(this._map, 'nomadpath.Colour change', () => {
-            profile(
-                'nomadpath.Colour change',
-                () => {
-                    this._map.setPaintProperty(
-                        TRACK_LAYER,
-                        'line-color',
-                        buildColourExpression(attribute, this._ranges, this._maxDayIndex),
-                    );
-                },
-                { segments: this.visibleSegmentCount },
-            );
-        });
+        this._map.setPaintProperty(
+            TRACK_LAYER,
+            'line-color',
+            buildColourExpression(attribute, this._ranges, this._maxDayIndex),
+        );
     }
 
     /** The currently active colour attribute. */
@@ -445,23 +437,14 @@ export class LayerManager {
      */
     updateRanges(ranges: AttributeRanges): void {
         this._ranges = ranges;
-        // This is the re-paint that follows a track-visibility toggle, so it is
-        // the action we surface as "visibilityToggle". visibleSegmentCount
-        // reflects the post-toggle visible set. Sync + .firstFrame share the base
-        // name so the widget pairs them into one row.
-        measureToFirstFrame(this._map, 'nomadpath.Toggle track', () => {
-            profile(
-                'nomadpath.Toggle track',
-                () => {
-                    this._map.setPaintProperty(
-                        TRACK_LAYER,
-                        'line-color',
-                        buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
-                    );
-                },
-                { segments: this.visibleSegmentCount },
-            );
-        });
+        // NOT profiled here: this is the re-paint step of a user action (and is
+        // also replayed during basemap restore). The toggle action is measured at
+        // the UI handler so the measure covers the whole action, not just paint.
+        this._map.setPaintProperty(
+            TRACK_LAYER,
+            'line-color',
+            buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
+        );
     }
 
     /** The current attribute ranges (for legend display). */

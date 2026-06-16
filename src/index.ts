@@ -134,9 +134,9 @@ export class NomadPath {
             const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
             const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
                 onVisibilityChange: () => {
-                    // The toggle's re-paint (and its profiling: sync + to-first-frame
-                    // + post-toggle segment count) happens inside LayerManager.
-                    // updateRanges, reached via attrLegend.updateRanges below.
+                    // Recompute + re-apply the colour scale for the new visible
+                    // set. This runs inside TrackLegend's profiled toggle handler,
+                    // so its cost is captured as part of the "Toggle track" action.
                     attrLegend.updateRanges(layers.visibleIds);
                 },
             });
@@ -282,9 +282,9 @@ export class NomadPath {
 
     /** Switch the colour attribute used to style the track layer. */
     setColourAttribute(attribute: ColourAttribute): this {
-        // Profiling (sync + to-first-frame + segment detail) lives in
-        // LayerManager.setColourAttribute — measured there so it also fires when
-        // the legend dropdown calls LayerManager directly (bypassing this method).
+        // Programmatic API path (not the demo's dropdown, which is profiled at
+        // the AttributeLegend handler). Unprofiled: a caller-driven colour change
+        // has no single UI action boundary to attribute the measure to.
         this._layers.setColourAttribute(attribute);
         return this;
     }
