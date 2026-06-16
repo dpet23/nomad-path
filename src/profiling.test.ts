@@ -62,16 +62,43 @@ describe('profile with detail payload', () => {
     afterEach(() => performance.clearMeasures());
 
     it('returns the wrapped function result', () => {
-        expect(profile('nomadpath.d', () => 99, { segments: 7 })).toBe(99);
+        expect(
+            profile(
+                'nomadpath.d',
+                () => 99,
+                () => ({ segments: 7 }),
+            ),
+        ).toBe(99);
     });
 
     it('attaches detail to the emitted measure entry', () => {
-        profile('nomadpath.detail-phase', () => 1, { segments: 112541 });
+        profile(
+            'nomadpath.detail-phase',
+            () => 1,
+            () => ({ segments: 112541 }),
+        );
         const entry = performance.getEntriesByType('measure').find(m => m.name === 'nomadpath.detail-phase') as
             | PerformanceMeasure
             | undefined;
         expect(entry).toBeDefined();
         expect((entry!.detail as { segments: number }).segments).toBe(112541);
+    });
+
+    it('evaluates the detail thunk AFTER fn() — captures post-action state', () => {
+        // Guards the stale-detail bug: detail must reflect state mutated by fn(),
+        // not the value at call time. A plain (non-thunk) detail would capture 0.
+        let count = 0;
+        profile(
+            'nomadpath.post-action',
+            () => {
+                count = 42; // the "action" mutates state
+            },
+            () => ({ segments: count }),
+        );
+        const entry = performance.getEntriesByType('measure').find(m => m.name === 'nomadpath.post-action') as
+            | PerformanceMeasure
+            | undefined;
+        expect((entry!.detail as { segments: number }).segments).toBe(42);
     });
 
     it('omits detail cleanly when not provided', () => {
@@ -91,7 +118,7 @@ describe('profile with detail payload', () => {
                 () => {
                     throw new Error('boom');
                 },
-                { segments: 0 },
+                () => ({ segments: 0 }),
             ),
         ).toThrow('boom');
     });

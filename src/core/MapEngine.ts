@@ -3,7 +3,7 @@ import { featureCollection } from '@turf/helpers';
 import type { Feature } from 'geojson';
 import maplibregl, { type Map, type StyleSpecification } from 'maplibre-gl';
 
-import { PROFILING_ON } from '../profiling';
+import { profile, PROFILING_ON } from '../profiling';
 
 // ---------------------------------------------------------------------------
 // Basemap registry
@@ -140,6 +140,24 @@ export function measureToFirstFrame(map: Map, name: string, trigger: () => void)
         performance.mark(endMark);
         performance.measure(`${name}.firstFrame`, startMark, endMark);
     });
+}
+
+/**
+ * Measure a whole user action (a UI event handler) under one measure `name`:
+ * the synchronous `action` is timed via `profile(name, …, detail)` AND bracketed
+ * to its first composited frame via {@link measureToFirstFrame} (`name.firstFrame`).
+ * `detail` is a thunk evaluated after the action, so post-action state (e.g. the
+ * visible-segment count) is captured. Bracket at the UI handler so the measure
+ * covers the entire action, not one storm-called mutator step. Prod-clean: both
+ * halves fold away under `PROFILING_ON`.
+ */
+export function profileAction(
+    map: Map,
+    name: string,
+    action: () => void,
+    detail?: () => Record<string, unknown>,
+): void {
+    measureToFirstFrame(map, name, () => profile(name, action, detail));
 }
 
 // ---------------------------------------------------------------------------

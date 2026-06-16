@@ -18,7 +18,14 @@ export const PROFILING_ON = typeof NOMADPATH_PROFILING !== 'undefined' && NOMADP
 // PerformanceObserver entry as `entry.detail` (e.g. `{ segments: 112541 }`).
 type MeasureDetail = Record<string, unknown>;
 
-const profileTimed = <T>(name: string, fn: () => T, detail?: MeasureDetail): T => {
+// Detail is supplied as a THUNK, evaluated AFTER fn() runs. This is deliberate:
+// the detail usually describes post-action state (e.g. the visible-segment count
+// after a toggle). A plain value would be evaluated at the call site BEFORE fn()
+// (JS evaluates all args first), capturing stale pre-action state — a real bug we
+// hit. Forcing a thunk makes "read after the action" the only possibility.
+type MeasureDetailThunk = () => MeasureDetail;
+
+const profileTimed = <T>(name: string, fn: () => T, detail?: MeasureDetailThunk): T => {
     performance.mark(`${name}:start`);
     try {
         return fn();
@@ -26,11 +33,12 @@ const profileTimed = <T>(name: string, fn: () => T, detail?: MeasureDetail): T =
         performance.mark(`${name}:end`);
         // Object-form signature so an optional `detail` rides through to the
         // PerformanceObserver entry; the 3-string form cannot carry detail.
-        performance.measure(name, { start: `${name}:start`, end: `${name}:end`, detail });
+        // Resolve the thunk now — after fn() — so it reflects post-action state.
+        performance.measure(name, { start: `${name}:start`, end: `${name}:end`, detail: detail?.() });
     }
 };
 
-const profileIdentity = <T>(_name: string, fn: () => T, _detail?: MeasureDetail): T => fn();
+const profileIdentity = <T>(_name: string, fn: () => T, _detail?: MeasureDetailThunk): T => fn();
 
 const profileAsyncTimed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
     performance.mark(`${name}:start`);
@@ -46,9 +54,10 @@ const profileAsyncIdentity = <T>(_name: string, fn: () => Promise<T>): Promise<T
 
 /**
  * Time a synchronous operation, emitting a `performance.measure(name)`. An
- * optional `detail` payload (e.g. `{ segments: 112541 }`) rides through to the
- * PerformanceObserver entry as `entry.detail`. Folds to an identity wrapper in
- * prod (detail ignored, DCE'd).
+ * optional `detail` THUNK (e.g. `() => ({ segments: 112541 })`) is evaluated
+ * AFTER `fn()` and rides through to the PerformanceObserver entry as
+ * `entry.detail` — so it reflects post-action state, not stale call-time state.
+ * Folds to an identity wrapper in prod (detail ignored, DCE'd).
  */
 export const profile = PROFILING_ON ? profileTimed : profileIdentity;
 
