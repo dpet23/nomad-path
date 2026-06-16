@@ -1,0 +1,119 @@
+/* Styles for the demo-only profiling widget (profiling-widget.js). */
+
+.np-prof__toggle {
+    margin-left: auto;
+    padding: 4px 12px;
+    font: inherit;
+    font-size: 0.82rem;
+    color: #eee;
+    background: #2d2d4a;
+    border: 1px solid #44446a;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.np-prof__toggle:hover {
+    background: #3a3a5c;
+}
+
+/* Top-centre under the toolbar, sharing the demo's #status slot — the
+   horizontal centre is clear of the corner map controls, so the panel needs
+   no per-corner pixel offsets. The #status toast normally auto-hides on a
+   successful load, so in normal use the panel owns this slot; the only
+   coincident case is a persistent load error, where there is no profiling
+   data to show anyway. */
+.np-prof {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    min-width: 240px;
+    max-width: 360px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: #eee;
+    background: #1a1a2e;
+    border: 1px solid #44446a;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.np-prof__title {
+    margin-bottom: 8px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9a9ac0;
+}
+
+.np-prof__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.np-prof__row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 3px 0;
+}
+
+.np-prof__row + .np-prof__row {
+    border-top: 1px solid #2d2d4a;
+}
+
+/* Column-header row: small, muted, labels the numeric columns. */
+.np-prof__row--head span {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6f6f96;
+}
+
+/* Nested phase rows (e.g. under "Initial load") indent their leaf label. */
+.np-prof__row[data-depth='1'] .np-prof__phase {
+    padding-left: 14px;
+}
+
+.np-prof__phase {
+    flex: 1 1 auto;
+    color: #cfcfe8;
+    font-family: ui-monospace, monospace;
+}
+
+/* Fixed-width, right-aligned numeric columns so values line up regardless of
+   which optional columns a given row carries. Colours are NEUTRAL — they
+   identify the column, they are NOT goodness indicators (no thresholds exist
+   yet; this is a characterization tool). */
+.np-prof__ms,
+.np-prof__ff {
+    flex: 0 0 auto;
+    color: #c4c4dc;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.np-prof__ms {
+    min-width: 104px;
+}
+
+.np-prof__ff {
+    min-width: 78px;
+    color: #9a9ac0;
+}
+
+/* Global visible-segment count — current state, shown once under the title. */
+.np-prof__segments {
+    margin: 0 0 8px;
+    font-size: 0.78rem;
+    color: #e3c98f;
+    font-variant-numeric: tabular-nums;
+}
+
+.np-prof__empty {
+    color: #7a7a9a;
+    font-style: italic;
+}

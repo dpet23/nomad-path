@@ -14,14 +14,17 @@
         }
         #toolbar h1 { font-size: 1rem; font-weight: 600; }
 
-        #map { flex: 1; }
+        #stage { flex: 1; position: relative; }
+        #map { position: absolute; inset: 0; }
 
         #status {
-            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); color: #fff; padding: 6px 14px;
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            color: #fff; padding: 6px 14px;
             border-radius: 20px; font-size: 0.82rem; pointer-events: none;
             display: none;
         }
+        #status.status--info  { background: #1a1a2e; }
+        #status.status--error { background: rgba(176,32,42,0.92); }
     </style>
 </head>
 <body>
@@ -29,12 +32,15 @@
     <h1>Nomad Path</h1>
 </div>
 
-<div id="map"></div>
-<div id="status">Loading…</div>
+<div id="stage">
+    <div id="map"></div>
+    <div id="status">Loading…</div>
+</div>
 
 <!-- MapLibre CSS (needed for map controls) -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
 <link rel="stylesheet" href="../dist/nomad-path.css" />
+<link rel="stylesheet" href="./profiling-widget.css" />
 
 <script type="module">
 // ---------------------------------------------------------------------------
@@ -47,16 +53,23 @@ const DATA_URLS = [
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
-import { NomadPath, BASEMAPS } from '../dist/nomad-path.js';
+import { NomadPath, BASEMAPS } from '../dist/nomad-path.profiling.js';
+import { mountProfilingWidget } from './profiling-widget.js';
 
 const status = document.getElementById('status');
-const show = msg => { status.style.display = 'block'; status.textContent = msg; };
+const show = (msg, kind = 'info') => {
+    status.className = `status--${kind}`;
+    status.style.display = 'block';
+    status.textContent = msg;
+};
 const hide = () => { status.style.display = 'none'; };
 
-show('Loading trip data…');
+// Mount BEFORE create() so the observer captures the initial load/ingest marks.
+mountProfilingWidget(document.getElementById('toolbar'));
 
 let nomadMap;
 try {
+    show('Loading trip data…');
     nomadMap = await NomadPath.create({
         container: 'map',
         dataUrls: DATA_URLS,
@@ -88,7 +101,7 @@ try {
         console.info('  Attribute ranges:', trip.metadata.attributeRanges);
     }
 } catch (err) {
-    show(`Error: ${err.message}`);
+    show(`Error: ${err.message}`, 'error');
     console.error(err);
 }
 

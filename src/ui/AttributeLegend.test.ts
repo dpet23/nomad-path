@@ -54,7 +54,10 @@ function mockCtx(trips: TripData[] = [], visibleIds = new Set<string>()): { ctx:
     const updateRanges = vi.fn();
     return {
         ctx: {
-            map: {} as UIContext['map'],
+            // `once` is needed by the profiled action handlers (measureToFirstFrame
+            // registers a one-shot 'render' listener). We never fire it, so no
+            // firstFrame measure is emitted — fine for these assertions.
+            map: { once: vi.fn() } as unknown as UIContext['map'],
             layers: {
                 isTrackVisible: vi.fn().mockReturnValue(true),
                 setTrackVisible: vi.fn(),
@@ -64,6 +67,9 @@ function mockCtx(trips: TripData[] = [], visibleIds = new Set<string>()): { ctx:
                     return visibleIds;
                 },
                 get maxDayIndex() {
+                    return 0;
+                },
+                get visibleSegmentCount() {
                     return 0;
                 },
             } as unknown as UIContext['layers'],

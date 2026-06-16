@@ -13,6 +13,7 @@ import {
     waitForLoad,
 } from './core/MapEngine';
 import type { TravelMapConfig } from './data/types';
+import { profile } from './profiling';
 import { AttributeLegend } from './ui/AttributeLegend';
 import { MapControls } from './ui/MapControls';
 import { MobileMenu } from './ui/MobileMenu';
@@ -128,22 +129,28 @@ export class NomadPath {
         };
 
         const legendCfg = config.legends ?? {};
-        const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
-        const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
-            onVisibilityChange: () => {
-                attrLegend.updateRanges(layers.visibleIds);
-            },
-        });
-        const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
-        const mobileMenu = new MobileMenu(containerEl, [trackLegend, attrLegend, poiLegend]);
-        const mapControls = new MapControls(
-            containerEl,
-            () => instance.fitToTracks(),
-            id => instance.setBasemap(id),
-            basemapId,
-        );
+        // Load-time phase: build the legend UI components.
+        profile('nomadpath.Initial load/Mount UI', () => {
+            const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
+            const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
+                onVisibilityChange: () => {
+                    // Recompute + re-apply the colour scale for the new visible
+                    // set. This runs inside TrackLegend's profiled toggle handler,
+                    // so its cost is captured as part of the "Toggle track" action.
+                    attrLegend.updateRanges(layers.visibleIds);
+                },
+            });
+            const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
+            const mobileMenu = new MobileMenu(containerEl, [trackLegend, attrLegend, poiLegend]);
+            const mapControls = new MapControls(
+                containerEl,
+                () => instance.fitToTracks(),
+                id => instance.setBasemap(id),
+                basemapId,
+            );
 
-        instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu, mapControls };
+            instance._ui = { trackLegend, attrLegend, poiLegend, mobileMenu, mapControls };
+        });
 
         return instance;
     }
@@ -275,6 +282,9 @@ export class NomadPath {
 
     /** Switch the colour attribute used to style the track layer. */
     setColourAttribute(attribute: ColourAttribute): this {
+        // Programmatic API path (not the demo's dropdown, which is profiled at
+        // the AttributeLegend handler). Unprofiled: a caller-driven colour change
+        // has no single UI action boundary to attribute the measure to.
         this._layers.setColourAttribute(attribute);
         return this;
     }

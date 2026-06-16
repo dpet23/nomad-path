@@ -56,10 +56,15 @@ function mockCtx(trips: TripData[]): { ctx: UIContext; spies: MockSpies } {
     const fitToTrackGroup = vi.fn();
     return {
         ctx: {
-            map: {} as UIContext['map'],
+            // `once` is needed by the profiled toggle handler (measureToFirstFrame
+            // registers a one-shot 'render' listener); we never fire it.
+            map: { once: vi.fn() } as unknown as UIContext['map'],
             layers: {
                 isTrackVisible,
                 setTrackVisible,
+                get visibleSegmentCount() {
+                    return 0;
+                },
             } as unknown as UIContext['layers'],
             trips,
             fitToTrack,

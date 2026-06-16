@@ -20,7 +20,7 @@ Starts a local dev server. Open the printed URL to view the map.
 
 Options:
   -i, --input  <dir>   Directory to watch for GPS files [required]
-  -o, --output <file>  Output path for the geojson (default: ./demo/${OUTPUT_FILE})
+  -o, --output <file>  Output path for the geojson (default: ./harness/demo/${OUTPUT_FILE})
                        The dev server serves the directory containing this file.
   -p, --port   <n>     Port for the local dev server (default: serve's default, 3000)
   -n, --name   <name>  Trip name in GeoJSON metadata
@@ -74,7 +74,7 @@ if (!values.input) {
 }
 
 const INPUT     = expandPath(values.input);
-const OUTPUT    = expandPath(values.output ?? join('demo', OUTPUT_FILE));
+const OUTPUT    = expandPath(values.output ?? join('harness', 'demo', OUTPUT_FILE));
 const SERVE_DIR = dirname(OUTPUT);
 const PORT      = values.port;
 

@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+    // Exercise the profiling-on code path under unit test. Profiling-only logic
+    // (segment counting, and detail payloads added later) is gated behind
+    // NOMADPATH_PROFILING and is otherwise unreachable in tests. The demo/perf
+    // bundles run with it true, so this matches what ships in the profiling
+    // artifact. Replaced as a literal, so `typeof NOMADPATH_PROFILING` resolves.
+    define: { NOMADPATH_PROFILING: 'true' },
     test: {
         environment: 'happy-dom',
         include: ['src/**/*.test.ts', 'preprocessing/**/*.test.js', 'test/**/*.test.ts'],

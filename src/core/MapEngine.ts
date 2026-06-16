@@ -3,6 +3,8 @@ import { featureCollection } from '@turf/helpers';
 import type { Feature } from 'geojson';
 import maplibregl, { type Map, type StyleSpecification } from 'maplibre-gl';
 
+import { profile, PROFILING_ON } from '../profiling';
+
 // ---------------------------------------------------------------------------
 // Basemap registry
 // ---------------------------------------------------------------------------
@@ -97,6 +99,65 @@ export function waitForLoad(map: Map): Promise<void> {
             map.once('load', () => resolve());
         }
     });
+}
+
+// ---------------------------------------------------------------------------
+// Profiling: to-first-frame timing (quarantined backend code)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run a synchronous map mutation and measure the time from the mutation to the
+ * first MapLibre `render` event after it — "to first frame". Emits a
+ * `performance.measure(<name>.firstFrame)` whose duration captures our JS plus
+ * the backend's style recalc and first composited frame (which the synchronous
+ * `profile()` measure around the mutation is blind to).
+ *
+ * IMPORTANT: this is FIRST-FRAME, explicitly NOT settle. The GPU keeps painting
+ * for ~2s after this fires on a heavy action (rasterizing ~112k line segments);
+ * the visible-segment count is the proxy for that ongoing cost, not this number.
+ * Captured causally via the first `render` event — NOT by reading the private
+ * `_styleDirty` flag, which a Stage 0 spike found is reset before the event
+ * fires (and so reads unreliably). One-shot listener; no leak. Tile-independent
+ * (a `render` fires for our change before tiles finish).
+ *
+ * The measure resolves on a later frame, so callers cannot await it — it is
+ * fire-and-forget, which keeps the public action methods synchronous/chainable.
+ *
+ * This whole helper is gated by PROFILING_ON, so terser DCEs the render-wiring
+ * out of the prod bundle entirely. Quarantined here because MapEngine is the
+ * backend boundary — the only place that touches `map.once('render')`.
+ */
+export function measureToFirstFrame(map: Map, name: string, trigger: () => void): void {
+    if (!PROFILING_ON) {
+        trigger();
+        return;
+    }
+    const startMark = `${name}.firstFrame:start`;
+    performance.mark(startMark);
+    trigger();
+    map.once('render', () => {
+        const endMark = `${name}.firstFrame:end`;
+        performance.mark(endMark);
+        performance.measure(`${name}.firstFrame`, startMark, endMark);
+    });
+}
+
+/**
+ * Measure a whole user action (a UI event handler) under one measure `name`:
+ * the synchronous `action` is timed via `profile(name, …, detail)` AND bracketed
+ * to its first composited frame via {@link measureToFirstFrame} (`name.firstFrame`).
+ * `detail` is a thunk evaluated after the action, so post-action state (e.g. the
+ * visible-segment count) is captured. Bracket at the UI handler so the measure
+ * covers the entire action, not one storm-called mutator step. Prod-clean: both
+ * halves fold away under `PROFILING_ON`.
+ */
+export function profileAction(
+    map: Map,
+    name: string,
+    action: () => void,
+    detail?: () => Record<string, unknown>,
+): void {
+    measureToFirstFrame(map, name, () => profile(name, action, detail));
 }
 
 // ---------------------------------------------------------------------------

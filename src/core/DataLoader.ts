@@ -1,4 +1,5 @@
 import type { TrackFeature, TripData } from '../contract/types';
+import { profileAsync } from '../profiling';
 
 // ---------------------------------------------------------------------------
 // Track ID
@@ -22,32 +23,34 @@ export function deriveTrackId(track: TrackFeature): string {
  * @throws if any URL returns a non-OK response or non-FeatureCollection JSON
  */
 export async function loadTripData(urls: string[]): Promise<TripData[]> {
-    return Promise.all(
-        urls.map(async url => {
-            let res: Response;
-            try {
-                res = await fetch(url);
-            } catch (err) {
-                throw new Error(`Network error loading trip data from ${url}: ${(err as Error).message}`);
-            }
-            if (!res.ok) {
-                throw new Error(`Failed to load trip data from ${url}: HTTP ${res.status}`);
-            }
-            let data: unknown;
-            try {
-                data = await res.json();
-            } catch {
-                throw new Error(`Invalid JSON in trip data from ${url}`);
-            }
-            if (
-                typeof data !== 'object' ||
-                data === null ||
-                (data as Record<string, unknown>).type !== 'FeatureCollection'
-            ) {
-                throw new Error(`Trip data from ${url} is not a GeoJSON FeatureCollection`);
-            }
-            return data as TripData;
-        }),
+    return profileAsync('nomadpath.Initial load/Load trip data', () =>
+        Promise.all(
+            urls.map(async url => {
+                let res: Response;
+                try {
+                    res = await fetch(url);
+                } catch (err) {
+                    throw new Error(`Network error loading trip data from ${url}: ${(err as Error).message}`);
+                }
+                if (!res.ok) {
+                    throw new Error(`Failed to load trip data from ${url}: HTTP ${res.status}`);
+                }
+                let data: unknown;
+                try {
+                    data = await res.json();
+                } catch {
+                    throw new Error(`Invalid JSON in trip data from ${url}`);
+                }
+                if (
+                    typeof data !== 'object' ||
+                    data === null ||
+                    (data as Record<string, unknown>).type !== 'FeatureCollection'
+                ) {
+                    throw new Error(`Trip data from ${url} is not a GeoJSON FeatureCollection`);
+                }
+                return data as TripData;
+            }),
+        ),
     );
 }
 

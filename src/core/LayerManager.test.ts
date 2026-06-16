@@ -1,7 +1,8 @@
+import type { Map as MaplibreMap } from 'maplibre-gl';
 import { describe, expect, it } from 'vitest';
 
-import type { TrackFeature } from '../contract/types';
-import { buildSegmentFeatures } from './LayerManager';
+import type { TrackFeature, TripData } from '../contract/types';
+import { buildSegmentFeatures, LayerManager } from './LayerManager';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -287,5 +288,131 @@ describe('buildSegmentFeatures -- antimeridian splitting', () => {
         ]);
         const { featureCollection } = buildSegmentFeatures([track]);
         expect(featureCollection.features).toHaveLength(4);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// buildSegmentFeatures -- per-track segment counts (segmentsByTrack)
+// ---------------------------------------------------------------------------
+
+// Non-overlapping coordinate counts per track so each track's segment count is
+// distinct — any leakage between tracks is detectable by exact value.
+const COORDS_2: [number, number][] = [
+    [10, 0],
+    [10.1, 0.1],
+];
+const COORDS_4: [number, number][] = [
+    [20, 0],
+    [20.1, 0.1],
+    [20.2, 0.2],
+    [20.3, 0.3],
+];
+const COORDS_6: [number, number][] = [
+    [30, 0],
+    [30.1, 0.1],
+    [30.2, 0.2],
+    [30.3, 0.3],
+    [30.4, 0.4],
+    [30.5, 0.5],
+];
+
+describe('buildSegmentFeatures -- segmentsByTrack', () => {
+    it('counts segments per track keyed by derived trackId', () => {
+        const t2 = makeTrack(DAY, 'Two', COORDS_2); // 1 segment
+        const t4 = makeTrack(DAY, 'Four', COORDS_4); // 3 segments
+        const t6 = makeTrack(DAY, 'Six', COORDS_6); // 5 segments
+        const { segmentsByTrack } = buildSegmentFeatures([t2, t4, t6]);
+        // Tests run with NOMADPATH_PROFILING true (vitest.config.ts), so the map
+        // is always populated here; assert presence to satisfy the optional type.
+        expect(segmentsByTrack).toBeDefined();
+        expect(segmentsByTrack!.get(`${DAY}::Two`)).toBe(1);
+        expect(segmentsByTrack!.get(`${DAY}::Four`)).toBe(3);
+        expect(segmentsByTrack!.get(`${DAY}::Six`)).toBe(5);
+    });
+
+    it('summed segmentsByTrack values equal total feature count', () => {
+        const tracks = [makeTrack(DAY, 'Two', COORDS_2), makeTrack(DAY_2, 'Four', COORDS_4)];
+        const { featureCollection, segmentsByTrack } = buildSegmentFeatures(tracks);
+        expect(segmentsByTrack).toBeDefined();
+        const summed = [...segmentsByTrack!.values()].reduce((a, b) => a + b, 0);
+        expect(summed).toBe(featureCollection.features.length);
+    });
+
+    it('counts antimeridian-split segments (the two sub-segments) for the crossing track', () => {
+        // [179, 0] → [-179, 5] → [179, 10]: two crossings → 4 sub-segments
+        const crossing = makeTrack(DAY, 'Cross', [
+            [179, 0],
+            [-179, 5],
+            [179, 10],
+        ]);
+        const { featureCollection, segmentsByTrack } = buildSegmentFeatures([crossing]);
+        expect(segmentsByTrack).toBeDefined();
+        expect(segmentsByTrack!.get(`${DAY}::Cross`)).toBe(4);
+        expect(segmentsByTrack!.get(`${DAY}::Cross`)).toBe(featureCollection.features.length);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// LayerManager.visibleSegmentCount
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal MapLibre map stub: addLayers/setTrackVisible only touch source/layer
+ * lifecycle and setFilter. None of those affect the segment counting we assert.
+ */
+function makeMapStub(): MaplibreMap {
+    return {
+        getLayer: () => undefined,
+        getSource: () => undefined,
+        removeLayer: () => {},
+        removeSource: () => {},
+        addSource: () => {},
+        addLayer: () => {},
+        setFilter: () => {},
+        setPaintProperty: () => {},
+    } as unknown as MaplibreMap;
+}
+
+/** Wrap tracks into a single TripData with empty attribute ranges. */
+function makeTrip(tracks: TrackFeature[]): TripData {
+    return {
+        type: 'FeatureCollection',
+        features: tracks,
+        metadata: { attributeRanges: {} },
+    } as unknown as TripData;
+}
+
+describe('LayerManager.visibleSegmentCount', () => {
+    it('sums segments over all initially-visible tracks', () => {
+        const t2 = makeTrack(DAY, 'Two', COORDS_2); // 1 segment
+        const t4 = makeTrack(DAY, 'Four', COORDS_4); // 3 segments
+        const t6 = makeTrack(DAY, 'Six', COORDS_6); // 5 segments
+        const mgr = new LayerManager(makeMapStub());
+        mgr.addLayers([makeTrip([t2, t4, t6])]);
+        // All visible by default: 1 + 3 + 5 = 9.
+        expect(mgr.visibleSegmentCount).toBe(9);
+    });
+
+    it('drops by a track’s exact segment count when that track is hidden', () => {
+        const t2 = makeTrack(DAY, 'Two', COORDS_2); // 1 segment
+        const t4 = makeTrack(DAY, 'Four', COORDS_4); // 3 segments
+        const t6 = makeTrack(DAY, 'Six', COORDS_6); // 5 segments
+        const mgr = new LayerManager(makeMapStub());
+        mgr.addLayers([makeTrip([t2, t4, t6])]);
+
+        mgr.setTrackVisible(`${DAY}::Four`, false); // removes exactly 3
+        expect(mgr.visibleSegmentCount).toBe(6); // 9 - 3
+
+        mgr.setTrackVisible(`${DAY}::Four`, true); // restores 3
+        expect(mgr.visibleSegmentCount).toBe(9);
+    });
+
+    it('excludes tracks hidden at load time (hidden: true)', () => {
+        const t2 = makeTrack(DAY, 'Two', COORDS_2); // 1 segment
+        const t6 = makeTrack(DAY, 'Six', COORDS_6, { hidden: true }); // 5 segments, hidden
+        const mgr = new LayerManager(makeMapStub());
+        mgr.addLayers([makeTrip([t2, t6])]);
+        // Only the visible track counts: 1.
+        expect(mgr.visibleSegmentCount).toBe(1);
     });
 });

@@ -1,5 +1,6 @@
 import type { TrackFeature } from '../contract/types';
 import { deriveTrackId, extractTracks } from '../core/DataLoader';
+import { profileAction } from '../core/MapEngine';
 import type { LegendPanelConfig } from '../data/types';
 import { TRANSPORT_MODE_FALLBACK_INFO, TRANSPORT_MODES } from '../styling/ColorRamps';
 import { BasePanel } from './BasePanel';
@@ -10,6 +11,9 @@ import type { UIContext } from './UIContext';
 // ---------------------------------------------------------------------------
 
 const DATE_FMT = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' });
+
+/** Measure name for any track-visibility toggle (single row or day group). */
+const TOGGLE_TRACK_MEASURE = 'nomadpath.Toggle track';
 
 /** Format an ISO date string (or flight-day key) as "Mar 15". */
 function formatDayLabel(isoDay: string): string {
@@ -154,16 +158,15 @@ export class TrackLegend extends BasePanel {
         updateGroupCheckbox();
         groupCheckbox.addEventListener('click', e => e.stopPropagation());
         groupCheckbox.addEventListener('change', () => {
-            for (const id of trackIds) {
-                this._ctx.layers.setTrackVisible(id, groupCheckbox.checked);
-                const cb = this._checkboxes.get(id);
-                if (cb) {
-                    cb.checked = groupCheckbox.checked;
-                    const btn = cb.closest('.np-track-row')?.querySelector<HTMLButtonElement>('.np-track-row__action');
-                    if (btn) btn.disabled = !groupCheckbox.checked;
-                }
-            }
-            this._callbacks.onVisibilityChange?.(trackIds[0] ?? '', groupCheckbox.checked);
+            // Same action as a single-track toggle, just over N tracks (N setFilters
+            // + one repaint) — profiled under the same 'Toggle track' measure so the
+            // widget's toggle row reflects the last visibility toggle, group or not.
+            profileAction(
+                this._ctx.map,
+                TOGGLE_TRACK_MEASURE,
+                () => this._applyGroupVisibility(trackIds, groupCheckbox.checked),
+                () => ({ segments: this._ctx.layers.visibleSegmentCount }),
+            );
         });
         header.appendChild(groupCheckbox);
 
@@ -197,6 +200,24 @@ export class TrackLegend extends BasePanel {
         }
 
         this.bodyEl.appendChild(wrapper);
+    }
+
+    /**
+     * Apply a group checkbox state to all its tracks: set each track's layer
+     * visibility, sync the row checkbox + zoom button, then fire the visibility
+     * callback once. Extracted from the group handler so the handler stays simple.
+     */
+    private _applyGroupVisibility(trackIds: string[], visible: boolean): void {
+        for (const id of trackIds) {
+            this._ctx.layers.setTrackVisible(id, visible);
+            const cb = this._checkboxes.get(id);
+            if (cb) {
+                cb.checked = visible;
+                const btn = cb.closest('.np-track-row')?.querySelector<HTMLButtonElement>('.np-track-row__action');
+                if (btn) btn.disabled = !visible;
+            }
+        }
+        this._callbacks.onVisibilityChange?.(trackIds[0] ?? '', visible);
     }
 
     /** Render a single track row with checkbox, name, mode emoji, and zoom button. */
@@ -233,10 +254,21 @@ export class TrackLegend extends BasePanel {
         zoomBtn.textContent = '\u{1F50D}';
         zoomBtn.disabled = !visible;
         checkbox.addEventListener('change', () => {
-            this._ctx.layers.setTrackVisible(trackId, checkbox.checked);
-            zoomBtn.disabled = !checkbox.checked;
-            onGroupUpdate?.();
-            this._callbacks.onVisibilityChange?.(trackId, checkbox.checked);
+            // Profile the WHOLE toggle action — setFilter + range recompute +
+            // repaint + scale refresh (via onVisibilityChange) — to its first
+            // composited frame. Measured at the UI handler, not the storm-called
+            // layer mutators. Segment count is read after the visible set updates.
+            profileAction(
+                this._ctx.map,
+                TOGGLE_TRACK_MEASURE,
+                () => {
+                    this._ctx.layers.setTrackVisible(trackId, checkbox.checked);
+                    zoomBtn.disabled = !checkbox.checked;
+                    onGroupUpdate?.();
+                    this._callbacks.onVisibilityChange?.(trackId, checkbox.checked);
+                },
+                () => ({ segments: this._ctx.layers.visibleSegmentCount }),
+            );
         });
         zoomBtn.addEventListener('click', e => {
             e.stopPropagation();
