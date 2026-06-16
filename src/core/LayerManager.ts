@@ -295,10 +295,17 @@ export class LayerManager {
         this._visiblePOICategories = new Set(pois.filter(p => !p.properties.hidden).map(p => p.properties.category));
 
         // Load-time phase 1 — our CPU: explode tracks into segment features.
-        const { featureCollection, maxDayIndex, segmentsByTrack } = profile(
+        // Carries the TOTAL segment count as detail (every track is visible at
+        // load, so the total is the count just built).
+        let built: SegmentBuildResult | undefined;
+        profile(
             'nomadpath.Initial load/Build segments',
-            () => buildSegmentFeatures(tracks),
+            () => {
+                built = buildSegmentFeatures(tracks);
+            },
+            () => ({ segments: built?.featureCollection.features.length ?? 0 }),
         );
+        const { featureCollection, maxDayIndex, segmentsByTrack } = built!;
         this._maxDayIndex = maxDayIndex;
         this._segmentsByTrack = segmentsByTrack;
 

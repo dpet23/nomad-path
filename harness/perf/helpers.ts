@@ -8,6 +8,8 @@ export const PERF_PAGE = '/test.html';
 export interface PerfMeasure {
     name: string;
     duration: number;
+    /** Structured payload (e.g. `{ segments: 112541 }`) when the measure carries one. */
+    detail?: { segments?: number } | null;
 }
 
 /** Navigate to the perf harness and wait for the NomadPath instance to be ready. */
@@ -25,6 +27,32 @@ export async function readNomadMeasures(page: Page): Promise<PerfMeasure[]> {
         performance
             .getEntriesByType('measure')
             .filter((e) => e.name.startsWith('nomadpath.'))
-            .map((e) => ({ name: e.name, duration: e.duration })),
+            .map((e) => ({
+                name: e.name,
+                duration: e.duration,
+                detail: (e as PerformanceMeasure).detail as { segments?: number } | null,
+            })),
     );
+}
+
+/**
+ * Wait until a `performance.measure` with the exact `name` exists, then return
+ * it. Needed for `.firstFrame` measures, which resolve on a later render frame
+ * (the action method is synchronous and fire-and-forget). Polls the buffer.
+ */
+export async function waitForMeasure(page: Page, name: string, timeout = 5_000): Promise<PerfMeasure> {
+    await page.waitForFunction(
+        (n) => performance.getEntriesByType('measure').some((e) => e.name === n),
+        name,
+        { timeout },
+    );
+    const all = await readNomadMeasures(page);
+    const found = all.find((m) => m.name === name);
+    if (!found) throw new Error(`measure "${name}" not found after wait`);
+    return found;
+}
+
+/** The latest measure entry with the given exact name, or undefined. */
+export function latestMeasure(all: PerfMeasure[], name: string): PerfMeasure | undefined {
+    return [...all].reverse().find((m) => m.name === name);
 }

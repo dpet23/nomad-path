@@ -1,72 +1,95 @@
 /**
- * Characterization perf test (`npm run test:perf`).
+ * Perf harness test (`npm run test:perf`).
  *
- * A PRINTING test, not a regression test. It loads the profiling library
- * bundle, drives the major phases (load + ingest happen during create; a
- * colour-attribute change drives the re-render path), reads the library's
- * `performance.measure` entries via page.evaluate, and PRINTS them.
+ * Loads the PROFILING library bundle, drives the instrumented operations
+ * through the REAL UI (the same dropdown / checkboxes a user clicks), and both
+ * PRINTS the measures (characterization) and ASSERTS they fire with the right
+ * shape. The assertions are the regression net for the instrumentation itself:
+ * they catch a handler that mutates state but emits no measure, a measure on the
+ * wrong layer, or a segment count captured before the action (all real bugs hit
+ * while building this). Durations are printed, not asserted — no thresholds yet.
  *
- * It asserts nothing about the durations — you cannot set thresholds before
- * seeing the numbers, and this is how you see them. Its job is to prove the
- * timing seam works end-to-end in a test context and to emit reproducible
- * numbers. Adding assertions/baselines is the clean future iteration.
- *
- * The console-error fixture (auto) still fails the run if the page errors —
- * a broken bundle or a failed library load is a real failure even here.
- *
- * NOT part of `test:all`. Run on demand against the profiling bundle.
+ * Driving the real UI (not the programmatic NomadPath API) is deliberate: the
+ * action measures live on the UI event handlers, so only a UI-driven test
+ * exercises them. The console-error fixture (auto) fails the run on any page
+ * error. NOT part of `test:all`; run on demand against the profiling bundle.
  */
-import { test } from './fixtures';
+import { expect, test } from './fixtures';
 import type { PerfMeasure } from './helpers';
-import { gotoPerfMap, readNomadMeasures } from './helpers';
+import { gotoPerfMap, latestMeasure, readNomadMeasures, waitForMeasure } from './helpers';
 
-/**
- * Print, in chronological order, only the measures emitted since the previous
- * call. `performance.getEntriesByType('measure')` returns entries in the order
- * they were recorded, so each phase's new marks are the tail past `printed`.
- * Returns the new running count of printed entries.
- */
-function printNewMeasures(label: string, all: PerfMeasure[], printed: number): number {
+// Real-UI selectors (see CLAUDE.md locator note): a single track row's checkbox
+// vs. a day-group header's checkbox are distinguished by their container.
+const SINGLE_TRACK_CHECKBOX = '.np-track-legend .np-track-row .np-track-row__checkbox';
+const GROUP_CHECKBOX = '.np-track-legend .np-day-header .np-track-row__checkbox';
+const COLOUR_SELECT = '.np-attr-select';
+
+function printMeasures(label: string, all: PerfMeasure[], printed: number): number {
     const fresh = all.slice(printed);
     // eslint-disable-next-line no-console
-    console.log(`\n  ── ${label} ──`);
-    if (fresh.length === 0) {
-        // eslint-disable-next-line no-console
-        console.log('  (no new nomadpath.* measures)');
-    }
+    console.log(`\n  -- ${label} --`);
     for (const m of fresh) {
+        const seg = typeof m.detail?.segments === 'number' ? `  ${m.detail.segments.toLocaleString()} seg` : '';
         // eslint-disable-next-line no-console
-        console.log(`  ${m.name.padEnd(34)} ${m.duration.toFixed(2)} ms`);
+        console.log(`  ${m.name.padEnd(34)} ${m.duration.toFixed(2)} ms${seg}`);
     }
     return all.length;
 }
 
-test('characterization: print per-phase timings', async ({ page }) => {
+test('instrumentation: load phases + actions emit measures (UI-driven)', async ({ page }) => {
     let printed = 0;
 
-    // load + ingest fire during NomadPath.create().
+    // --- Initial load: phases fire during NomadPath.create() ---
     await gotoPerfMap(page);
-    printed = printNewMeasures('after load + ingest', await readNomadMeasures(page), printed);
+    const afterLoad = await readNomadMeasures(page);
+    printed = printMeasures('after load + ingest', afterLoad, printed);
 
-    // Drive the colour re-render path (nomadpath.setColourAttribute). `elevations`
-    // is always present in the fixture, so this is a valid switch.
-    await page.evaluate(() => (window as any).nomadMap.setColourAttribute('elevations'));
-    await page.waitForFunction(() => (window as any).nomadMap.colourAttribute === 'elevations');
+    const names = afterLoad.map((m) => m.name);
+    expect(names).toContain('nomadpath.Initial load/Load trip data');
+    expect(names).toContain('nomadpath.Initial load/Build segments');
+    expect(names).toContain('nomadpath.Initial load/Add to map');
+    expect(names).toContain('nomadpath.Initial load/Mount UI');
+    // buildSegments carries the total segment count as detail.
+    const build = latestMeasure(afterLoad, 'nomadpath.Initial load/Build segments');
+    expect(build?.detail?.segments, 'buildSegments should carry a segment count').toBeGreaterThan(0);
 
-    printed = printNewMeasures('after colour-attribute change', await readNomadMeasures(page), printed);
+    // --- Colour change: driven by the real dropdown ---
+    await page.selectOption(COLOUR_SELECT, 'elevations');
+    const colourSync = await waitForMeasure(page, 'nomadpath.Colour change');
+    const colourFrame = await waitForMeasure(page, 'nomadpath.Colour change.firstFrame');
+    expect(colourSync.detail?.segments, 'colour change carries visible-segment count').toBeGreaterThan(0);
+    expect(colourFrame.duration).toBeGreaterThanOrEqual(0);
+    printed = printMeasures('after colour change (dropdown)', await readNomadMeasures(page), printed);
 
-    // Drive the visibility-toggle re-render path (nomadpath.updateRanges) through
-    // the real UI wiring: clicking a track-row checkbox fires TrackLegend's
-    // onVisibilityChange -> attrLegend.updateRanges -> LayerManager.updateRanges.
-    // The native checkbox is visually replaced by a styled label (display:none),
-    // so Playwright's uncheck() refuses it; .click() on the element dispatches
-    // the same change event the user's click would, regardless of CSS visibility.
-    await page.evaluate(() => {
-        const cb = document.querySelector<HTMLInputElement>(
-            '.np-track-legend .np-track-row .np-track-row__checkbox',
+    // --- Single-track toggle: hiding a track must DROP the visible count ---
+    const segBeforeToggle = latestMeasure(await readNomadMeasures(page), 'nomadpath.Colour change')?.detail?.segments;
+    // The native checkbox is CSS-hidden (styled label replaces it), so Playwright's
+    // .click() refuses it; dispatch the click in-page — same change event the user's
+    // click fires — regardless of CSS visibility.
+    await page.evaluate((sel) => document.querySelector<HTMLInputElement>(sel)?.click(), SINGLE_TRACK_CHECKBOX);
+    const toggleSync = await waitForMeasure(page, 'nomadpath.Toggle track');
+    await waitForMeasure(page, 'nomadpath.Toggle track.firstFrame');
+    const segAfterToggle = toggleSync.detail?.segments;
+    expect(segAfterToggle, 'toggle carries a post-action segment count').toBeGreaterThanOrEqual(0);
+    // Hiding a visible track must reduce the painted segment count — guards the
+    // stale-detail bug (count read before the action would NOT drop).
+    expect(segAfterToggle!, 'hiding a track lowers the visible-segment count').toBeLessThan(segBeforeToggle!);
+    printed = printMeasures('after single-track toggle (hide)', await readNomadMeasures(page), printed);
+
+    // --- Group toggle: a day-header checkbox must also emit the measure ---
+    const beforeGroupCount = (await readNomadMeasures(page)).filter((m) => m.name === 'nomadpath.Toggle track').length;
+    const groupExists = await page.evaluate((sel) => !!document.querySelector(sel), GROUP_CHECKBOX);
+    if (groupExists) {
+        await page.evaluate((sel) => document.querySelector<HTMLInputElement>(sel)?.click(), GROUP_CHECKBOX);
+        // A new 'Toggle track' measure must appear (group handler is profiled too).
+        await page.waitForFunction(
+            (n) => performance.getEntriesByType('measure').filter((e) => e.name === n).length > 0,
+            'nomadpath.Toggle track',
         );
-        cb?.click();
-    });
-
-    printed = printNewMeasures('after visibility toggle', await readNomadMeasures(page), printed);
+        const afterGroupCount = (await readNomadMeasures(page)).filter(
+            (m) => m.name === 'nomadpath.Toggle track',
+        ).length;
+        expect(afterGroupCount, 'group toggle emits a Toggle track measure').toBeGreaterThan(beforeGroupCount);
+        printed = printMeasures('after group toggle', await readNomadMeasures(page), printed);
+    }
 });
