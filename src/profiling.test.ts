@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { profile, profileAsync } from './profiling';
+import { profile, profileAsync, PROFILING_ON } from './profiling';
 
 describe('profile', () => {
     it('returns the wrapped function result', () => {
@@ -33,5 +33,27 @@ describe('profileAsync', () => {
                 throw new Error('boom');
             }),
         ).rejects.toThrow('boom');
+    });
+});
+
+// Under unit test NOMADPATH_PROFILING is defined `true` (vitest.config.ts), so
+// the timed wrappers are live and emit measures. These assert the active path.
+describe('timed path (profiling on)', () => {
+    afterEach(() => performance.clearMeasures());
+
+    it('runs with profiling enabled under test', () => {
+        expect(PROFILING_ON).toBe(true);
+    });
+
+    it('emits a performance.measure named after the phase', () => {
+        profile('nomadpath.test-phase', () => 1);
+        const names = performance.getEntriesByType('measure').map(m => m.name);
+        expect(names).toContain('nomadpath.test-phase');
+    });
+
+    it('emits a measure for an async phase', async () => {
+        await profileAsync('nomadpath.test-async', async () => 1);
+        const names = performance.getEntriesByType('measure').map(m => m.name);
+        expect(names).toContain('nomadpath.test-async');
     });
 });

@@ -9,7 +9,10 @@ declare const NOMADPATH_PROFILING: boolean;
 // context the identifier is undefined, so this evaluates to false without a
 // ReferenceError. In a rollup build the identifier is replaced with a literal
 // before this file is bundled, so the ternary folds to one branch.
-const PROFILING_ON = typeof NOMADPATH_PROFILING !== 'undefined' && NOMADPATH_PROFILING;
+// Exported so non-`profile()` profiling-only code (e.g. segment counting that
+// merely *feeds* a measure) can be gated too — terser DCEs the `false` branch in
+// the prod build, keeping that code absent, not just dormant.
+export const PROFILING_ON = typeof NOMADPATH_PROFILING !== 'undefined' && NOMADPATH_PROFILING;
 
 const profileTimed = <T>(name: string, fn: () => T): T => {
     performance.mark(`${name}:start`);

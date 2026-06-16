@@ -2,7 +2,7 @@ import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, Map as MaplibreMap } from 'maplibre-gl';
 
 import type { AttributeRange, AttributeRanges, POIFeature, TrackFeature, TripData } from '../contract/types';
-import { profile } from '../profiling';
+import { profile, PROFILING_ON } from '../profiling';
 import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
 
@@ -143,6 +143,16 @@ export interface SegmentBuildResult {
     featureCollection: FeatureCollection;
     /** Highest dayIndex value across all tracks. Used for colour interpolation. */
     maxDayIndex: number;
+    /**
+     * Number of rendered segments contributed by each track, keyed by derived
+     * trackId. Antimeridian-crossing segments count as the two sub-segments they
+     * become. Summed over a visible set this is the count the backend must paint
+     * — the proxy for GPU paint cost (see profiling epic).
+     *
+     * Profiling-only: `undefined` in the prod build (the whole counting structure
+     * is gated behind NOMADPATH_PROFILING and terser-DCE'd away).
+     */
+    segmentsByTrack?: Map<string, number>;
 }
 
 /**
@@ -157,12 +167,17 @@ export function buildSegmentFeatures(tracks: TrackFeature[]): SegmentBuildResult
     const maxDayIndex = Math.max(0, days.length - 1);
 
     const features: Feature<LineString, SegmentProperties>[] = [];
+    // Profiling-only; gated so the whole counting structure DCEs from prod.
+    const segmentsByTrack = PROFILING_ON ? new Map<string, number>() : undefined;
 
     for (const track of tracks) {
         const { day, transportMode, elevations, speeds, sunAngles } = track.properties;
         const coords = track.geometry.coordinates;
         const trackId = deriveTrackId(track);
         const dayIndex = dayIndexMap.get(day) ?? 0;
+        // Profiling-only: track where this track's segments begin so we can count
+        // them. Gated so terser DCEs the counting from the prod bundle entirely.
+        const beforeCount = PROFILING_ON ? features.length : 0;
 
         for (let i = 0; i < coords.length - 1; i++) {
             const props: SegmentProperties = {
@@ -197,9 +212,17 @@ export function buildSegmentFeatures(tracks: TrackFeature[]): SegmentBuildResult
                 });
             }
         }
+
+        // Profiling-only (gated for prod-cleanliness). Accumulate (not set): a
+        // duplicate (day, name) track ID would otherwise clobber the earlier
+        // track's contribution.
+        if (segmentsByTrack) {
+            const added = features.length - beforeCount;
+            segmentsByTrack.set(trackId, (segmentsByTrack.get(trackId) ?? 0) + added);
+        }
     }
 
-    return { featureCollection: { type: 'FeatureCollection', features }, maxDayIndex };
+    return { featureCollection: { type: 'FeatureCollection', features }, maxDayIndex, segmentsByTrack };
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +257,11 @@ export class LayerManager {
     private _colourAttribute: ColourAttribute = 'day';
     private _ranges: AttributeRanges = {};
     private _maxDayIndex = 0;
+    /**
+     * Per-track rendered-segment counts, populated during addLayers.
+     * Profiling-only: stays undefined in the prod build (gated + DCE'd).
+     */
+    private _segmentsByTrack: Map<string, number> | undefined;
 
     /**
      * Create a LayerManager bound to the given MapLibre map instance.
@@ -271,10 +299,11 @@ export class LayerManager {
                 pois.filter(p => !p.properties.hidden).map(p => p.properties.category),
             );
 
-            const { featureCollection, maxDayIndex } = profile('nomadpath.buildSegmentFeatures', () =>
+            const { featureCollection, maxDayIndex, segmentsByTrack } = profile('nomadpath.buildSegmentFeatures', () =>
                 buildSegmentFeatures(tracks),
             );
             this._maxDayIndex = maxDayIndex;
+            this._segmentsByTrack = segmentsByTrack;
 
             // tolerance: 0 disables tile simplification, preventing short segments
             // from being collapsed to dots at low zoom levels.
@@ -420,6 +449,23 @@ export class LayerManager {
     /** The highest day index in the loaded data (used for colour scale endpoints). */
     get maxDayIndex(): number {
         return this._maxDayIndex;
+    }
+
+    /**
+     * Number of rendered segments the backend must paint for the current visible
+     * set — the sum of per-track segment counts over the visible tracks. O(visible
+     * tracks), no geometry walk. The proxy for GPU paint cost (see profiling epic);
+     * for a colour change this is "all currently-visible segments" (the paint
+     * expression touches every visible segment).
+     */
+    get visibleSegmentCount(): number {
+        // Gated so the getter (and the map it reads) DCE out of the prod bundle —
+        // it exists only to feed profiling measures.
+        if (!PROFILING_ON || !this._segmentsByTrack) return 0;
+        const counts = this._segmentsByTrack;
+        let total = 0;
+        for (const id of this._visibleIds) total += counts.get(id) ?? 0;
+        return total;
     }
 
     /** The set of POI categories currently visible. */
