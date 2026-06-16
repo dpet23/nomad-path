@@ -55,13 +55,26 @@
 
 .np-prof__row {
     display: flex;
-    justify-content: space-between;
-    gap: 16px;
+    align-items: baseline;
+    gap: 12px;
     padding: 3px 0;
 }
 
 .np-prof__row + .np-prof__row {
     border-top: 1px solid #2d2d4a;
+}
+
+/* Column-header row: small, muted, labels the numeric columns. */
+.np-prof__row--head span {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6f6f96;
+}
+
+/* Nested phase rows (e.g. under "Initial load") indent their leaf label. */
+.np-prof__row[data-depth='1'] .np-prof__phase {
+    padding-left: 14px;
 }
 
 .np-prof__phase {
@@ -70,18 +83,34 @@
     font-family: ui-monospace, monospace;
 }
 
-.np-prof__ms {
-    color: #8fe3a0;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
-.np-prof__seg {
-    min-width: 72px;
-    color: #e3c98f;
+/* Fixed-width, right-aligned numeric columns so values line up regardless of
+   which optional columns a given row carries. Colours are NEUTRAL — they
+   identify the column, they are NOT goodness indicators (no thresholds exist
+   yet; this is a characterization tool). */
+.np-prof__ms,
+.np-prof__ff {
+    flex: 0 0 auto;
+    color: #c4c4dc;
     font-variant-numeric: tabular-nums;
     text-align: right;
     white-space: nowrap;
+}
+
+.np-prof__ms {
+    min-width: 64px;
+}
+
+.np-prof__ff {
+    min-width: 56px;
+    color: #9a9ac0;
+}
+
+/* Global visible-segment count — current state, shown once under the title. */
+.np-prof__segments {
+    margin: 0 0 8px;
+    font-size: 0.78rem;
+    color: #e3c98f;
+    font-variant-numeric: tabular-nums;
 }
 
 .np-prof__empty {

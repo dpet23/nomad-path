@@ -9,7 +9,6 @@ import {
     createMap,
     fitToFeatures,
     fitToPOI as engineFitToPOI,
-    measureToFirstFrame,
     setBasemap as engineSetBasemap,
     waitForLoad,
 } from './core/MapEngine';
@@ -131,17 +130,14 @@ export class NomadPath {
 
         const legendCfg = config.legends ?? {};
         // Load-time phase: build the legend UI components.
-        profile('nomadpath.mountUI', () => {
+        profile('nomadpath.Initial load/Mount UI', () => {
             const attrLegend = new AttributeLegend(containerEl, ctx, legendCfg.attributes);
             const trackLegend = new TrackLegend(containerEl, ctx, legendCfg.tracks, {
                 onVisibilityChange: () => {
-                    // A track toggle's dominant cost is the range-driven re-paint of
-                    // the visible set (the prior setTrackVisible setFilter is cheap).
-                    // Bracket it for to-first-frame; the post-toggle segment count
-                    // rides the sync nomadpath.updateRanges measure inside LayerManager.
-                    measureToFirstFrame(map, 'nomadpath.action.visibilityToggle', () => {
-                        attrLegend.updateRanges(layers.visibleIds);
-                    });
+                    // The toggle's re-paint (and its profiling: sync + to-first-frame
+                    // + post-toggle segment count) happens inside LayerManager.
+                    // updateRanges, reached via attrLegend.updateRanges below.
+                    attrLegend.updateRanges(layers.visibleIds);
                 },
             });
             const poiLegend = new POILegend(containerEl, ctx, legendCfg.pois);
@@ -286,11 +282,10 @@ export class NomadPath {
 
     /** Switch the colour attribute used to style the track layer. */
     setColourAttribute(attribute: ColourAttribute): this {
-        // The sync cost (setPaintProperty + segment-count detail) is measured
-        // inside LayerManager; bracket the whole action for to-first-frame too.
-        measureToFirstFrame(this._map, 'nomadpath.action.colourAttribute', () => {
-            this._layers.setColourAttribute(attribute);
-        });
+        // Profiling (sync + to-first-frame + segment detail) lives in
+        // LayerManager.setColourAttribute — measured there so it also fires when
+        // the legend dropdown calls LayerManager directly (bypassing this method).
+        this._layers.setColourAttribute(attribute);
         return this;
     }
 

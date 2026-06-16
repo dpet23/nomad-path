@@ -23,7 +23,7 @@ export function deriveTrackId(track: TrackFeature): string {
  * @throws if any URL returns a non-OK response or non-FeatureCollection JSON
  */
 export async function loadTripData(urls: string[]): Promise<TripData[]> {
-    return profileAsync('nomadpath.loadTripData', () =>
+    return profileAsync('nomadpath.Initial load/Load trip data', () =>
         Promise.all(
             urls.map(async url => {
                 let res: Response;

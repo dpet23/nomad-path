@@ -1,13 +1,20 @@
 // Demo-only profiling widget.
 //
 // Reads the library's standard `performance.measure` entries (emitted by the
-// nomad-path.profiling.js bundle) and shows them as a toggleable phase -> ms
-// panel. Lives in the harness, NOT the library: it consumes the web-standard
-// performance API, so it needs no library API surface and ships with nothing.
+// nomad-path.profiling.js bundle) and shows them as a toggleable table. Lives in
+// the harness, NOT the library: it consumes the web-standard performance API, so
+// it needs no library API surface and ships with nothing.
 //
-// Each instrumented phase emits a measure named `nomadpath.<phase>`; we list
-// the LATEST duration per phase so re-renders (e.g. a colour-attribute change)
-// update the row live.
+// MEASURE NAME GRAMMAR (after stripping the `nomadpath.` prefix), two separators
+// with two meanings, parsed generically — no hardcoded phase list, no string
+// reformatting (names are shown exactly as emitted):
+//   '/'  = "is a child ROW of"      → nesting, e.g. 'Initial load/Build segments'
+//   '.'  = "is a COLUMN/sub-measure of" → same row, extra column, e.g.
+//          'Colour change.firstFrame'
+// So a name splits as <rowPath>[.<column>], and <rowPath> splits on '/' into a
+// row hierarchy. Actions also carry a visible-segment count as
+// `entry.detail.segments` (the proxy for GPU paint cost), shown as a column.
+// Rows appear in first-seen (chronological) order; values are the latest.
 
 const MEASURE_PREFIX = 'nomadpath.';
 
@@ -26,14 +33,34 @@ const MEASURE_PREFIX = 'nomadpath.';
 export function mountProfilingWidget(toolbarEl) {
     // Latest { ms, segments } keyed by the phase name (measure name minus prefix).
     // `segments` is the visible-segment count carried as entry.detail on the
-    // action measures (undefined for phases that don't carry it).
-    const latest = new Map();
+    // One entry per ROW, keyed by full rowPath (e.g. 'Initial load/Build
+    // segments'). Insertion order = chronological (first-seen). Each value:
+    //   { sync, columns: { firstFrame, ... }, segments }
+    // Group headers (a rowPath that is a prefix of others, e.g. 'Initial load')
+    // are created implicitly the first time a child is seen, so they keep their
+    // chronological slot even without their own measure.
+    const rows = new Map();
+
+    const ensureRow = rowPath => {
+        if (!rows.has(rowPath)) rows.set(rowPath, { sync: undefined, columns: {} });
+        return rows.get(rowPath);
+    };
+
+    // The visible-segment count is GLOBAL state (a property of the current
+    // visible set, not of any one action), so it is shown ONCE and updated by
+    // whichever action measure last carried it — never duplicated per row, which
+    // would leave stale copies on untouched rows.
+    let visibleSegments;
 
     const panel = document.createElement('div');
     panel.className = 'np-prof';
     panel.hidden = true;
-    panel.innerHTML = '<h2 class="np-prof__title">Profiling</h2><ul class="np-prof__list"></ul>';
+    panel.innerHTML =
+        '<h2 class="np-prof__title">Profiling</h2>' +
+        '<p class="np-prof__segments" hidden></p>' +
+        '<ul class="np-prof__list"></ul>';
     const list = panel.querySelector('.np-prof__list');
+    const segmentsLine = panel.querySelector('.np-prof__segments');
 
     const toggle = document.createElement('button');
     toggle.type = 'button';
@@ -51,32 +78,85 @@ export function mountProfilingWidget(toolbarEl) {
     // Fall back to body if the demo markup ever changes.
     (document.getElementById('stage') ?? document.body).appendChild(panel);
 
+    const fmtMs = v => (typeof v === 'number' ? `${v.toFixed(1)} ms` : '');
+
+    const headerRow =
+        '<li class="np-prof__row np-prof__row--head">' +
+        '<span class="np-prof__phase"></span>' +
+        '<span class="np-prof__ms">sync</span>' +
+        '<span class="np-prof__ff">1st frame</span>' +
+        '</li>';
+
     const render = () => {
-        const phases = [...latest.keys()].sort();
-        if (phases.length === 0) {
+        // Global visible-segment count (current state, shown once).
+        if (typeof visibleSegments === 'number') {
+            segmentsLine.textContent = `Visible: ${visibleSegments.toLocaleString()} segments`;
+            segmentsLine.hidden = false;
+        }
+
+        if (rows.size === 0) {
             list.innerHTML = '<li class="np-prof__empty">No measurements yet.</li>';
             return;
         }
-        list.innerHTML = phases
-            .map(phase => {
-                const { ms, segments } = latest.get(phase);
-                // Show the visible-segment count when the measure carried one —
-                // the proxy for GPU paint cost on action measures.
-                const seg =
-                    typeof segments === 'number'
-                        ? `<span class="np-prof__seg">${segments.toLocaleString()} seg</span>`
-                        : '';
-                return `<li class="np-prof__row"><span class="np-prof__phase">${phase}</span><span class="np-prof__ms">${ms.toFixed(1)} ms</span>${seg}</li>`;
-            })
-            .join('');
+        list.innerHTML =
+            headerRow +
+            [...rows.entries()]
+                .map(([rowPath, data]) => {
+                    const parts = rowPath.split('/');
+                    const depth = parts.length - 1; // 0 = top-level, 1 = nested phase
+                    const label = parts[parts.length - 1]; // leaf name, shown verbatim
+                    // sync ms is the row's own duration; for a synthesized group
+                    // header without its own measure, sum its children's sync times.
+                    const sync = data.sync ?? sumChildSync(rowPath);
+                    return (
+                        `<li class="np-prof__row" data-depth="${depth}">` +
+                        `<span class="np-prof__phase">${label}</span>` +
+                        `<span class="np-prof__ms">${fmtMs(sync)}</span>` +
+                        `<span class="np-prof__ff">${fmtMs(data.columns.firstFrame)}</span>` +
+                        `</li>`
+                    );
+                })
+                .join('');
+    };
+
+    // Sum the sync times of a group's direct-or-deep children (used for a header
+    // row that has no measure of its own). Phase times only — NOT wall-clock, as
+    // load phases may overlap; it's an at-a-glance breakdown total.
+    const sumChildSync = groupPath => {
+        let total = 0;
+        let any = false;
+        for (const [path, data] of rows) {
+            if (path !== groupPath && path.startsWith(`${groupPath}/`) && typeof data.sync === 'number') {
+                total += data.sync;
+                any = true;
+            }
+        }
+        return any ? total : undefined;
     };
 
     const record = entry => {
         if (!entry.name.startsWith(MEASURE_PREFIX)) return;
-        latest.set(entry.name.slice(MEASURE_PREFIX.length), {
-            ms: entry.duration,
-            segments: entry.detail?.segments,
-        });
+        const name = entry.name.slice(MEASURE_PREFIX.length);
+
+        // '.' separates a column sub-measure from its row; '/' nests rows. Split
+        // off a single trailing column segment (if any), the rest is the rowPath.
+        const dot = name.lastIndexOf('.');
+        const column = dot === -1 ? null : name.slice(dot + 1);
+        const rowPath = dot === -1 ? name : name.slice(0, dot);
+
+        // Create ancestor group rows so a header keeps its chronological slot.
+        const parts = rowPath.split('/');
+        for (let i = 1; i < parts.length; i++) ensureRow(parts.slice(0, i).join('/'));
+
+        const row = ensureRow(rowPath);
+        if (column) {
+            row.columns[column] = entry.duration;
+        } else {
+            row.sync = entry.duration;
+        }
+        // Segment count is global, not per-row: the latest measure to carry it
+        // wins, shown once in the header line.
+        if (typeof entry.detail?.segments === 'number') visibleSegments = entry.detail.segments;
     };
 
     const observer = new PerformanceObserver(records => {

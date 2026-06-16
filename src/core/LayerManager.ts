@@ -5,6 +5,7 @@ import type { AttributeRange, AttributeRanges, POIFeature, TrackFeature, TripDat
 import { profile, PROFILING_ON } from '../profiling';
 import { buildColourExpression, type ColourAttribute, type MaplibreExpression } from '../styling/ColorRamps';
 import { deriveTrackId } from './DataLoader';
+import { measureToFirstFrame } from './MapEngine';
 
 // Re-export for consumers that imported from LayerManager previously.
 export type { ColourAttribute, MaplibreExpression };
@@ -295,8 +296,9 @@ export class LayerManager {
         this._visiblePOICategories = new Set(pois.filter(p => !p.properties.hidden).map(p => p.properties.category));
 
         // Load-time phase 1 — our CPU: explode tracks into segment features.
-        const { featureCollection, maxDayIndex, segmentsByTrack } = profile('nomadpath.buildSegments', () =>
-            buildSegmentFeatures(tracks),
+        const { featureCollection, maxDayIndex, segmentsByTrack } = profile(
+            'nomadpath.Initial load/Build segments',
+            () => buildSegmentFeatures(tracks),
         );
         this._maxDayIndex = maxDayIndex;
         this._segmentsByTrack = segmentsByTrack;
@@ -304,7 +306,7 @@ export class LayerManager {
         // Load-time phase 2 — hand the geojson to MapLibre (ingest/tessellation
         // kicks off here). Separated from buildSegments so the two costs are
         // distinguishable: "our build" vs "MapLibre ingest".
-        profile('nomadpath.addToMap', () => {
+        profile('nomadpath.Initial load/Add to map', () => {
             // tolerance: 0 disables tile simplification, preventing short segments
             // from being collapsed to dots at low zoom levels.
             this._map.addSource(TRACK_SOURCE, { type: 'geojson', data: featureCollection, tolerance: 0 });
@@ -411,19 +413,24 @@ export class LayerManager {
     /** Switch the colour attribute used to style the track layer. */
     setColourAttribute(attribute: ColourAttribute): void {
         this._colourAttribute = attribute;
-        // A colour change re-paints every currently-visible segment, so the
-        // visible-segment count is the cost driver carried as measure detail.
-        profile(
-            'nomadpath.setColourAttribute',
-            () => {
-                this._map.setPaintProperty(
-                    TRACK_LAYER,
-                    'line-color',
-                    buildColourExpression(attribute, this._ranges, this._maxDayIndex),
-                );
-            },
-            { segments: this.visibleSegmentCount },
-        );
+        // Measured here (not at the public NomadPath method) because the legend
+        // dropdown calls this directly. The sync measure and its .firstFrame
+        // share the base name so the widget pairs them into one action row.
+        // A colour change re-paints every visible segment → segments is the cost
+        // driver, carried as detail on the sync measure.
+        measureToFirstFrame(this._map, 'nomadpath.Colour change', () => {
+            profile(
+                'nomadpath.Colour change',
+                () => {
+                    this._map.setPaintProperty(
+                        TRACK_LAYER,
+                        'line-color',
+                        buildColourExpression(attribute, this._ranges, this._maxDayIndex),
+                    );
+                },
+                { segments: this.visibleSegmentCount },
+            );
+        });
     }
 
     /** The currently active colour attribute. */
@@ -438,19 +445,23 @@ export class LayerManager {
      */
     updateRanges(ranges: AttributeRanges): void {
         this._ranges = ranges;
-        // Called after a visibility change, so visibleSegmentCount reflects the
-        // post-toggle visible set — the count the backend must now paint.
-        profile(
-            'nomadpath.updateRanges',
-            () => {
-                this._map.setPaintProperty(
-                    TRACK_LAYER,
-                    'line-color',
-                    buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
-                );
-            },
-            { segments: this.visibleSegmentCount },
-        );
+        // This is the re-paint that follows a track-visibility toggle, so it is
+        // the action we surface as "visibilityToggle". visibleSegmentCount
+        // reflects the post-toggle visible set. Sync + .firstFrame share the base
+        // name so the widget pairs them into one row.
+        measureToFirstFrame(this._map, 'nomadpath.Toggle track', () => {
+            profile(
+                'nomadpath.Toggle track',
+                () => {
+                    this._map.setPaintProperty(
+                        TRACK_LAYER,
+                        'line-color',
+                        buildColourExpression(this._colourAttribute, this._ranges, this._maxDayIndex),
+                    );
+                },
+                { segments: this.visibleSegmentCount },
+            );
+        });
     }
 
     /** The current attribute ranges (for legend display). */
