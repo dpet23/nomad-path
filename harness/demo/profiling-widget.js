@@ -24,7 +24,9 @@ const MEASURE_PREFIX = 'nomadpath.';
  * @returns {void}
  */
 export function mountProfilingWidget(toolbarEl) {
-    // Latest duration (ms) keyed by the phase name (measure name minus prefix).
+    // Latest { ms, segments } keyed by the phase name (measure name minus prefix).
+    // `segments` is the visible-segment count carried as entry.detail on the
+    // action measures (undefined for phases that don't carry it).
     const latest = new Map();
 
     const panel = document.createElement('div');
@@ -57,15 +59,24 @@ export function mountProfilingWidget(toolbarEl) {
         }
         list.innerHTML = phases
             .map(phase => {
-                const ms = latest.get(phase).toFixed(1);
-                return `<li class="np-prof__row"><span class="np-prof__phase">${phase}</span><span class="np-prof__ms">${ms} ms</span></li>`;
+                const { ms, segments } = latest.get(phase);
+                // Show the visible-segment count when the measure carried one —
+                // the proxy for GPU paint cost on action measures.
+                const seg =
+                    typeof segments === 'number'
+                        ? `<span class="np-prof__seg">${segments.toLocaleString()} seg</span>`
+                        : '';
+                return `<li class="np-prof__row"><span class="np-prof__phase">${phase}</span><span class="np-prof__ms">${ms.toFixed(1)} ms</span>${seg}</li>`;
             })
             .join('');
     };
 
     const record = entry => {
         if (!entry.name.startsWith(MEASURE_PREFIX)) return;
-        latest.set(entry.name.slice(MEASURE_PREFIX.length), entry.duration);
+        latest.set(entry.name.slice(MEASURE_PREFIX.length), {
+            ms: entry.duration,
+            segments: entry.detail?.segments,
+        });
     };
 
     const observer = new PerformanceObserver(records => {

@@ -65,6 +65,7 @@
 }
 
 .np-prof__phase {
+    flex: 1 1 auto;
     color: #cfcfe8;
     font-family: ui-monospace, monospace;
 }
@@ -72,6 +73,14 @@
 .np-prof__ms {
     color: #8fe3a0;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.np-prof__seg {
+    min-width: 72px;
+    color: #e3c98f;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
     white-space: nowrap;
 }
 
