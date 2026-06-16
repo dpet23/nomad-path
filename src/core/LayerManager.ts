@@ -277,34 +277,34 @@ export class LayerManager {
      * map's style has loaded.
      */
     addLayers(trips: TripData[]): void {
-        profile('nomadpath.addLayers', () => {
-            const tracks = trips.flatMap(t =>
-                t.features.filter((f): f is TrackFeature => f.properties.type === 'track'),
-            );
-            const pois = trips.flatMap(t => t.features.filter((f): f is POIFeature => f.properties.type === 'poi'));
+        const tracks = trips.flatMap(t => t.features.filter((f): f is TrackFeature => f.properties.type === 'track'));
+        const pois = trips.flatMap(t => t.features.filter((f): f is POIFeature => f.properties.type === 'poi'));
 
-            // Defensive cleanup: setStyle() clears sources/layers, but guard against
-            // any case where they still exist (e.g. race conditions or double calls).
-            for (const id of [POI_LABEL_LAYER, POI_LAYER, TRACK_LAYER]) {
-                if (this._map.getLayer(id)) this._map.removeLayer(id);
-            }
-            for (const id of [POI_LABEL_SOURCE, POI_SOURCE, TRACK_SOURCE]) {
-                if (this._map.getSource(id)) this._map.removeSource(id);
-            }
+        // Defensive cleanup: setStyle() clears sources/layers, but guard against
+        // any case where they still exist (e.g. race conditions or double calls).
+        for (const id of [POI_LABEL_LAYER, POI_LAYER, TRACK_LAYER]) {
+            if (this._map.getLayer(id)) this._map.removeLayer(id);
+        }
+        for (const id of [POI_LABEL_SOURCE, POI_SOURCE, TRACK_SOURCE]) {
+            if (this._map.getSource(id)) this._map.removeSource(id);
+        }
 
-            this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
-            // Respect the `hidden` flag set during preprocessing (absent/false = visible).
-            this._visibleIds = new Set(tracks.filter(t => !t.properties.hidden).map(deriveTrackId));
-            this._visiblePOICategories = new Set(
-                pois.filter(p => !p.properties.hidden).map(p => p.properties.category),
-            );
+        this._ranges = mergeRanges(trips.map(t => t.metadata.attributeRanges));
+        // Respect the `hidden` flag set during preprocessing (absent/false = visible).
+        this._visibleIds = new Set(tracks.filter(t => !t.properties.hidden).map(deriveTrackId));
+        this._visiblePOICategories = new Set(pois.filter(p => !p.properties.hidden).map(p => p.properties.category));
 
-            const { featureCollection, maxDayIndex, segmentsByTrack } = profile('nomadpath.buildSegmentFeatures', () =>
-                buildSegmentFeatures(tracks),
-            );
-            this._maxDayIndex = maxDayIndex;
-            this._segmentsByTrack = segmentsByTrack;
+        // Load-time phase 1 — our CPU: explode tracks into segment features.
+        const { featureCollection, maxDayIndex, segmentsByTrack } = profile('nomadpath.buildSegments', () =>
+            buildSegmentFeatures(tracks),
+        );
+        this._maxDayIndex = maxDayIndex;
+        this._segmentsByTrack = segmentsByTrack;
 
+        // Load-time phase 2 — hand the geojson to MapLibre (ingest/tessellation
+        // kicks off here). Separated from buildSegments so the two costs are
+        // distinguishable: "our build" vs "MapLibre ingest".
+        profile('nomadpath.addToMap', () => {
             // tolerance: 0 disables tile simplification, preventing short segments
             // from being collapsed to dots at low zoom levels.
             this._map.addSource(TRACK_SOURCE, { type: 'geojson', data: featureCollection, tolerance: 0 });
