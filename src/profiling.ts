@@ -14,17 +14,23 @@ declare const NOMADPATH_PROFILING: boolean;
 // the prod build, keeping that code absent, not just dormant.
 export const PROFILING_ON = typeof NOMADPATH_PROFILING !== 'undefined' && NOMADPATH_PROFILING;
 
-const profileTimed = <T>(name: string, fn: () => T): T => {
+// Arbitrary structured payload attached to a measure. Propagates to the
+// PerformanceObserver entry as `entry.detail` (e.g. `{ segments: 112541 }`).
+type MeasureDetail = Record<string, unknown>;
+
+const profileTimed = <T>(name: string, fn: () => T, detail?: MeasureDetail): T => {
     performance.mark(`${name}:start`);
     try {
         return fn();
     } finally {
         performance.mark(`${name}:end`);
-        performance.measure(name, `${name}:start`, `${name}:end`);
+        // Object-form signature so an optional `detail` rides through to the
+        // PerformanceObserver entry; the 3-string form cannot carry detail.
+        performance.measure(name, { start: `${name}:start`, end: `${name}:end`, detail });
     }
 };
 
-const profileIdentity = <T>(_name: string, fn: () => T): T => fn();
+const profileIdentity = <T>(_name: string, fn: () => T, _detail?: MeasureDetail): T => fn();
 
 const profileAsyncTimed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
     performance.mark(`${name}:start`);
@@ -38,7 +44,12 @@ const profileAsyncTimed = async <T>(name: string, fn: () => Promise<T>): Promise
 
 const profileAsyncIdentity = <T>(_name: string, fn: () => Promise<T>): Promise<T> => fn();
 
-/** Time a synchronous operation, emitting a `performance.measure(name)`. */
+/**
+ * Time a synchronous operation, emitting a `performance.measure(name)`. An
+ * optional `detail` payload (e.g. `{ segments: 112541 }`) rides through to the
+ * PerformanceObserver entry as `entry.detail`. Folds to an identity wrapper in
+ * prod (detail ignored, DCE'd).
+ */
 export const profile = PROFILING_ON ? profileTimed : profileIdentity;
 
 /** Time an async operation, emitting a `performance.measure(name)`. */

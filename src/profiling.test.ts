@@ -57,3 +57,42 @@ describe('timed path (profiling on)', () => {
         expect(names).toContain('nomadpath.test-async');
     });
 });
+
+describe('profile with detail payload', () => {
+    afterEach(() => performance.clearMeasures());
+
+    it('returns the wrapped function result', () => {
+        expect(profile('nomadpath.d', () => 99, { segments: 7 })).toBe(99);
+    });
+
+    it('attaches detail to the emitted measure entry', () => {
+        profile('nomadpath.detail-phase', () => 1, { segments: 112541 });
+        const entry = performance.getEntriesByType('measure').find(m => m.name === 'nomadpath.detail-phase') as
+            | PerformanceMeasure
+            | undefined;
+        expect(entry).toBeDefined();
+        expect((entry!.detail as { segments: number }).segments).toBe(112541);
+    });
+
+    it('omits detail cleanly when not provided', () => {
+        profile('nomadpath.no-detail', () => 1);
+        const entry = performance.getEntriesByType('measure').find(m => m.name === 'nomadpath.no-detail') as
+            | PerformanceMeasure
+            | undefined;
+        expect(entry).toBeDefined();
+        // No detail passed → entry.detail is null/undefined, not an error.
+        expect(entry!.detail ?? null).toBeNull();
+    });
+
+    it('propagates thrown errors', () => {
+        expect(() =>
+            profile(
+                'nomadpath.d',
+                () => {
+                    throw new Error('boom');
+                },
+                { segments: 0 },
+            ),
+        ).toThrow('boom');
+    });
+});
