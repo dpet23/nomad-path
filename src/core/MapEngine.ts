@@ -3,6 +3,8 @@ import { featureCollection } from '@turf/helpers';
 import type { Feature } from 'geojson';
 import maplibregl, { type Map, type StyleSpecification } from 'maplibre-gl';
 
+import { PROFILING_ON } from '../profiling';
+
 // ---------------------------------------------------------------------------
 // Basemap registry
 // ---------------------------------------------------------------------------
@@ -96,6 +98,47 @@ export function waitForLoad(map: Map): Promise<void> {
         } else {
             map.once('load', () => resolve());
         }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Profiling: to-first-frame timing (quarantined backend code)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run a synchronous map mutation and measure the time from the mutation to the
+ * first MapLibre `render` event after it — "to first frame". Emits a
+ * `performance.measure(<name>.firstFrame)` whose duration captures our JS plus
+ * the backend's style recalc and first composited frame (which the synchronous
+ * `profile()` measure around the mutation is blind to).
+ *
+ * IMPORTANT: this is FIRST-FRAME, explicitly NOT settle. The GPU keeps painting
+ * for ~2s after this fires on a heavy action (rasterizing ~112k line segments);
+ * the visible-segment count is the proxy for that ongoing cost, not this number.
+ * Captured causally via the first `render` event — NOT by reading the private
+ * `_styleDirty` flag, which a Stage 0 spike found is reset before the event
+ * fires (and so reads unreliably). One-shot listener; no leak. Tile-independent
+ * (a `render` fires for our change before tiles finish).
+ *
+ * The measure resolves on a later frame, so callers cannot await it — it is
+ * fire-and-forget, which keeps the public action methods synchronous/chainable.
+ *
+ * This whole helper is gated by PROFILING_ON, so terser DCEs the render-wiring
+ * out of the prod bundle entirely. Quarantined here because MapEngine is the
+ * backend boundary — the only place that touches `map.once('render')`.
+ */
+export function measureToFirstFrame(map: Map, name: string, trigger: () => void): void {
+    if (!PROFILING_ON) {
+        trigger();
+        return;
+    }
+    const startMark = `${name}.firstFrame:start`;
+    performance.mark(startMark);
+    trigger();
+    map.once('render', () => {
+        const endMark = `${name}.firstFrame:end`;
+        performance.mark(endMark);
+        performance.measure(`${name}.firstFrame`, startMark, endMark);
     });
 }
 
