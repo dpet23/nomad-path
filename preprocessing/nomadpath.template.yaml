@@ -1,14 +1,11 @@
-# nomadpath.yaml — Nomad Path preprocessing configuration
-#
-# Only list folders/categories that need a non-default setting. Folders
-# omitted from this file inherit the defaults below.
+# Nomad Path preprocessing configuration
 #
 # Group settings (under groups.<folder>):
-#   hidden                true|false (default false) — hidden at map load
-#   excludeFromAutoBounds true|false (default false) — excluded from initial map viewport fit
+#   hidden                true|false — hidden at map load
+#   excludeFromAutoBounds true|false — excluded from map viewport fit
 #
-# POI category settings (under poi_categories.<category>):
-#   hidden                true|false (default false) — hidden at map load
+# POI settings (under poi_categories.<category>):
+#   hidden                true|false — hidden at map load
 #
 # Other:
 #   ignore                list of glob patterns anchored to the input root,
@@ -17,16 +14,12 @@
 groups:
   # <<subdirs>>
 
-# poi_categories:
-#   accommodation:
-#     hidden: true
+poi_categories:
+  poi:
+    hidden: true
 
-# Files and folders skipped during preprocessing and watch. Edit or remove
-# entries to suit your workflow. Patterns are anchored to the input root —
-# use `**/<pat>` to match at any depth.
 ignore:
   - .git/
-  - .DS_Store
-  - Thumbs.db
-  - "**/*.swp"
-  - "**/*~"
+  - .ignore/
+  - '**/.DS_Store'
+  - '**/Thumbs.db'

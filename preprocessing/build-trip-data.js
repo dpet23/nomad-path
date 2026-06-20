@@ -13,7 +13,7 @@ import { parseFile } from './lib/parsers.js';
 import { enrichTrack } from './lib/enrichment.js';
 import { groupTracks } from './lib/grouping.js';
 import { buildIgnoreMatcher } from './lib/ignore.js';
-import { logBuildStart, logFail, logOK } from './lib/log.js';
+import { logBuildStart, logFail, logOK, logDebugEvent } from './lib/log.js';
 import { buildGeoJSON } from './lib/output.js';
 import { expandPath } from './lib/paths.js';
 
@@ -105,7 +105,7 @@ if (values.init) {
 
     const scaffold = subdirs.length > 0
         ? subdirs.map(d => `  ${d}: {}`).join('\n')
-        : '  # my-flights: { hidden: true }';
+        : '  # flights:\n  #   hidden: true';
     const rendered = template.replace(/^[ \t]*#[ \t]*<<subdirs>>[ \t]*$/m, scaffold);
 
     writeFileSync(outPath, rendered);
@@ -250,6 +250,7 @@ for (const filePath of allFiles) {
         if (err.message?.startsWith('Unsupported file format')) {
             const ext = extname(filePath).toLowerCase() || 'no-ext';
             skippedByExt.set(ext, (skippedByExt.get(ext) ?? 0) + 1);
+            logDebugEvent('unsupported', filePath);
         } else {
             // Real parse failure — surface it with context and abort
             failExit('Parse', `${relative(inputDir, filePath).replace(/\\/g, '/')}: ${err.message}`);
@@ -352,6 +353,6 @@ const rangeClause = stats.dateRange
 const elapsedMs = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
 const runtime = elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`;
 
-const clauses = [outputFile, tracksClause, poiClause, rangeClause, skipClause, runtime]
+const clauses = [tracksClause, poiClause, rangeClause, skipClause, runtime]
     .filter(c => c !== null);
 logOK(clauses.join(' | '));

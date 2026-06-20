@@ -9,7 +9,7 @@ import { parse as parseYAML } from 'yaml';
 
 import { CONFIG_FILE, OUTPUT_FILE, configPath } from './lib/config.js';
 import { buildIgnoreMatcher } from './lib/ignore.js';
-import { logFail, logWatchEvent } from './lib/log.js';
+import { logFail, logDebugEvent } from './lib/log.js';
 import { expandPath } from './lib/paths.js';
 
 const USAGE = `
@@ -58,8 +58,8 @@ try {
     ({ values } = parseArgs({
         options: {
             input:  { type: 'string', short: 'i' },
-            name:   { type: 'string', short: 'n' },
             output: { type: 'string', short: 'o' },
+            name:   { type: 'string', short: 'n' },
             port:   { type: 'string', short: 'p' },
         },
     }));
@@ -228,8 +228,11 @@ chokidar
         // (so writing the geojson doesn't re-trigger a build).
         ignored: (absPath) =>
             absPath === OUTPUT || absPath === CONFIG_PATH || isInputIgnored(absPath),
-        awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
+        awaitWriteFinish: {
+            stabilityThreshold: 1500,
+            pollInterval: 200,
+        },
     })
-    .on('add',    (p) => { logWatchEvent('add', p);    pendingEvents.added++;   build(); })
-    .on('change', (p) => { logWatchEvent('change', p); pendingEvents.changed++; build(); })
-    .on('unlink', (p) => { logWatchEvent('unlink', p); pendingEvents.removed++; build(); });
+    .on('add',    (p) => { logDebugEvent('add', p);    pendingEvents.added++;   build(); })
+    .on('change', (p) => { logDebugEvent('change', p); pendingEvents.changed++; build(); })
+    .on('unlink', (p) => { logDebugEvent('unlink', p); pendingEvents.removed++; build(); });

@@ -27,3 +27,4 @@ test-results/
 
 # Generated trip data (built from real GPS files, not committed)
 harness/demo/*.geojson
+logs/
