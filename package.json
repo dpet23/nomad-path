@@ -1,0 +1,14 @@
+{
+  "name": "nomad-path",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Visualise GPS trip recordings on interactive basemaps: deploy-time pipeline + browser UI library",
+  "type": "module",
+  "engines": {
+    "node": ">=23.6"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {}
+}
