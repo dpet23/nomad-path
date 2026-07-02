@@ -1,0 +1,10 @@
+{
+  "name": "@nomadpath/contract",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared data contract between the Nomad Path pipeline (producer) and UI library (consumer)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

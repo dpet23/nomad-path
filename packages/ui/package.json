@@ -1,0 +1,13 @@
+{
+  "name": "@nomadpath/ui",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Client-side UI library: renders trip data on switchable basemaps with interactive widgets",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nomadpath/contract": "*"
+  }
+}

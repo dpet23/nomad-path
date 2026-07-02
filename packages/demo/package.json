@@ -1,0 +1,14 @@
+{
+  "name": "@nomadpath/demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Development demo page and server for the Nomad Path UI library",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nomadpath/contract": "*",
+    "@nomadpath/ui": "*"
+  }
+}

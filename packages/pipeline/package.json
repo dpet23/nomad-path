@@ -1,0 +1,13 @@
+{
+  "name": "@nomadpath/pipeline",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Deploy-time pipeline: raw GPX/KML folder + config in, validated compact trip data out",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nomadpath/contract": "*"
+  }
+}

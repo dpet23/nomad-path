@@ -10,5 +10,11 @@
   "workspaces": [
     "packages/*"
   ],
-  "scripts": {}
+  "scripts": {
+    "typecheck": "tsc -p packages/contract && tsc -p packages/pipeline && tsc -p packages/ui && tsc -p packages/demo"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "typescript": "^6.0.3"
+  }
 }
