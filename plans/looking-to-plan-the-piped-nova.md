@@ -1,0 +1,293 @@
+# App Architecture Plan
+
+> **Status:** Planning in progress (started 2026-06-20)
+> **How this file works:** This is a *living decision log*, not a finished doc. Decisions are written here the moment they're locked, so nothing is lost if context turns over. Open questions live in a parking lot until resolved.
+
+---
+
+## Context
+*(Why this app is being built — the problem, the prompt, the intended outcome.)*
+
+A system to **visualise GPS recordings on a basemap** in the browser, fully client-side.
+Tracks are colour-coded by attribute (day of trip, speed, elevation, time of day, transport
+mode) with interactive widgets. Raw GPS data comes from many sources (GPX/KML) in a nested
+folder; a deploy-time pipeline combines + transforms them into a single input file that the
+browser UI reads. The two components form one system joined by a shared data **contract**.
+
+**Deployment context:** Each host page is a **per-trip image-gallery page** (thumbnail grid +
+existing JS gallery lib). The map loads into a **host-provided `<div>`** (known id, styled border,
+gallery below). **One page per trip**, each pointing the library at that trip's pre-processed GPS
+data. The library is **general-purpose across the author's own trips**, embedded by the author into
+a consistent host — **not** (yet) shipped to arbitrary third parties. Viewed on **desktop and
+mobile**; the **browser console is not reliably available** (mobile), so user-facing errors must
+surface in-UI.
+
+---
+
+## Goals
+*(What success looks like.)*
+
+- TBD
+
+## Non-Goals / Out of Scope
+*(Explicitly NOT building, to keep scope honest.)*
+
+- TBD
+
+---
+
+## Subsystems (decomposition)
+*(The major independent pieces. We deep-dive these one at a time.)*
+
+| # | Subsystem | Purpose (1 line) | Status |
+|---|-----------|------------------|--------|
+| 1 | **UI library** | JS module imported by HTML; renders tracks on basemap, colour-codes by attribute, interactive widgets; 100% client-side; efficiency-critical; never crashes (graceful errors); trusts the contract | **done** (core architecture; impl detail deferred to implementation) |
+| 2 | **Pre-processing pipeline** | Deploy-time; walks nested folder of raw GPX/KML, combines + does heavy static computation, emits the UI input file; fails fast + loud; thoroughly validates its output | not started |
+| 3 | **Data contract** | Single source of truth for the input format; producer validates rigorously, consumer trusts; change on one side is visible to the other | **done** — shared TS package (types+Zod); compact-JSON parallel arrays; raw WGS84; optional/required marked; defaultVisible stamped |
+| 4 | **Demo / dev server** | Basic HTML page that loads the UI lib + a way to serve it; surfaces performance metrics (possibly via a debug build) | not started |
+| 5 | **Watch mode** | Remote progressive-build loop: `git push` from phone → `post-receive` hook runs strict pipeline → output served to demo; wrapper script provisions repo+hook+server; last-good preserved on failure | **done** |
+| 6 | **Project config** | Config file inside the raw-files folder: ignore subfolders, hide-by-default subfolders, exclude from auto-bounds calcs | not started |
+| 7 | **Dev tooling** | Formatting + linting as commit hooks | not started |
+| 8 | **Testing** | Unit (coverage gate) + per-component integration + full-system E2E; anchored to real use cases. Possible reusable harness shared with watch/demo | not started |
+
+---
+
+## Decisions (locked)
+*(Append-only log. Each entry: what we decided + why. Never silently reverse — supersede with a new dated entry.)*
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-06-20 | Plan file is single source of truth; decompose then deep-dive one subsystem at a time | Manage context over a long multi-part session; user-selected approach |
+| 2026-06-20 | UI library written in **TypeScript** (bundled to JS for the browser) | Contract enforceable at compile time; supports "never crash" + efficiency goals; safe refactors |
+| 2026-06-20 | Pipeline language **deferred** to the Data Contract deep-dive (#3) | Pipeline language and contract design are tightly coupled (same-language = one shared definition; cross-language = neutral schema) |
+| 2026-06-20 | **Single bundled data file**, downloaded by the UI lib from a path the HTML passes to the entrypoint | UI renders ALL tracks up front, so lazy/per-track loading adds HTTP round-trips for no benefit; one fetch + one decode is simpler and faster |
+| 2026-06-20 | Scale anchor: ~6.5 MB GeoJSON per 1-month trip (daily recording, 1–5s point spacing on long drives); design for "large-ish" archives | Concrete real dataset; dense polylines dominate size; informs need for compact encoding + transport compression |
+| 2026-06-20 | "May become large" handled *inside* the single file (compact encoding, gzip/brotli transport, optional LOD later), NOT by splitting files | Keeps single-file simplicity while attacking download/parse/memory cost where it actually lives |
+| 2026-06-20 | Contract defined at the **logical-schema** level; physical **encoding is a swappable detail** | Lets encoding change (GeoJSON ↔ compact JSON ↔ binary) without renegotiating the contract or rewriting UI's data understanding |
+| 2026-06-20 | Validation is **semantic** (our domain logic: coord ranges, monotonic time, attr-array length matches point count, etc.); we **never reimplement format syntax** validation | Owns the checks worth owning; if a standard format is used, lean on existing syntax validators |
+| 2026-06-20 | **Per-point attributes** (speed/elevation/time/transport-mode) are first-class in the schema | Forced by the per-point colour-coding feature regardless of encoding; GeoJSON has no native per-vertex property home |
+| 2026-06-20 | Concrete **encoding choice DEFERRED to the UI deep-dive (#1)**, decided jointly with the map-library choice | Encoding cost depends on how the chosen map library wants per-point-coloured geometry fed to it; native-GeoJSON convenience mostly doesn't apply to per-point colouring |
+| 2026-06-20 | **Contract source-of-truth mechanism + pipeline language DEFERRED to the pipeline deep-dive (#2)** | Should be decided on evidence of how heavy the geo/astronomy workload is (sun angle, projections, simplification); language follows the work. SoT = shared TS package (if TS) vs neutral JSON Schema (if Python) |
+| 2026-06-20 | **Map stack = MapLibre GL (basemap) + deck.gl (tracks) via MapboxOverlay** | Only GL stack that makes day-one per-point colouring effortless (deck.gl typed-array GPU colour) AND v2 globe/3D-terrain nearly free (MapLibre native). Leaflet/OpenLayers ruled out: can't do per-point colour at this point-density or globe |
+| 2026-06-20 | **deck.gl is the stable spine** across renderers; the basemap host is the swappable part | GoogleMaps overlay, Google 3D Photorealistic Tiles, and globe are all deck.gl integrations — adding them = new adapters, not core rewrites (minor releases, not breaking v2) |
+| 2026-06-20 | UI split into **map-agnostic core** + **`MapRenderer` adapters** behind one interface | Core (data model, colour mapping, widgets, error handling) never imports map libs; renderers swappable; protects against lock-in |
+| 2026-06-20 | `MapRenderer` is **capability-aware**: shared essentials in the interface, extras (globe, 3D terrain, tilt) advertised via `supports(x)` flags the core queries | Lets widgets enable/disable per renderer; add renderers without bloating or lying through the core API |
+| 2026-06-20 | Explicit **WebGL context-loss handling** (`webglcontextlost` → graceful degrade) is part of the never-crash design | WebGL context loss is a real browser failure mode; must not crash the UI |
+| 2026-06-20 | **Widgets = lightweight reactive components** (Lit/Preact-class, ~5–15kb), NOT full React (too heavy for embeddable lib) nor pure vanilla (too manual) | The interactions are richly reactive (hover↔list, tri-state group checkboxes, attribute→legend+recolour, basemap→palette+zoom) → derived state across widgets justifies a component model; framework stays a swappable detail |
+| 2026-06-20 | UI core holds a **central reactive store** + a **derivation layer**; widgets are thin views over derived state | Almost everything (group tree, legend model, adaptive palette, zoom range) is a projection of `{data, selectedAttribute, activeBasemap, visibility, hover, groupingConfig}`. Keeps logic in DOM-less testable core |
+| 2026-06-20 | **Colour palettes are per-(basemap × attribute)**; continuous attrs use a **ramp**, categorical attrs use a **generator** seeded from a per-basemap categorical palette | Elevation vs speed want different ramps; transport-mode categories are dynamic (2–12, unknown ahead of time) so colours must be generated stably + distinctly from the data. Both strategies stay pure/testable |
+| 2026-06-20 | **Encoding CONFIRMED: compact JSON with parallel arrays** (binary deferred to profiling) | deck.gl PathLayer consumes flat typed arrays per-vertex → near-zero adapter from parallel-array JSON; plain GeoJSON would require parse-then-reflatten. Evidence resolves the earlier deferral |
+| 2026-06-20 | **Tiered, proportional runtime error handling**: file-level → full error state; item-level → skip bad item + render rest + notice; field-level → degrade locally (disable that attribute for that item) | "Never crash" = fail at the smallest scope containing the problem. Decode/validate per-item so one failure is isolated. This is the consumer side of the contract: light defensive handling, NOT re-validation |
+| 2026-06-20 | **Missing optional attribute is a VALID state, not an error** — distinct from malformed data | A track may legitimately lack speed/elevation (source never recorded it). Schema marks attributes **optional vs required**; absent-optional = normal (no warning/log), absent-required or malformed = error path. Avoids false-alarm console noise |
+| 2026-06-20 | **Attribute dropdown always lists all known attributes**; selecting one colours tracks that have it and renders tracks lacking it in a neutral "no data" style; option **disabled** if NO track has it | Keeps menu stable across datasets; signals the attribute as a real concept; per-track greying communicates partial coverage. Availability computed per-track AND per-dataset (aggregate) |
+| 2026-06-20 | Library **never throws to host; emits internal structured error events; ships good DEFAULT error UI**. Public embedder-override hooks (`onError`/`onDataIssue`) are **YAGNI for now** (single known embedder = the author) but easy to add later since events already exist | Author is the only embedder and every host page is the same shape; building a public override API now is premature. Keep internal events so callbacks can be exposed when a real 2nd embedder appears |
+| 2026-06-20 | **In-UI error surfacing is the PRIMARY channel, not console** | Browser console isn't reliably available on mobile; end users need to see issues in the UI. Console = debug-build-only extra |
+| 2026-06-20 | Partial-data notices = **persistent badge on the affected widget**, showing count + reason (e.g. "2 tracks could not be loaded: <reason>"); clickable for more detail | Non-blocking, contextual, discoverable; works on mobile. Exact wording/technicality pending the end-user clarification |
+| 2026-06-20 | New widget: **fullscreen toggle** (expand map to full-screen) | Surfaced by deployment context; needs its own UX dive |
+| 2026-06-20 | **Two components, two audiences, two failure philosophies (symmetric):** UI lib's users = non-technical friends/family (global, desktop+mobile) → never crash, friendly in-UI errors; pipeline's user = the author at the terminal → fail fast + loud + technical | The strict-producer/lenient-consumer contract split falls directly out of *who stands at each end*. Author catches everything loudly at build time so viewers never see internals |
+| 2026-06-20 | **UI notice wording = friendly/plain-language** (e.g. "2 tracks couldn't be shown"); technical reason lives in a **details/debug layer**, not front-and-centre | Viewers are non-technical and can't fix data; raw error strings/stack traces don't belong in their face. Revises earlier tentative wording. Count = friendly; reason = for the author |
+| 2026-06-20 | **Efficiency confirmed non-negotiable**: global audience far from server | Motivates compact encoding, single fetch, GPU rendering, Brotli — all already chosen |
+| 2026-06-20 | **UI must be genuinely approachable**: large touch targets, no assumed map literacy, sensible "just works" defaults | Non-technical viewers on desktop+mobile; feeds the mobile/responsive + fullscreen UX threads |
+| 2026-06-20 | **Drop the iframe approach**; use the renderer's **cooperative-gestures** capability instead | Inline: cooperativeGestures ON (⌘/ctrl+scroll or two-finger pans; plain scroll reaches the gallery below). Fullscreen: OFF (native gestures). MapLibre supports this natively; keeps the host-div render model + capability-aware `MapRenderer` (`setCooperativeGestures`, `supports('cooperativeGestures')`). iframe fought data-passing/fullscreen/state |
+| 2026-06-20 | **Fullscreen = native Fullscreen API with CSS-overlay fallback** (iOS Safari); shows **map + widgets only**, follows device rotation, responds to phone width; **toggle button** enters/exits + native exits (Esc/back); listen `fullscreenchange` to sync button; **state persists** across transition | Matches desired behaviours; native API best on mobile, CSS fallback covers iOS restrictions |
+| 2026-06-20 | Inline map size ≈ **2/3 viewport height, most of width**, gallery below | Per author's layout |
+| 2026-06-20 | Add **reset widget** — restores store to the **config-derived defaults**, NOT naive "all visible" | Config marks some items hidden-by-default; reset must honour that. Restores: default-visible flags + default attribute (day) + default basemap + fit-bounds |
+| 2026-06-20 | **Default visibility is part of the CONTRACT**: pipeline resolves config's hide-by-default rules and stamps per-track/group `defaultVisible` flags into the output; **UI never reads the config** | Clean separation: config = pipeline-time input; UI only ever consumes the resolved contract. Confirms config influences UI only via the build-time contract, never at runtime |
+| 2026-06-20 | **Responsive layout**: desktop = always-visible side panel (tracks/waypoints/legend) + overlay controls (zoom/fullscreen/reset); mobile = widgets collapse into toggle buttons opening drawers/bottom-sheets, map stays unobstructed, large touch targets | Phone screen space is scarce; non-technical users need big tap targets and an unobstructed map. Widgets are thin views over the store, so layout is purely presentational |
+| 2026-06-20 | **Pipeline language = TypeScript/Node** | Certain geo needs (sun angle, time-of-day, timezone-from-location, speed/distance) are well-covered in TS (suncalc, tz-lookup, turf.js). Python's edge is only speculative heavy GIS. One language both sides is the bigger, certain win |
+| 2026-06-20 | **Contract CLOSED: source of truth = a shared TS package** (types + runtime schema e.g. Zod), imported by BOTH pipeline and UI | Drift between producer/consumer becomes a **compile error**, not a runtime surprise — strongest answer to "if one side changes, the other knows". One toolchain/test-harness/language across the system |
+| 2026-06-20 | **Python escape hatch**: pipeline may shell out to a small Python script for one specific heavy-GIS computation if ever needed | Keeps the TS architecture while leaving a pragmatic, isolated, reversible door open for advanced GIS that doesn't currently appear in scope |
+| 2026-06-20 | **Contract stores raw WGS84 lon/lat (UNPROJECTED); projection is exclusively a renderer concern** | Web Mercator distorts a global dataset (author dislikes it; reason for globe view). Raw lon/lat lets each renderer project at draw time (Mercator 2D, spherical globe, 3D tiles) so ONE data file works across all renderers unchanged. Pipeline geo math also operates on true lon/lat (+ geodesic distance) |
+| 2026-06-20 | 2D map uses **Web Mercator** (pragmatic floor — raster tiles are served in it); **globe view is the distortion-free answer** to the Mercator concern | Fighting Mercator in 2D (reprojecting raster tiles) is high-pain; the globe roadmap already addresses truthful world rendering |
+| 2026-06-20 | **Pipeline = staged pipeline over a common intermediate model**: per-format parsers (GPX, KML) → common model → format-agnostic stages (resolve config → compute → assemble → validate → emit) | Mirrors UI's core+adapters shape (parsers = swappable edge, stable middle). New formats = new parser only. Each stage pure + unit-testable in isolation |
+| 2026-06-20 | **Pipeline error strategy = collect ALL errors, then fail once** with a full report (file + reason), not first-error abort | "Fail loud" without whack-a-mole; author fixes everything in one pass, then re-runs. Nothing publishes until clean. Composes with config ignore-rules (ignored paths removed before processing; unignored problems collected) |
+| 2026-06-20 | ~~Data model = 3 primitives + open `category` vocabulary~~ **SUPERSEDED** — `category`/`kind` as a designed abstraction is dropped | Tried to solve in the model what the pipeline should bake in. Replaced by "flat items + pre-stamped resolved fields" (below). Geometry primitives (point/line/polygon) still exist *inside* items, but are not a routing signal |
+| 2026-06-20 | **CORE MODEL: contract = flat list of feature ITEMS, each with pipeline-PRE-STAMPED resolved fields** (group label, day, divider, defaultVisible, ordering) + 1+ geometries + per-point attributes. UI does **trivial bucketing only**, no hard logic, no recompute | We have the pipeline to massage data into whatever form is easiest for the UI. Design contract **UI-needs-first**; push all source/parser/grouping reconciliation into the pipeline behind the contract. Flat (not materialized tree) keeps it un-frozen |
+| 2026-06-20 | **An item may be composed of multiple geometries** (track=segments; cyclone=line+points); item = one toggle/zoom entry. **Disasters are NOT special** to the UI — "a line and points treated as one item, like tracks and segments" | User correction. No disaster concept anywhere in the UI; same mechanism as multi-segment tracks. A track/segment is a unit; a cyclone is a unit |
+| 2026-06-20 | Widgets are **bucketings of the same flat item list**: track tree buckets by day (+divider splits); waypoint widget buckets by group label (group show/hide + per-item zoom). Groups are derived from stamped fields, NOT assembled by widgets | Consistent with locked "central store → derivation → thin view widgets". The earlier "groups form as data is parsed at the widget" phrasing was wrong (flipped the architecture) |
+| 2026-06-20 | ~~`kind` set by source-aware parser / classification / routing rules~~ **SUPERSEDED / MOOT** | User: too locked-down + messy; "that's for the design to discover". Resolved by pushing it into pipeline-internal implementation — not a model decision. The contract just carries a resolved **group label** per item |
+| 2026-06-20 | **Default visibility rules can key off `category`** (not just folder path): e.g. flights hidden-by-default *except* flight-lesson; disasters shown; airport-waypoints dropped | More powerful version of the earlier `defaultVisible`; config expresses category-based defaults, pipeline resolves them into per-feature flags in the contract |
+| 2026-06-20 | **Three-bucket input handling** (revises hard/benign binary): (1) **hard error** → collected+abort (malformed XML, no coords, missing required); (2) **recognised-but-unwanted** → skip *by rule* (e.g. FlightAware airport waypoints via config/category rule, not a parser guess); (3) **genuinely-irrelevant** → silently skip (ground overlays, styling, non-geometry) | Resolves the messy middle: known-but-excluded things are a config/category decision, not an error and not a silent guess |
+| 2026-06-20 | **Disaster visualisation DEFERRED** in implementation but the model must support it now (point/line/polygon + `disaster:*` categories) | Author wants it eventually; modelling primitives now means later = data + styling only |
+| 2026-06-20 | **Watch mode = remote progressive-build loop, triggered by `git push`, via a `post-receive` hook** (NOT a filesystem watcher) | Author's real workflow: pushes commits from phone (Termux, SSH/VPN) to dev-machine repo while travelling. The *push* is the build trigger, not file-change events |
+| 2026-06-20 | **git-hook chosen over file-watcher** for two fundamental reasons | (1) push is **atomic/transactional** — solves the "is the multi-file write finished?" ambiguity that broke the watcher; (2) hook runs in the push's context so it **streams stdout/stderr back to the phone console** — makes "fail loud" actually reach the author mid-trip (detached watcher can't) |
+| 2026-06-20 | Repo setup: non-bare repo with **`receive.denyCurrentBranch updateInstead`**; config committed alongside raw data so author can edit + push config too | Matches author's proven setup; working tree updates in place on push |
+| 2026-06-20 | **Wrapper script = provisioning + serve, NOT watching**: init repo + git config, install the post-receive hook, drop config template, start demo server. The hook is the build trigger | Resolves "wrapper vs hooks" as a false binary — wrapper provisions the environment (one command before a trip), hook triggers builds. Get the all-in-one elegance AND git-as-signal robustness |
+| 2026-06-20 | **One strict pipeline everywhere** (trip build = deploy build = collect-all-errors-then-fail); on failure, **report to phone console + preserve last-good output** (don't clobber the served file) | No separate "lenient preview" code path to maintain; mid-trip a half-cleaned push shows the full error report AND keeps the previous good map live. Manual browser refresh to see updates (server accessed over VPN, slow but fine) |
+| 2026-06-20 | **"Day" grouping = local calendar date of a feature's FIRST point**, via timezone-from-location *(see refined/superseded entries below for boundary + algorithm)* | Intuitive "day I set off", correct across global travel, zero manual input; overnight/dateline features land on start day. Reuses the timezone compute |
+| 2026-06-20 | **Timezone-from-location is a REQUIRED core compute** (not optional) | Day-grouping depends on it, and it's also what makes "time of day" correct globally |
+| 2026-06-20 | ~~Day boundary = configurable rollover hour~~ **SUPERSEDED** — rollover rejected as the same kind of fragile heuristic the author dislikes (won't always hold) | Replaced by plain calendar date + explicit overrides (below) |
+| 2026-06-20 | **Day = plain local calendar date** of feature's first point (midnight boundary, **no rollover, no heuristic**); messy cases handled by **explicit per-feature config overrides** (reassign/merge/split) | Matches author's consistent principle: deterministic default + explicit override, never a guessing rule. A 2am taxi landing on the next date is truthful; override in config if a specific case warrants it |
+| 2026-06-20 | **Grouping algorithm (fully deterministic, no heuristic):** walk features in time order; **start a new day-group when the calendar date changes OR a divider is crossed**. Dividers sit at the **top level between groups**, not inside one | Produces the author's desired tree: a divider can split one calendar date into two groups (date label repeats — intended, reads as "June 5 … flight … still June 5, new place") |
+| 2026-06-20 | **UI track tree: day groups are collapsible, COLLAPSED by default**; group-level show/hide checkbox on each day header; flight dividers are top-level rows between groups | Good for long trips (author's anchor = month-long): opens as a scannable list of day headers + dividers; expand the day of interest |
+| 2026-06-20 | **The group label an item carries is PIPELINE-RESOLVED** (it may *draw on* raw element metadata like a GPX `<folder>`, config, source structure, or day — but how is pipeline-internal). The contract just exposes the final stamped group label | Reconciles with the flat-items model: grouping signals are pipeline implementation, not a model abstraction. Config remains path/file-scoped and can't address items inside a multi-item file — so per-item grouping signal often comes from raw element metadata, resolved by the pipeline |
+| 2026-06-20 | **Waypoint grouping draws on the raw `<folder>` value** where present (author adds `<folder>Accommodation</folder>`); absent → a default/resolved group. This is one *input* to the pipeline's group-label resolution, not a UI concern | Matches author's data-tagging habit; the UI only sees the resolved group label |
+| 2026-06-20 | **Waypoint widget = a SEPARATE axis from tracks** (not grouped by day/divider): **group-level show/hide only** (toggle a whole `<folder>` group), **per-item zoom only** (zoom to one waypoint; zooming a trip-spanning group is meaningless) | Confirms/explains the earlier track-vs-waypoint widget asymmetry; group = folder value spanning the whole trip |
+| 2026-06-20 | **GOVERNING CONSTRAINT: zero on-the-go manual data management.** On-trip workflow must be just **dump files → commit → push**. NO per-file tagging, NO sidecar authoring, NO reorganizing while travelling | Author is on holiday, not managing map files. Any design adding trip-time per-item labour is disqualified. *This constraint outranks config tidiness and should settle future data/config debates.* Explains the data shape: OsmAnd tracks are raw/untagged (won't hand-tag each); waypoints have `<folder>` only because it's set once in OsmAnd favourites and sticks |
+| 2026-06-20 | **Config DELIBERATELY absorbs the complexity (three selection mechanisms): `ignore` (pre-filter paths) + tracks-by-path + waypoints-by-in-file-`<folder>`.** Rejected upstream "simplifications" (tag tracks in-file / folder-on-disk / sidecar files) because each imposes on-the-go labour, violating the governing constraint | Right trade: concentrate fiddliness into ONE occasionally-edited file (edited deliberately at a keyboard) to keep the FREQUENT path (capture) frictionless. The three mechanisms are a necessary consequence of effortless capture, not a wart to fix. Folder-on-disk also can't categorize multiple differing waypoints inside one FlightAware file |
+| 2026-06-20 | **"Divider" is a feature property, NOT the `flight` category**: a travel flight divides the trip; a scenic flight / flight-lesson is a normal activity | Same geometry/category, different structural role. Divider-ness = "moves you between places as travel". Forward-compatible with a future named-"phase" layer if ever wanted |
+| 2026-06-20 | **Divider marked by CONFIG rule** (default may key off the flights subfolder, with explicit per-feature exceptions); folder is a convenient *expression* of a config rule, never a hardcoded filesystem convention; **no heuristics** | Author commits+push config and curates flights; config is deterministic and overridable (a scenic flight in the flights subfolder can be marked non-divider). Heuristics get messy |
+| 2026-06-20 | **UI track tree**: groups by day; a **divider feature renders as a separator row between day-groups even when the calendar day is identical**; non-divider flights are ordinary entries inside their day-group. Internal model = optional per-feature `divider` flag (resolved at build); grouping logic splits on it (no nested-phase hierarchy needed now) | Matches author's desired legend/tree behaviour; minimal model addition; forward-compatible with named phases later. *(See grouping-algorithm + collapsing entries below for specifics)* |
+
+---
+
+## Tech Stack
+*(Languages, frameworks, infra. Filled as decided.)*
+
+- TBD
+
+---
+
+## Architecture
+*(High-level shape: components, boundaries, data flow. Filled as decided.)*
+
+### UI library (#1) — high-level shape so far
+
+```
+HTML page ──passes data-file path──► UI library entrypoint
+                                          │
+                                          ▼
+                         ┌──────────────────────────────────┐
+                         │  Map-agnostic CORE (TypeScript)   │
+                         │  • load + decode data file        │
+                         │  • data model (from contract)     │
+                         │  • attribute → colour mapping     │
+                         │  • track/waypoint/legend state    │
+                         │  • visibility, widget state       │
+                         │  • error handling (never crash)   │
+                         └───────────────┬──────────────────┘
+                                         │ MapRenderer interface
+                                         │ (+ supports() capability flags)
+                 ┌───────────────────────┼───────────────────────────┐
+                 ▼                       ▼                            ▼
+   MapLibreDeckRenderer (v1)   GoogleMapsRenderer (v1.x)   Globe/3DTilesRenderer (v2/1.x)
+   OSM + NASA Blue Marble       Google basemap + deck.gl     deck.gl globe / 3D tiles
+   basemaps + deck.gl tracks
+```
+
+- **Core never imports MapLibre/deck.gl types** — only adapters do.
+- `MapRenderer` exposes *intent*, e.g. `setBasemap(id)`, `renderTracks(tracks)`,
+  `setTrackColours(trackId, colours)`, `setVisible(trackId, bool)`, `fitBounds(bbox)`,
+  `onFeatureClick(cb)`, `supports(capability)`, `destroy()`.
+- Roadmap renderers (Google Maps, Google 3D Photorealistic Tiles, globe) are **new adapters**,
+  reusing tracks/colouring/widgets/contract unchanged → minor releases, not a breaking v2.
+
+### UI library (#1) — widget specs
+
+**Track widget**
+- Lists all tracks, optionally **grouped** (e.g. by "day"; grouping heuristics may use the project config).
+- Checkbox on every track **and** group → show/hide on map. Group state is **derived** from children
+  (checked / unchecked / **indeterminate**); toggling a group sets all children. Per-item visibility is the
+  stored state; group state is never stored separately (avoids parent/child disagreement).
+- Zoom-to icon on every track **and** group → fit map to that item's bounds.
+- Hovering a list item **bolds** that track/group on the map (reactive hover state in the store).
+
+**Waypoint widget** (points of interest) — same shape, with differences:
+- Checkboxes on **groups only**, not individual waypoints.
+- Zoom-to on **individual waypoints only**, not groups.
+
+**Colour / attribute widget**
+- Dropdown to pick the highlight attribute (default: **day of trip**).
+- **Legend** is derived from `(selectedAttribute, data, activeBasemapPalette)`:
+  - continuous (speed, elevation, time-of-day) → ramp + min/max + units.
+  - categorical (transport mode, day) → one entry per category, colours from the categorical generator,
+    built dynamically from categories seen in metadata.
+- **Attribute availability**: dropdown always lists all known attributes. Selecting one → tracks with the
+  attribute are coloured; tracks **legitimately lacking** it render in a neutral "no data" style (e.g. grey)
+  and the legend notes it. If **no** track has the attribute, the option is **disabled**. "Missing optional
+  attribute" is a valid state (no warning); only malformed or missing-**required** data hits the error path.
+
+**Basemap switcher**
+- Switches basemaps/views (v1: OSM + NASA Blue Marble).
+- Switching recomputes the **basemap-adapted track palette** and reconfigures zoom limits.
+
+**Zoom widget**
+- Reactive to active basemap: clamps to the basemap's min/max zoom (`supports()`/renderer metadata supplies limits).
+
+---
+
+## Data Model
+*(Key entities and relationships.)*
+
+### The core model: flat items with pre-stamped resolved fields
+
+**Contract = a flat list of feature ITEMS.** The pipeline does all hard/static computation and all
+messy source-reconciliation, then **stamps resolved fields onto each item**. The UI **trusts the
+contract** and does only **trivial bucketing** by those fields to render its views.
+
+**Item** = one entry (one toggle / zoom target). Each item has:
+- **geometries**: 1+ shapes (point/line/polygon). An item may be *composed of several geometries* —
+  a track = its segments; a cyclone = a boundary line + forecast points. **Nothing special about
+  disasters**: a cyclone is "a line and some points treated as one item," exactly like a
+  multi-segment track is one item.
+- **coordinates**: raw WGS84 lon/lat (+ optional ele/time), parallel arrays for lines.
+- **per-point attributes** (lines): speed, elevation, time, time-of-day, sun-angle, transport-mode —
+  each optional/required per schema.
+- **pre-stamped resolved fields** (computed by pipeline): **group label** (whatever the pipeline
+  resolved — e.g. "Accommodation", "ALFRED-25", or a day for tracks), **day**, **divider** flag,
+  **defaultVisible**, ordering. The UI buckets on these; it does **no** hard logic and **no**
+  recomputation.
+
+**No `category`/`kind` as a designed abstraction.** Earlier attempts to introduce a `category`/`kind`
+taxonomy (and parser-derived classification, routing rules, etc.) were SUPERSEDED — they tried to
+solve in the model what the pipeline should just *bake in*. There is only a **group label** + the
+item's **geometries**. The UI doesn't classify; it buckets by the stamped group label.
+
+**Why this is right:** we have the pipeline to massage data into whatever form is easiest for the UI.
+So the contract shape is designed **UI-needs-first** ("flat items + resolved fields → trivial
+bucketing"), and the messy source/parser/grouping reconciliation is **pipeline-internal
+implementation** behind the contract — not a model-level concern. Flat (not a materialized tree)
+keeps it un-frozen: the UI can bucket the same items differently if needed.
+
+Widgets remain thin views: the **track tree** buckets items by day (+ divider splits); the
+**waypoint widget** buckets by group label (group-level show/hide + per-item zoom). Both are just
+bucketings of the same flat item list — same mechanism.
+
+### Pipeline compute stage (consolidated)
+Operates on the common model (raw WGS84), all geodesic (never on projected coords):
+- **Speed** (per-point): derive from lon/lat/time via geodesic distance / Δtime where absent; pass through where present.
+- **Distance**: segment + cumulative, geodesic.
+- **Timezone-from-location** *(required)*: tz-lookup; feeds day + time-of-day.
+- **Time-of-day**: local time (from tz) — bucketed and/or continuous for ramp colouring.
+- **Sun angle**: solar elevation/azimuth per point+time (suncalc).
+- **Day grouping**: local calendar date of feature's first point.
+- **Bounds**: auto from features, **excluding** config's exclude-from-bounds items.
+- **Simplification / LOD**: *deferred* — profile first; pure additive later (turf.js if needed).
+
+### Raw data sources (provenance the parsers must handle)
+- **OsmAnd GPX** — most recorded tracks; one file per recording; many files per trip-day; sometimes in subfolders. Minor manual cleanup (split/join) by author.
+- **OsmAnd favourites / hand-written GPX** — accommodation waypoints.
+- **AllTrails GPX** — downloaded hiking tracks.
+- **GoPro→GPX (author's own script)** — out of scope to build; assume sane output, *some fields may be missing*.
+- **FlightAware KML** — flights; ship with airport waypoints (author deletes late → visible mid-build under watch mode); usually in a separate subfolder. Most flights hidden-by-default via config, but e.g. a **flight lesson** is shown.
+- **Disaster data** (various) — fires (point), earthquakes (epicentre point + optional intensity-edge polygon), cyclones (path line + affected-area polygon). Shown by default. Implementation deferred.
+
+---
+
+## Open Questions (parking lot)
+*(Things raised but not yet decided. Nothing gets dropped just because we're not ready.)*
+
+- **Pipeline language**: TypeScript/Node (one shared contract) vs Python (richer geo libs, needs neutral schema). Decide in #3.
+- **Data encoding**: compact JSON (parallel arrays) vs plain GeoJSON vs binary. Now coupled to the map-library choice — decide jointly in #1 (UI deep-dive). Schema stays the same regardless.
+- **Basemap / map rendering library**: which mapping engine (e.g. Leaflet, MapLibre GL, OpenLayers, deck.gl/WebGL). Decides how per-point-coloured geometry is fed in, which drives the encoding. Decide in #1.
+- **Watch mode design**: E2E wrapper script vs git hooks (or both). Decide in #5.
+- **Reusable harness**: whether one shared harness serves testing + watch + demo. Decide in #8.
+  - **Hint (from #5):** watch's wrapper does *run-pipeline + serve-output*; E2E needs *run-pipeline + serve-output + drive-browser + assert*. Likely a **common core** ("given an input folder, build & serve") with **mode-specific shells** (git-hook/provisioning for watch; browser-drive/assert for E2E). Don't design the wrapper in a way that can't be shared. Decide the actual boundary in #8.
+- **Fullscreen toggle UX** (within #1): how expand/collapse behaves, esp. interaction with the host gallery page. Pending.
+- **Responsive / mobile widget layout** (within #1): how widgets adapt across desktop & mobile (panels vs collapsible, touch targets). Pending.
+- ~~**End-user identity**~~ ✅ Resolved: UI = non-technical friends/family (friendly UI); pipeline = the author (fail loud).
+- ~~**Fullscreen toggle UX**~~ ✅ Resolved (native API + CSS fallback; cooperative gestures; toggle button).
+- ~~**Responsive / mobile widget layout**~~ ✅ Resolved (desktop panels + overlay controls; mobile drawers/sheets).
+- ~~**"Day" grouping heuristic**~~ ✅ Resolved: local calendar date of first point (via timezone-from-location).
+- **Category taxonomy detail**: exact naming/namespacing of categories (esp. `disaster:*` subtypes) — refine when disaster impl is picked up.
+- **Pipeline CLI shape** (within #2): how it locates inputs (raw folder / config / output) — convention+flags vs all-explicit vs config-declares-all. **Parked** by user — revisit.
+- **Pipeline output validation specifics** (within #2): what the strict producer-side validation actually checks. Pending — last pipeline bit.
+- **Config structure** (#6): STILL BEING DESIGNED — not locked. Candidate so far = **path-keyed entries with grouped properties** (path key = match, indented block = set, last-key-wins override), + a simple `ignore` list. Phone/vim-friendly (short lines, shallow nesting, no repeated `match`/`set`, selector appears once). Author "unconvinced"; keep iterating.
+  - **What the config does NOT do:** it can't address individual items *inside* a multi-item file (config selectors are file/path-based). Per-item categorization comes from raw element metadata (e.g. GPX `<folder>`) instead. *(This is the only thing settled about config so far. The full list of config concerns, and the structure, are still open.)*
+
+---
+
+## Deferred / YAGNI
+*(Things we consciously decided NOT to do now.)*
+
+- TBD
