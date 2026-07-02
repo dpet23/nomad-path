@@ -1,8 +1,5 @@
 # App Architecture Plan
 
-> **Status:** Planning in progress (started 2026-06-20)
-> **How this file works:** This is a *living decision log*, not a finished doc. Decisions are written here the moment they're locked, so nothing is lost if context turns over. Open questions live in a parking lot until resolved.
-
 ---
 
 ## Context
@@ -24,20 +21,8 @@ surface in-UI.
 
 ---
 
-## Goals
-*(What success looks like.)*
-
-- TBD
-
-## Non-Goals / Out of Scope
-*(Explicitly NOT building, to keep scope honest.)*
-
-- TBD
-
----
-
 ## Subsystems (decomposition)
-*(The major independent pieces. We deep-dive these one at a time.)*
+*(The major independent pieces.)*
 
 | # | Subsystem | Purpose (1 line) | Status |
 |---|-----------|------------------|--------|
@@ -128,6 +113,14 @@ surface in-UI.
 | 2026-06-20 | **"Divider" is a feature property, NOT the `flight` category**: a travel flight divides the trip; a scenic flight / flight-lesson is a normal activity | Same geometry/category, different structural role. Divider-ness = "moves you between places as travel". Forward-compatible with a future named-"phase" layer if ever wanted |
 | 2026-06-20 | **Divider marked by CONFIG rule** (default may key off the flights subfolder, with explicit per-feature exceptions); folder is a convenient *expression* of a config rule, never a hardcoded filesystem convention; **no heuristics** | Author commits+push config and curates flights; config is deterministic and overridable (a scenic flight in the flights subfolder can be marked non-divider). Heuristics get messy |
 | 2026-06-20 | **UI track tree**: groups by day; a **divider feature renders as a separator row between day-groups even when the calendar day is identical**; non-divider flights are ordinary entries inside their day-group. Internal model = optional per-feature `divider` flag (resolved at build); grouping logic splits on it (no nested-phase hierarchy needed now) | Matches author's desired legend/tree behaviour; minimal model addition; forward-compatible with named phases later. *(See grouping-algorithm + collapsing entries below for specifics)* |
+| 2026-07-02 | **Implementation begins** — master plan at `~/.claude/plans/let-s-work-on-the-tingly-pretzel.md`; phased milestones, per-phase task plans committed to `plans/phase<N>-<name>.md` | Planning session complete; user approved one big initial implementation |
+| 2026-07-02 | **v1 scope includes watch mode** (built last, after pipeline+demo stable) | User choice: full system in one implementation |
+| 2026-07-02 | **Config redesigned from scratch**; old incarnation's `nomadpath.yaml` is reference only. Structure options + pipeline CLI shape + output-validation specifics presented to user together at phase 3 (pipeline), before the config-resolve stage | User choice; resolves the parked config/CLI open questions with a dedicated design session |
+| 2026-07-02 | **npm workspaces monorepo**: `packages/{contract,pipeline,ui,demo}`; watch bins ship in pipeline package | User choice (Rust-crates-style workspaces); avoids single-package dependency mess |
+| 2026-07-02 | **GoPro naive timestamps = UTC** (user confirmed); pipeline documents the assumption + sanity-checks loudly | gpxpy emits timezone-less timestamps; GoPro GPS stream is UTC |
+| 2026-07-02 | **Transport mode = `osmand:activity` extension ONLY** (`metadata/extensions` in OsmAnd files, `trk/extensions` in AllTrails). Legacy hand-added markers (per-`trkpt` `transport` attr, `keywords/transport`) are NOT parse inputs; `--audit` flags legacy-only files as migration candidates | User is dropping the manual per-point tagging labour; modern OsmAnd emits the extension automatically (whole corpus already carries it) |
+| 2026-07-02 | ~~Derive speed where absent~~ **SUPERSEDED: missing attribute data is accepted as-is — no derivation.** UI renders other/missing/none in one **standard neutral grey shared across all attribute renderings** | User decision: don't fabricate data; a single consistent no-data colour beats derived approximations |
+| 2026-07-02 | **Testing goal is twofold**: prove correctness AND actively find/prevent bugs — failure cases (error paths, malformed input, boundaries) are first-class test scenarios | User note; guards against suites that only ever pass |
 
 ---
 
@@ -245,7 +238,7 @@ bucketings of the same flat item list — same mechanism.
 
 ### Pipeline compute stage (consolidated)
 Operates on the common model (raw WGS84), all geodesic (never on projected coords):
-- **Speed** (per-point): derive from lon/lat/time via geodesic distance / Δtime where absent; pass through where present.
+- **Speed** (per-point): pass through where present; **absent = accepted as-is, no derivation** (2026-07-02 supersession — UI renders missing data in the standard neutral grey).
 - **Distance**: segment + cumulative, geodesic.
 - **Timezone-from-location** *(required)*: tz-lookup; feeds day + time-of-day.
 - **Time-of-day**: local time (from tz) — bucketed and/or continuous for ramp colouring.
