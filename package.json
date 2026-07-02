@@ -1,0 +1,41 @@
+{
+  "name": "nomad-path",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Visualise GPS trip recordings on interactive basemaps: deploy-time pipeline + browser UI library",
+  "type": "module",
+  "engines": {
+    "node": ">=23.6"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p packages/contract && tsc -p packages/pipeline && tsc -p packages/ui && tsc -p packages/demo && tsc -p .",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1",
+    "vitest": "^4.1.9"
+  },
+  "lint-staged": {
+    "*.{ts,js,json,md,yml,yaml,html,css}": "prettier --write",
+    "*.{ts,js}": "eslint --fix"
+  }
+}
