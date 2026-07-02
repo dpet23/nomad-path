@@ -16,10 +16,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:unit": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.0",
     "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^10.6.0",
