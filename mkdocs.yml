@@ -1,0 +1,13 @@
+site_name: Nomad Path
+site_description: Visualise GPS trip recordings on interactive basemaps
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Usage:
+      - Getting started: usage/getting-started.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Data contract: architecture/data-contract.md
