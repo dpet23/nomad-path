@@ -1,0 +1,16 @@
+{
+  "name": "@nomadpath/e2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Full-system end-to-end tests: pipeline output loaded into the UI in a real browser",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@nomadpath/contract": "*",
+    "@nomadpath/demo": "*",
+    "@nomadpath/ui": "*",
+    "@playwright/test": "^1.61.1"
+  }
+}

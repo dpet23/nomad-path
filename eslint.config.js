@@ -110,6 +110,9 @@ export default tseslint.config(
             'import-x/first': 'error',
             'import-x/newline-after-import': 'error',
             'import-x/no-duplicates': 'error',
+            // no phantom dependencies: every import must be declared in the importing
+            // package's own package.json (npm hoisting would otherwise let it resolve)
+            'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
             'unused-imports/no-unused-imports': 'error',
 
             // jsdoc: descriptions on declared functions/methods; TS provides the types
@@ -136,7 +139,7 @@ export default tseslint.config(
         extends: [tseslint.configs.disableTypeChecked],
     },
     {
-        files: ['**/test/**/*.ts', 'e2e/**/*.ts'],
+        files: ['**/test/**/*.ts', 'packages/e2e/**/*.ts'],
         rules: {
             // test bodies legitimately repeat literals/structures and lack jsdoc
             'jsdoc/require-description': 'off',

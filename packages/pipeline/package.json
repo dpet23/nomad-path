@@ -9,5 +9,9 @@
   },
   "dependencies": {
     "@nomadpath/contract": "*"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "vitest": "*"
   }
 }
