@@ -67,7 +67,7 @@ const boundaries = [
 
 export default tseslint.config(
     {
-        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results', 'lint-old'],
+        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results'],
     },
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,
@@ -96,6 +96,11 @@ export default tseslint.config(
             'prefer-arrow-callback': 'error',
             'prefer-template': 'error',
             radix: 'error',
+            // space after // and /* -- readability; prettier does not enforce this
+            'spaced-comment': ['error', 'always'],
+            // the UI ships to viewers with no reliable console; keep it clean. Overridden
+            // below for the pipeline (a CLI whose job is terminal output) and the demo.
+            'no-console': 'error',
             'no-shadow': 'off',
             '@typescript-eslint/no-shadow': ['error', { hoist: 'all', ignoreTypeValueShadow: true }],
             'no-use-before-define': 'off',
@@ -137,6 +142,13 @@ export default tseslint.config(
     {
         files: ['**/*.js'],
         extends: [tseslint.configs.disableTypeChecked],
+    },
+    {
+        // the pipeline is a CLI (terminal output is its job) and the demo is a dev tool
+        files: ['packages/pipeline/**/*.ts', 'packages/demo/**/*.ts'],
+        rules: {
+            'no-console': 'off',
+        },
     },
     {
         files: ['**/test/**/*.ts', 'packages/e2e/**/*.ts'],
