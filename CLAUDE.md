@@ -37,7 +37,7 @@ Pre-commit hook: lint-staged (prettier + eslint --fix) -> typecheck -> test:cove
 
 ## Conventions
 
-- **Branching**: each phase/epic on `epic/<name>` off `master`, merged back with `--no-ff`. Main branch is `master`.
+- **Branching**: ALL work — phases, epics, and even small side improvements (tooling, lint, docs) — happens on an `epic/<name>` branch off `master`, merged back with `--no-ff`. Never commit directly to master. Main branch is `master`.
 - **Commits**: one concern per commit; conventional-commit style subjects (`feat:`, `fix:`, `test:`, `chore:`, `docs:`).
 - **TDD**: enumerate the full state space before writing tests; write all tests first (allowed to fail); success AND failure cases. Tests must find bugs, not just prove correctness.
 - **UI testing**: drive real UI interactions (clicks, dropdowns) — never internal APIs. Assert both widget state and renderer state.
