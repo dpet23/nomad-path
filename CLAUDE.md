@@ -10,15 +10,21 @@ Visualises GPS trip recordings on interactive basemaps. Two components joined by
 
 ## Repository layout
 
-```
+```text
 packages/contract/   @nomadpath/contract — shared types + schema + semantic validation (leaf package)
 packages/pipeline/   @nomadpath/pipeline — parsers -> common model -> compute -> assemble -> validate -> emit
 packages/ui/         @nomadpath/ui — src/core (map-agnostic) + src/render (MapRenderer adapters) + src/widgets
 packages/demo/       @nomadpath/demo — dev demo page + server
-e2e/                 full-system Playwright tests (desktop + mobile-emulation projects)
+packages/e2e/        @nomadpath/e2e — full-system Playwright tests (desktop + mobile-emulation projects)
 ```
 
 Packages export TS source directly; Node >= 23.6 runs it natively (no dev build step). Import boundaries are lint-enforced: contract imports no sibling; pipeline never imports ui or map libs; ui/src/core never imports map libs.
+
+**Dependency placement** (`import-x/no-extraneous-dependencies` enforces no phantom imports):
+
+- A dependency imported by exactly one package lives in that package's own `package.json` (e.g. `zod` in contract, `@playwright/test` in e2e).
+- A dependency imported by two or more packages is pinned once at the root for version sync; those packages declare it as `"*"` (e.g. `vitest`, `@vitest/coverage-v8`, `typescript`, `@types/node`).
+- Repo tooling that no package imports — the repository itself runs it once from root against the whole tree via a shared config (eslint + plugins, prettier, husky, lint-staged, markdownlint, linkinator) — lives at the root. This is not a package dependency; it is not subject to the two rules above.
 
 ## Commands (npm scripts only — never invoke tools directly; add a script if one is missing)
 

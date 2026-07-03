@@ -1,0 +1,14 @@
+{
+  // Lints the docs that render (docs site, README, CLAUDE.md). plans/ are
+  // internal working files and stay unlinted.
+  "globs": ["docs/**/*.md", "README.md", "CLAUDE.md"],
+  "config": {
+    "default": true,
+    // prose line length is prettier's concern (md wrapping is off)
+    "MD013": false,
+    // mkdocs-material legitimately uses inline HTML in places
+    "MD033": false,
+    // trailing punctuation in headings: allow "?" for FAQ-style headings
+    "MD026": { "punctuation": ".,;:!" },
+  },
+}

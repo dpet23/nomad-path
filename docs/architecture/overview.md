@@ -2,7 +2,7 @@
 
 Nomad Path is two programs joined by a data contract:
 
-```
+```text
 raw GPS folder + config          one compact data file           host HTML page
        |                                 |                             |
        v                                 v                             v
