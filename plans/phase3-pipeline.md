@@ -56,9 +56,9 @@ Track-selector properties: `hidden` (bool -> defaultVisible=!hidden), `divider` 
 **Files:** `packages/pipeline/src/model.ts`, `packages/pipeline/src/fixtures.ts`, tests.
 Define the parser-output model (pre-contract): `RawFeature { sourceFile, sourcePath, name?, description?, activity?, folder?, geometries: RawGeometry[] }` where `RawGeometry` carries lon/lat/ele/time/speed parallel arrays (raw, uncomputed). Deliberately simpler than the contract — no day/divider/bounds yet.
 
-- [ ] Enumerate the model's state space; write model + fixture-builder tests first.
-- [ ] Implement model types + `buildRawFeature`/`buildRawGeometry` fictional builders.
-- [ ] Commit `feat(pipeline): add common intermediate model and fixtures`.
+- [x] Enumerate the model's state space; write model + fixture-builder tests first.
+- [x] Implement model types + `buildRawFeature`/`buildRawGeometry` fictional builders.
+- [x] Commit `feat(pipeline): add common intermediate model and fixtures`.
 
 ### Task 2: GPX parser
 
