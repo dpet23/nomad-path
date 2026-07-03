@@ -1,5 +1,10 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
+import importX from 'eslint-plugin-import-x';
+import jsdoc from 'eslint-plugin-jsdoc';
+import simpleImportSort from 'eslint-plugin-simple-import-sort';
+import sonarjs from 'eslint-plugin-sonarjs';
+import unusedImports from 'eslint-plugin-unused-imports';
 import tseslint from 'typescript-eslint';
 
 /**
@@ -62,12 +67,19 @@ const boundaries = [
 
 export default tseslint.config(
     {
-        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results'],
+        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results', 'lint-old'],
     },
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,
     tseslint.configs.stylisticTypeChecked,
+    sonarjs.configs.recommended,
     {
+        plugins: {
+            'import-x': importX,
+            jsdoc,
+            'simple-import-sort': simpleImportSort,
+            'unused-imports': unusedImports,
+        },
         languageOptions: {
             parserOptions: {
                 projectService: true,
@@ -75,6 +87,39 @@ export default tseslint.config(
             },
         },
         rules: {
+            // --- ported from the previous project's config (non-formatting, not already in strict/stylistic) ---
+            eqeqeq: ['error', 'smart'],
+            'max-classes-per-file': ['error', 1],
+            'no-caller': 'error',
+            'no-new-wrappers': 'error',
+            'no-undef-init': 'error',
+            'prefer-arrow-callback': 'error',
+            'prefer-template': 'error',
+            radix: 'error',
+            'no-shadow': 'off',
+            '@typescript-eslint/no-shadow': ['error', { hoist: 'all', ignoreTypeValueShadow: true }],
+            'no-use-before-define': 'off',
+            // functions:false keeps the top-down "public API first, helpers below" file layout legal
+            '@typescript-eslint/no-use-before-define': ['error', { functions: false }],
+            '@typescript-eslint/unified-signatures': 'error',
+            '@typescript-eslint/prefer-function-type': 'error',
+
+            // import hygiene
+            'simple-import-sort/imports': 'error',
+            'simple-import-sort/exports': 'error',
+            'import-x/first': 'error',
+            'import-x/newline-after-import': 'error',
+            'import-x/no-duplicates': 'error',
+            'unused-imports/no-unused-imports': 'error',
+
+            // jsdoc: descriptions on declared functions/methods; TS provides the types
+            'jsdoc/check-alignment': 'error',
+            'jsdoc/require-description': ['error', { contexts: ['FunctionDeclaration', 'MethodDefinition'] }],
+            'jsdoc/tag-lines': ['error', 'any', { startLines: 1, endLines: 0 }],
+
+            // --- local adjustments ---
+            // duplicate of @typescript-eslint/no-unused-vars, without the _-prefix escape hatch
+            'sonarjs/no-unused-vars': 'off',
             '@typescript-eslint/no-unused-vars': [
                 'error',
                 {
@@ -89,6 +134,14 @@ export default tseslint.config(
     {
         files: ['**/*.js'],
         extends: [tseslint.configs.disableTypeChecked],
+    },
+    {
+        files: ['**/test/**/*.ts', 'e2e/**/*.ts'],
+        rules: {
+            // test bodies legitimately repeat literals/structures and lack jsdoc
+            'jsdoc/require-description': 'off',
+            'sonarjs/no-duplicate-string': 'off',
+        },
     },
     ...boundaries,
     prettier,

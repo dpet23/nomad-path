@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import {
     buildDividerItem,
     buildLineGeometry,
@@ -9,6 +7,7 @@ import {
     buildWaypointItem,
     validateTripData,
 } from '@nomadpath/contract';
+import { describe, expect, it } from 'vitest';
 
 describe('validateTripData: success cases', () => {
     it('returns zero issues for every default fixture builder output (fixture/validator handshake)', () => {

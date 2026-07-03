@@ -1,4 +1,4 @@
-import type { Bounds, Geometry, TripData, TripItem } from './schema.ts';
+import type { Bounds, Geometry, LineGeometry, PolygonGeometry, TripData, TripItem } from './schema.ts';
 import { PER_POINT_ATTRIBUTE_NAMES, tripDataSchema } from './schema.ts';
 
 export interface ContractIssue {
@@ -110,6 +110,7 @@ function checkDivider(item: TripItem, itemPath: string, issues: ContractIssue[])
     }
 }
 
+/** Dispatches per-geometry semantic checks (points need none beyond Zod). */
 function checkGeometry(geometry: Geometry, path: string, issues: ContractIssue[]): void {
     if (geometry.type === 'point') return;
 
@@ -121,45 +122,58 @@ function checkGeometry(geometry: Geometry, path: string, issues: ContractIssue[]
     }
 
     if (geometry.type === 'line') {
-        const pointCount = geometry.lon.length;
-        if (geometry.time !== undefined) {
-            if (geometry.time.length !== pointCount) {
-                issues.push({
-                    path,
-                    message: `time length (${String(geometry.time.length)}) does not match point count (${String(pointCount)})`,
-                });
-            }
-            for (let i = 1; i < geometry.time.length; i += 1) {
-                const previous = geometry.time[i - 1];
-                const current = geometry.time[i];
-                if (previous !== undefined && current !== undefined && current < previous) {
-                    issues.push({
-                        path: `${path}.time`,
-                        message: `timestamps must be non-decreasing (index ${String(i)})`,
-                    });
-                    break;
-                }
-            }
+        checkLine(geometry, path, issues);
+    } else {
+        checkPolygonRing(geometry, path, issues);
+    }
+}
+
+/** Checks per-point array parity and timestamp monotonicity on a line. */
+function checkLine(line: LineGeometry, path: string, issues: ContractIssue[]): void {
+    const pointCount = line.lon.length;
+    if (line.time !== undefined) {
+        if (line.time.length !== pointCount) {
+            issues.push({
+                path,
+                message: `time length (${String(line.time.length)}) does not match point count (${String(pointCount)})`,
+            });
         }
-        for (const attribute of PER_POINT_ATTRIBUTE_NAMES) {
-            const values = geometry[attribute];
-            if (values !== undefined && values.length !== pointCount) {
-                issues.push({
-                    path,
-                    message: `${attribute} length (${String(values.length)}) does not match point count (${String(pointCount)})`,
-                });
-            }
+        checkTimeMonotonic(line.time, path, issues);
+    }
+    for (const attribute of PER_POINT_ATTRIBUTE_NAMES) {
+        const values = line[attribute];
+        if (values !== undefined && values.length !== pointCount) {
+            issues.push({
+                path,
+                message: `${attribute} length (${String(values.length)}) does not match point count (${String(pointCount)})`,
+            });
         }
     }
+}
 
-    if (geometry.type === 'polygon') {
-        const first = { lon: geometry.lon[0], lat: geometry.lat[0] };
-        const last = {
-            lon: geometry.lon[geometry.lon.length - 1],
-            lat: geometry.lat[geometry.lat.length - 1],
-        };
-        if (first.lon !== last.lon || first.lat !== last.lat) {
-            issues.push({ path, message: 'polygon ring must be closed (first position == last)' });
+/** Reports the first decreasing timestamp pair, if any. */
+function checkTimeMonotonic(time: readonly number[], path: string, issues: ContractIssue[]): void {
+    for (let i = 1; i < time.length; i += 1) {
+        const previous = time[i - 1];
+        const current = time[i];
+        if (previous !== undefined && current !== undefined && current < previous) {
+            issues.push({
+                path: `${path}.time`,
+                message: `timestamps must be non-decreasing (index ${String(i)})`,
+            });
+            return;
         }
+    }
+}
+
+/** Checks that a polygon's single outer ring is closed. */
+function checkPolygonRing(polygon: PolygonGeometry, path: string, issues: ContractIssue[]): void {
+    const first = { lon: polygon.lon[0], lat: polygon.lat[0] };
+    const last = {
+        lon: polygon.lon[polygon.lon.length - 1],
+        lat: polygon.lat[polygon.lat.length - 1],
+    };
+    if (first.lon !== last.lon || first.lat !== last.lat) {
+        issues.push({ path, message: 'polygon ring must be closed (first position == last)' });
     }
 }

@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import {
     buildLineGeometry,
     buildPointGeometry,
@@ -9,6 +7,7 @@ import {
     buildWaypointItem,
     tripDataSchema,
 } from '@nomadpath/contract';
+import { describe, expect, it } from 'vitest';
 
 const BASE = 1894176000;
 
