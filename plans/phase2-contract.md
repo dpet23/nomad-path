@@ -99,29 +99,29 @@ Notes:
 
 **Files:** `packages/contract/src/schema.ts`, re-exports in `src/index.ts`.
 
-- [ ] `git checkout -b epic/contract`
-- [ ] Enumerate test cases for schema acceptance/rejection (state space: each field valid/invalid/absent where meaningful) in `packages/contract/test/schema.test.ts`; write ALL tests first against fixture builders (Task 3 stubs) — allowed to fail.
-- [ ] Implement Zod schema + derived types (`TripData`, `Item`, `Geometry`, ... via `z.infer`); registries: `PER_POINT_ATTRIBUTES` + `COLOUR_ATTRIBUTES` const objects, types derived.
-- [ ] Tests green. Commit `feat(contract): add trip data schema with derived types`.
+- [x] `git checkout -b epic/contract`
+- [x] Enumerate test cases for schema acceptance/rejection (state space: each field valid/invalid/absent where meaningful) in `packages/contract/test/schema.test.ts`; write ALL tests first against fixture builders (Task 3 stubs) — allowed to fail.
+- [x] Implement Zod schema + derived types (`TripData`, `Item`, `Geometry`, ... via `z.infer`); registries: `PER_POINT_ATTRIBUTES` + `COLOUR_ATTRIBUTES` const objects, types derived.
+- [x] Tests green. Commit `feat(contract): add trip data schema with derived types`.
 
 ### Task 2: Semantic validation
 
 **Files:** `packages/contract/src/validate.ts`, tests in `test/validate.test.ts`.
 
-- [ ] Write all tests first: one passing + at least one failing fixture per check above; multi-error collection test (a doc with 3 unrelated problems yields all 3 issues); malformed-input test (non-object -> single structural issue, no throw).
-- [ ] Implement `validateTripData` + `ContractIssue`. Tests green.
-- [ ] Commit `feat(contract): add semantic validation collecting all issues`.
+- [x] Write all tests first: one passing + at least one failing fixture per check above; multi-error collection test (a doc with 3 unrelated problems yields all 3 issues); malformed-input test (non-object -> single structural issue, no throw).
+- [x] Implement `validateTripData` + `ContractIssue`. Tests green.
+- [x] Commit `feat(contract): add semantic validation collecting all issues`.
 
 ### Task 3: Fixture builders
 
 **Files:** `packages/contract/src/fixtures.ts` (exported for other packages' tests), tests riding along.
 
-- [ ] Builders: `buildTripData(overrides?)`, `buildTrackItem(overrides?)`, `buildWaypointItem(overrides?)`, `buildLineGeometry(overrides?)` etc. Fictional mid-ocean/null-island-adjacent coords, non-overlapping attribute ranges (e.g. speeds 1-2, elevations 100-200, sun angles 10-20), deterministic.
-- [ ] Meta-invariant test: default output of every builder passes `validateTripData` with zero issues (the fixture/validator handshake).
-- [ ] Commit `feat(contract): add fictional fixture builders`.
+- [x] Builders: `buildTripData(overrides?)`, `buildTrackItem(overrides?)`, `buildWaypointItem(overrides?)`, `buildLineGeometry(overrides?)` etc. Fictional mid-ocean/null-island-adjacent coords, non-overlapping attribute ranges (e.g. speeds 1-2, elevations 100-200, sun angles 10-20), deterministic.
+- [x] Meta-invariant test: default output of every builder passes `validateTripData` with zero issues (the fixture/validator handshake).
+- [x] Commit `feat(contract): add fictional fixture builders`.
 
 ### Task 4: Docs + phase gate
 
-- [ ] Fill `docs/architecture/data-contract.md` from the shipped schema (shape, optionality semantics, antimeridian rule, null-vs-absent).
-- [ ] All gates green (`typecheck`, `lint`, `format:check`, `test:coverage`, `test:e2e`).
-- [ ] Tick checkboxes; record any design-log amendments; merge `epic/contract` -> master `--no-ff`; update memory.
+- [x] Fill `docs/architecture/data-contract.md` from the shipped schema (shape, optionality semantics, antimeridian rule, null-vs-absent).
+- [x] All gates green (`typecheck`, `lint`, `format:check`, `test:coverage`, `test:e2e`).
+- [x] Tick checkboxes; record any design-log amendments; merge `epic/contract` -> master `--no-ff`; update memory.
