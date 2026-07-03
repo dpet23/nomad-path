@@ -4,7 +4,7 @@ import { CONTRACT_VERSION } from '@nomadpath/contract';
 import { contractVersion } from '@nomadpath/ui';
 
 describe('ui package', () => {
-  it('consumes the shared contract version', () => {
-    expect(contractVersion()).toBe(CONTRACT_VERSION);
-  });
+    it('consumes the shared contract version', () => {
+        expect(contractVersion()).toBe(CONTRACT_VERSION);
+    });
 });

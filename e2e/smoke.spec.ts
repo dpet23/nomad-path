@@ -3,5 +3,5 @@ import { expect, test } from '@playwright/test';
 // Scaffolding placeholder: proves the Playwright toolchain runs on both
 // projects. Replaced by real UI-driven specs from phase 6 onward.
 test('playwright toolchain runs @scaffold', () => {
-  expect(1 + 1).toBe(2);
+    expect(1 + 1).toBe(2);
 });
