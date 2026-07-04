@@ -64,17 +64,37 @@ export interface ParseError {
  * Counters for droppable-but-normal events, aggregated into the end-of-build
  * status line. Not errors and not per-item warnings - a stray single-point
  * segment (OsmAnd pause/resume artifact) is normal, so it is skipped and tallied
- * here. Grows as the build gains more reportable stats.
+ * here.
+ *
+ * The plain interface stays serialisable; its behaviour lives on the same-named
+ * companion object below. Add a counter in ONE place - the field here plus the
+ * three companion methods - and zero/merge/format all follow.
  */
 export interface BuildStats {
     /** Segments/geometries dropped because a line needs >= 2 points. */
     shortSegmentsSkipped: number;
 }
 
-/** A fresh zeroed stats object (one place to add a counter). */
-export function emptyStats(): BuildStats {
-    return { shortSegmentsSkipped: 0 };
-}
+export const BuildStats = {
+    /** A fresh zeroed stats object. */
+    zero(): BuildStats {
+        return { shortSegmentsSkipped: 0 };
+    },
+
+    /** Sum two stats field-by-field (scan aggregates per-file stats with this). */
+    merge(a: BuildStats, b: BuildStats): BuildStats {
+        return { shortSegmentsSkipped: a.shortSegmentsSkipped + b.shortSegmentsSkipped };
+    },
+
+    /** Human-readable status-line fragments for the non-zero counters (empty if all zero). */
+    format(stats: BuildStats): string[] {
+        const parts: string[] = [];
+        if (stats.shortSegmentsSkipped > 0) {
+            parts.push(`${String(stats.shortSegmentsSkipped)} short segment(s) skipped`);
+        }
+        return parts;
+    },
+};
 
 export interface ParseResult {
     features: RawFeature[];

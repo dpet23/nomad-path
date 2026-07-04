@@ -12,8 +12,8 @@ import { join, relative, sep } from 'node:path';
 
 import { isIgnored, selectorMatches } from './config/resolve.ts';
 import type { Config } from './config/schema.ts';
-import type { BuildStats, ParseError, ParseResult, RawFeature } from './model.ts';
-import { emptyStats } from './model.ts';
+import type { ParseError, ParseResult, RawFeature } from './model.ts';
+import { BuildStats } from './model.ts';
 import { parseGpx } from './parse/gpx.ts';
 import { parseKml } from './parse/kml.ts';
 
@@ -66,7 +66,7 @@ function extname(name: string): string {
 export function scanFolder(inputDir: string, config: Config): ScanResult {
     const features: RawFeature[] = [];
     const errors: ParseError[] = [];
-    const stats = emptyStats();
+    let stats = BuildStats.zero();
     const paths = collectPaths(inputDir, config);
     for (const path of paths) {
         const parser = PARSERS[extname(path)];
@@ -75,7 +75,7 @@ export function scanFolder(inputDir: string, config: Config): ScanResult {
         const result = parser(xml, path);
         features.push(...result.features);
         errors.push(...result.errors);
-        stats.shortSegmentsSkipped += result.stats.shortSegmentsSkipped;
+        stats = BuildStats.merge(stats, result.stats);
     }
     return { features, errors, stats, paths };
 }

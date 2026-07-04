@@ -24,6 +24,7 @@ import { Command } from 'commander';
 
 import type { Config } from './config/schema.ts';
 import { loadConfig } from './config/schema.ts';
+import { BuildStats } from './model.ts';
 import { scanFolder, unmatchedSelectors } from './scan.ts';
 
 interface Options {
@@ -68,10 +69,11 @@ function run(inputDir: string, options: Options): void {
     }
 
     // Info-level status of a successful run -> stdout (warnings/errors go to stderr).
-    const parts = [`scanned ${String(scan.paths.length)} file(s)`, `${String(scan.features.length)} feature(s)`];
-    if (scan.stats.shortSegmentsSkipped > 0) {
-        parts.push(`${String(scan.stats.shortSegmentsSkipped)} short segment(s) skipped`);
-    }
+    const parts = [
+        `scanned ${String(scan.paths.length)} file(s)`,
+        `${String(scan.features.length)} feature(s)`,
+        ...BuildStats.format(scan.stats),
+    ];
     process.stdout.write(`${parts.join(', ')}.\n`);
     // Task 7 adds compute -> assemble -> validate -> emit trip-data.json here (respecting --out).
 }

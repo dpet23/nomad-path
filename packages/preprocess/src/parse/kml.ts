@@ -13,17 +13,8 @@
 import { XMLParser } from 'fast-xml-parser';
 import { SyntaxValidator } from 'fast-xml-validator';
 
-import type {
-    BuildStats,
-    ParseError,
-    ParseResult,
-    RawFeature,
-    RawGeometry,
-    RawLine,
-    RawPoint,
-    RawPolygon,
-} from '../model.ts';
-import { emptyStats } from '../model.ts';
+import type { ParseError, ParseResult, RawFeature, RawGeometry, RawLine, RawPoint, RawPolygon } from '../model.ts';
+import { BuildStats } from '../model.ts';
 
 /** fast-xml-parser output: child elements keyed by tag. */
 type XmlNode = Record<string, unknown>;
@@ -207,7 +198,7 @@ function walk(container: XmlNode, folder: string | undefined, ctx: Context): voi
 export function parseKml(xml: string, sourceFile: string): ParseResult {
     const features: RawFeature[] = [];
     const errors: ParseError[] = [];
-    const stats = emptyStats();
+    const stats = BuildStats.zero();
     const fail = (message: string) => errors.push({ sourceFile, message });
 
     let root: XmlNode | undefined;

@@ -12,8 +12,8 @@
 import { XMLParser } from 'fast-xml-parser';
 import { SyntaxValidator } from 'fast-xml-validator';
 
-import type { BuildStats, ParseError, ParseResult, RawFeature, RawLine, RawPoint } from '../model.ts';
-import { emptyStats } from '../model.ts';
+import type { ParseError, ParseResult, RawFeature, RawLine, RawPoint } from '../model.ts';
+import { BuildStats } from '../model.ts';
 
 /** fast-xml-parser output: child elements keyed by tag, attributes prefixed with @_. */
 type XmlNode = Record<string, unknown>;
@@ -190,7 +190,7 @@ function parseTrack(
 export function parseGpx(xml: string, sourceFile: string): ParseResult {
     const features: RawFeature[] = [];
     const errors: ParseError[] = [];
-    const stats = emptyStats();
+    const stats = BuildStats.zero();
     const sink: Sink = { fail: message => errors.push({ sourceFile, message }), stats };
 
     let root: XmlNode | undefined;
