@@ -31,13 +31,29 @@ export function buildRawPoint(overrides: Partial<RawPoint> = {}): RawPoint {
     };
 }
 
-export function buildRawFeature(overrides: Partial<RawFeature> = {}): RawFeature {
-    return {
-        sourceFile: 'tracks/2030-01-15/morning-walk.gpx',
-        sourceIndex: 0,
-        name: 'Morning walk',
-        activity: 'Walking',
-        geometries: [buildRawLine()],
-        ...overrides,
+/**
+ * Same shape as `Partial<RawFeature>`, but lets a caller pass `undefined`
+ * explicitly for an optional field (e.g. `{ activity: undefined }`) to assert
+ * "no value" test cases, which `exactOptionalPropertyTypes` would otherwise
+ * reject as an attempt to set an optional property to `undefined`.
+ */
+type RawFeatureOverrides = {
+    [K in keyof RawFeature]?: RawFeature[K] | undefined;
+};
+
+export function buildRawFeature(overrides: RawFeatureOverrides = {}): RawFeature {
+    const feature: RawFeature = {
+        sourceFile: overrides.sourceFile ?? 'tracks/2030-01-15/morning-walk.gpx',
+        sourceIndex: overrides.sourceIndex ?? 0,
+        geometries: overrides.geometries ?? [buildRawLine()],
     };
+    const name = 'name' in overrides ? overrides.name : 'Morning walk';
+    if (name !== undefined) feature.name = name;
+    const description = 'description' in overrides ? overrides.description : undefined;
+    if (description !== undefined) feature.description = description;
+    const activity = 'activity' in overrides ? overrides.activity : 'Walking';
+    if (activity !== undefined) feature.activity = activity;
+    const folder = 'folder' in overrides ? overrides.folder : undefined;
+    if (folder !== undefined) feature.folder = folder;
+    return feature;
 }
