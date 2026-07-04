@@ -2,6 +2,14 @@
 
 Visualises GPS trip recordings on interactive basemaps. Two components joined by a shared contract: a deploy-time pipeline (raw GPX/KML folder -> one compact data file, strict + fail-loud) and a fully client-side UI library (never crashes, friendly in-UI errors). See `docs/architecture/overview.md`.
 
+## Governing principle (do not violate)
+
+**Nothing is set in stone, and every piece of code needs a specific NAMED use case.**
+
+- All docs (contract, schema, design log, plans) are provisional; expect them to change under profiling. Never treat one as authoritative or frozen.
+- "The contract/plan says so" is NEVER a sufficient justification for code. Find the real use case or remove the code.
+- Before writing any field/function/type, name the concrete consumer that needs this exact thing NOW. "The UI will probably want it" / "it's cheap" / "it's derived data" all fail the test - defer it. Precompute only what is expensive or whose input is unavailable later; never cheap always-derivable values (ids, sort orders, bucket labels). Output format is directed by what the UI actually needs, discovered as the UI is built. Apply this test to your own plans, not just to user requests.
+
 ## Source-of-truth documents
 
 - **Design decision log**: `plans/looking-to-plan-the-piped-nova.md` — append-only; never silently reverse a decision, supersede it with a dated entry.

@@ -2,6 +2,29 @@
 
 ---
 
+## Governing principles (override everything below)
+
+These are not decisions to be superseded; they are the lens through which every
+decision in this document is read.
+
+1. **Nothing here is set in stone.** This log, the contract, the schema, and the
+   phase plans are all provisional. Many decisions WILL change once the real
+   preprocessing + UI are profiled together. Treat no entry as frozen; when a
+   better approach appears, supersede the entry and move on.
+2. **"The contract/plan/log says so" is never a justification for code.** If that
+   is the only reason a field, function, or type exists, the reason is
+   insufficient - find the real one or remove it.
+3. **Every piece of code must have a specific, NAMED use case - not an inferred
+   one.** The test: point to the concrete consumer that needs this exact thing
+   now. "The UI will probably want it" / "it's cheap" / "it's derived data that
+   might help" all fail. If you cannot name the consumer, do not build it.
+   Precompute is justified only when expensive OR when the input is unavailable
+   later - never for cheap, always-derivable values (ids, sort orders, bucket
+   labels). The output format is directed by what the UI actually needs,
+   discovered as the UI is built - not guessed ahead of it.
+
+---
+
 ## Context
 
 _(Why this app is being built — the problem, the prompt, the intended outcome.)_
