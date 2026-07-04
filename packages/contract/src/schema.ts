@@ -12,13 +12,6 @@ const longitude = z.number().min(-180).max(180);
 const latitude = z.number().min(-90).max(90);
 
 /**
- * [west, south, east, north] in lon/lat. West > east is VALID: it means the
- * box crosses the antimeridian (Pacific trips are core data). Nothing may
- * assume west <= east.
- */
-const boundsSchema = z.tuple([longitude, latitude, longitude, latitude]);
-
-/**
  * Optional per-point attribute arrays carried by line geometries, parallel to
  * lon/lat. Absent array = the item legitimately lacks the attribute (a valid
  * state, not an error). A null entry = no data at that point. Both render in
@@ -32,8 +25,6 @@ export const PER_POINT_ATTRIBUTES = {
     ele: z.array(z.number().nullable()).optional(),
     /** Speed in metres per second. */
     speed: z.array(z.number().nullable()).optional(),
-    /** Solar elevation in degrees (the time-of-day proxy). */
-    sunAngle: z.array(z.number().nullable()).optional(),
 } as const;
 
 export type PerPointAttribute = keyof typeof PER_POINT_ATTRIBUTES;
@@ -92,33 +83,16 @@ const itemSchema = z.strictObject({
     panel: z.enum(PANEL_NAMES),
     /** Waypoint folder value; absent = top-level ungrouped item. */
     groupLabel: z.string().optional(),
-    /** Local calendar date (YYYY-MM-DD) of the item's first point. */
-    day: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/)
-        .optional(),
-    /**
-     * Splits the track tree and renders as a separator row. Kept as a per-item
-     * flag (2026-07-02 decision); the UI's walk-and-split lives in one pure
-     * core function so this representation can change without a codebase-wide
-     * rework.
-     */
-    divider: z.boolean(),
-    defaultVisible: z.boolean(),
     /** Global chronological ordering; unique integer per item. */
     order: z.int(),
     /** From osmand:activity, verbatim; absent = no data ("other"). */
     transportMode: z.string().optional(),
-    /** Zoom-to target. Precomputed by the pipeline (antimeridian-aware). */
-    bounds: boundsSchema,
     geometries: z.array(geometrySchema).min(1),
 });
 
 export const tripDataSchema = z.strictObject({
     version: z.literal(CONTRACT_VERSION),
     name: z.string().optional(),
-    /** Initial viewport fit, with config exclusions already applied. */
-    bounds: boundsSchema,
     items: z.array(itemSchema),
 });
 
@@ -128,4 +102,3 @@ export type Geometry = z.infer<typeof geometrySchema>;
 export type LineGeometry = z.infer<typeof lineGeometrySchema>;
 export type PointGeometry = z.infer<typeof pointGeometrySchema>;
 export type PolygonGeometry = z.infer<typeof polygonGeometrySchema>;
-export type Bounds = z.infer<typeof boundsSchema>;

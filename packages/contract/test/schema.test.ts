@@ -44,11 +44,6 @@ describe('tripDataSchema: top level', () => {
         rejects(rest);
     });
 
-    it('rejects missing bounds', () => {
-        const { bounds: _bounds, ...rest } = buildTripData();
-        rejects(rest);
-    });
-
     it('rejects missing items', () => {
         const { items: _items, ...rest } = buildTripData();
         rejects(rest);
@@ -62,26 +57,6 @@ describe('tripDataSchema: top level', () => {
         rejects('not a trip');
         rejects(null);
         rejects(42);
-    });
-});
-
-describe('tripDataSchema: bounds', () => {
-    it('accepts antimeridian-crossing bounds (west > east)', () => {
-        accepts(buildTripData({ bounds: [179.5, -20, -178.5, -15] }));
-    });
-
-    it('rejects bounds with wrong arity', () => {
-        rejects({ ...buildTripData(), bounds: [4.1, -54.7, 4.3] });
-    });
-
-    it('rejects longitudes beyond +-180 and latitudes beyond +-90', () => {
-        rejects(buildTripData({ bounds: [181, -54.7, 4.3, -54.5] }));
-        rejects(buildTripData({ bounds: [4.1, -91, 4.3, -54.5] }));
-    });
-
-    it('rejects non-finite bounds', () => {
-        rejects(buildTripData({ bounds: [Number.NaN, -54.7, 4.3, -54.5] }));
-        rejects(buildTripData({ bounds: [Number.POSITIVE_INFINITY, -54.7, 4.3, -54.5] }));
     });
 });
 
@@ -102,10 +77,6 @@ describe('tripDataSchema: items', () => {
         rejects(buildTripData({ items: [{ ...buildTrackItem(), panel: 'disasters' as never }] }));
     });
 
-    it('rejects a malformed day string', () => {
-        rejects(buildTripData({ items: [buildTrackItem({ day: '15/01/2030' })] }));
-    });
-
     it('rejects a non-integer order', () => {
         rejects(buildTripData({ items: [buildTrackItem({ order: 1.5 })] }));
     });
@@ -114,13 +85,10 @@ describe('tripDataSchema: items', () => {
         rejects(buildTripData({ items: [buildTrackItem({ geometries: [] })] }));
     });
 
-    it.each(['id', 'name', 'panel', 'divider', 'defaultVisible', 'order', 'bounds'] as const)(
-        'rejects an item missing required field %s',
-        field => {
-            const { [field]: _omitted, ...rest } = buildTrackItem();
-            rejects(buildTripData({ items: [rest as never] }));
-        },
-    );
+    it.each(['id', 'name', 'panel', 'order'] as const)('rejects an item missing required field %s', field => {
+        const { [field]: _omitted, ...rest } = buildTrackItem();
+        rejects(buildTripData({ items: [rest as never] }));
+    });
 });
 
 describe('tripDataSchema: geometries', () => {
@@ -141,7 +109,6 @@ describe('tripDataSchema: geometries', () => {
         delete line.time;
         delete line.ele;
         delete line.speed;
-        delete line.sunAngle;
         accepts(buildTripData({ items: [buildTrackItem({ geometries: [line] })] }));
     });
 
@@ -157,7 +124,6 @@ describe('tripDataSchema: geometries', () => {
             time: [BASE],
             ele: [100],
             speed: [1],
-            sunAngle: [10],
         });
         rejects(buildTripData({ items: [buildTrackItem({ geometries: [line] })] }));
     });

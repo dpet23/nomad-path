@@ -1,5 +1,4 @@
 export {
-    buildDividerItem,
     buildLineGeometry,
     buildPointGeometry,
     buildPolygonGeometry,
@@ -8,7 +7,6 @@ export {
     buildWaypointItem,
 } from './fixtures.ts';
 export type {
-    Bounds,
     Geometry,
     LineGeometry,
     Panel,

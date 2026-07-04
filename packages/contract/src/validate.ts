@@ -1,4 +1,4 @@
-import type { Bounds, Geometry, LineGeometry, PolygonGeometry, TripData, TripItem } from './schema.ts';
+import type { Geometry, LineGeometry, PolygonGeometry, TripData, TripItem } from './schema.ts';
 import { PER_POINT_ATTRIBUTE_NAMES, tripDataSchema } from './schema.ts';
 
 export interface ContractIssue {
@@ -27,32 +27,16 @@ export function validateTripData(doc: unknown): ContractIssue[] {
 function semanticIssues(data: TripData): ContractIssue[] {
     const issues: ContractIssue[] = [];
 
-    checkBounds(data.bounds, 'bounds', issues);
     checkUniqueness(data.items, issues);
 
     data.items.forEach((item, itemIndex) => {
         const itemPath = `items.${String(itemIndex)}`;
-        checkBounds(item.bounds, `${itemPath}.bounds`, issues);
-        checkDay(item, itemPath, issues);
-        checkDivider(item, itemPath, issues);
         item.geometries.forEach((geometry, geometryIndex) => {
             checkGeometry(geometry, `${itemPath}.geometries.${String(geometryIndex)}`, issues);
         });
     });
 
     return issues;
-}
-
-function checkBounds(bounds: Bounds, path: string, issues: ContractIssue[]): void {
-    const [, south, , north] = bounds;
-    // No west <= east check: west > east legitimately encodes an
-    // antimeridian-crossing box. Latitude has no such wraparound.
-    if (south > north) {
-        issues.push({
-            path,
-            message: `bounds south (${String(south)}) exceeds north (${String(north)})`,
-        });
-    }
 }
 
 function checkUniqueness(items: readonly TripItem[], issues: ContractIssue[]): void {
@@ -78,36 +62,6 @@ function checkUniqueness(items: readonly TripItem[], issues: ContractIssue[]): v
             });
         }
     });
-}
-
-function checkDay(item: TripItem, itemPath: string, issues: ContractIssue[]): void {
-    if (item.day === undefined) return;
-    const [year, month, dayOfMonth] = item.day.split('-').map(Number) as [number, number, number];
-    const date = new Date(Date.UTC(year, month - 1, dayOfMonth));
-    const roundTrips =
-        date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === dayOfMonth;
-    if (!roundTrips) {
-        issues.push({
-            path: `${itemPath}.day`,
-            message: `"${item.day}" is not a real calendar date`,
-        });
-    }
-}
-
-function checkDivider(item: TripItem, itemPath: string, issues: ContractIssue[]): void {
-    if (!item.divider) return;
-    if (item.panel !== 'tracks') {
-        issues.push({
-            path: `${itemPath}.divider`,
-            message: `divider items must be on the "tracks" panel, got "${item.panel}"`,
-        });
-    }
-    if (item.day === undefined) {
-        issues.push({
-            path: `${itemPath}.divider`,
-            message: 'divider items must carry a day',
-        });
-    }
 }
 
 /** Dispatches per-geometry semantic checks (points need none beyond Zod). */

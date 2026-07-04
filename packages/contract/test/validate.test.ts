@@ -1,5 +1,4 @@
 import {
-    buildDividerItem,
     buildLineGeometry,
     buildPolygonGeometry,
     buildTrackItem,
@@ -19,11 +18,6 @@ describe('validateTripData: success cases', () => {
                 }),
             ),
         ).toEqual([]);
-    });
-
-    it('accepts antimeridian-crossing bounds without complaint', () => {
-        const item = buildTrackItem({ bounds: [179.9, -55, -179.9, -54] });
-        expect(validateTripData(buildTripData({ items: [item], bounds: [179.9, -55, -179.9, -54] }))).toEqual([]);
     });
 
     it('accepts equal consecutive timestamps (non-decreasing, not strictly increasing)', () => {
@@ -93,42 +87,21 @@ describe('validateTripData: semantic failures', () => {
         expect(issues.length).toBeGreaterThan(0);
     });
 
-    it('reports an impossible calendar date that matches the pattern', () => {
-        const issues = validateTripData(buildTripData({ items: [buildTrackItem({ day: '2030-02-30' })] }));
-        expect(issues.some(i => i.message.includes('calendar'))).toBe(true);
-    });
-
-    it('reports inverted latitude bounds (south > north)', () => {
-        const issues = validateTripData(buildTripData({ bounds: [4.1, -54.5, 4.3, -54.7] }));
-        expect(issues.some(i => i.message.includes('south'))).toBe(true);
-    });
-
-    it('reports a divider item on the waypoints panel', () => {
-        const bad = buildDividerItem({ panel: 'waypoints', groupLabel: 'Accommodation' });
-        const issues = validateTripData(buildTripData({ items: [bad] }));
-        expect(issues.some(i => i.message.includes('divider'))).toBe(true);
-    });
-
-    it('reports a divider item without a day', () => {
-        const item = buildDividerItem();
-        delete item.day;
-        const issues = validateTripData(buildTripData({ items: [item] }));
-        expect(issues.some(i => i.message.includes('divider'))).toBe(true);
-    });
-
     it('collects ALL issues from a document with several unrelated problems', () => {
         const badLine = buildLineGeometry({ speed: [1], time: [300, 200, 100] });
         const a = buildTrackItem({ id: 'dup', order: 7, geometries: [badLine] });
-        const b = buildTrackItem({ id: 'dup', order: 7, day: '2030-02-30' });
+        const b = buildTrackItem({ id: 'dup', order: 7 });
         const issues = validateTripData(buildTripData({ items: [a, b] }));
-        // speed length + decreasing time + duplicate id + duplicate order + impossible date
-        expect(issues.length).toBeGreaterThanOrEqual(5);
+        // speed length + decreasing time + duplicate id + duplicate order
+        expect(issues.length).toBeGreaterThanOrEqual(4);
     });
 
     it('issue paths point at the offending item', () => {
         const line = buildLineGeometry({ speed: [1] });
         const issues = validateTripData(
-            buildTripData({ items: [buildTrackItem(), buildDividerItem({ geometries: [line] })] }),
+            buildTripData({
+                items: [buildTrackItem(), buildTrackItem({ id: 'flight', order: 5, geometries: [line] })],
+            }),
         );
         expect(issues.some(i => i.path.includes('items.1'))).toBe(true);
     });

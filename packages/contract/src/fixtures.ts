@@ -4,8 +4,7 @@
  * All locations are invented (a fictional archipelago in the far south
  * Atlantic); never encode real trip data. Attribute ranges are deliberately
  * non-overlapping so assertions are unambiguous:
- *   speeds 1-2 m/s, elevations 100-200 m, sun angles 10-20 deg,
- *   times within 2030-01-15 UTC.
+ *   speeds 1-2 m/s, elevations 100-200 m, times within 2030-01-15 UTC.
  */
 
 import type { LineGeometry, PointGeometry, PolygonGeometry, TripData, TripItem } from './schema.ts';
@@ -21,7 +20,6 @@ export function buildLineGeometry(overrides: Partial<LineGeometry> = {}): LineGe
         time: [BASE_TIME, BASE_TIME + 10, BASE_TIME + 20],
         ele: [100, 150, 200],
         speed: [1, 1.5, 2],
-        sunAngle: [10, 15, 20],
         ...overrides,
     };
 }
@@ -49,32 +47,11 @@ export function buildTrackItem(overrides: Partial<TripItem> = {}): TripItem {
         id: 'tracks/2030-01-15/morning-walk.gpx#trk0',
         name: 'Morning walk',
         panel: 'tracks',
-        day: '2030-01-15',
-        divider: false,
-        defaultVisible: true,
         order: 0,
         transportMode: 'Walking',
-        bounds: [4.101, -54.503, 4.104, -54.501],
         geometries: [buildLineGeometry()],
         ...overrides,
     };
-}
-
-export function buildDividerItem(overrides: Partial<TripItem> = {}): TripItem {
-    return buildTrackItem({
-        id: 'flights/fictional-airline-101.kml#trk0',
-        name: 'Flight VA 101',
-        divider: true,
-        order: 1,
-        bounds: [4.104, -54.6, 4.2, -54.503],
-        geometries: [
-            buildLineGeometry({
-                lon: [4.104, 4.15, 4.2],
-                lat: [-54.503, -54.55, -54.6],
-            }),
-        ],
-        ...overrides,
-    });
 }
 
 export function buildWaypointItem(overrides: Partial<TripItem> = {}): TripItem {
@@ -84,10 +61,7 @@ export function buildWaypointItem(overrides: Partial<TripItem> = {}): TripItem {
         description: 'Fictional Isle, South Atlantic',
         panel: 'waypoints',
         groupLabel: 'Accommodation',
-        divider: false,
-        defaultVisible: true,
-        order: 2,
-        bounds: [4.2, -54.6, 4.2, -54.6],
+        order: 1,
         geometries: [buildPointGeometry()],
         ...overrides,
     };
@@ -97,8 +71,7 @@ export function buildTripData(overrides: Partial<TripData> = {}): TripData {
     return {
         version: 1,
         name: 'Fictional Archipelago 2030',
-        bounds: [4.1, -54.7, 4.3, -54.5],
-        items: [buildTrackItem(), buildDividerItem(), buildWaypointItem()],
+        items: [buildTrackItem(), buildWaypointItem()],
         ...overrides,
     };
 }
