@@ -611,7 +611,9 @@ Make an uncovered branch fail CI. Per-file 80% branch floor (catches the "0% fil
 
 - [ ] **Step 1: Update the thresholds**
 
-Vitest threshold semantics (verified against `vitest@4.1.9` types): `perFile: true` makes the numeric thresholds (`branches`/`functions`/`lines`/`statements`) apply to EACH file individually — any file below the bar fails the run. A per-glob key (`'glob': { branches, ... }`) overrides the bar for matching files. There is a single global `perFile` boolean, so "per-file floor" IS the mechanism that also guards the whole project: because every file must independently clear its bar, there is no averaging hole left to backstop. A file that genuinely cannot reach the floor without a contrived test gets a documented per-glob override — that is the only escape hatch, and it is explicit, never silent.
+**CORRECTION (verified during execution against `vitest@4.1.9` source + an isolated repro):** the per-glob override does NOT work as first written here. With `perFile: true`, the global numeric thresholds are checked against EVERY file unconditionally; a per-glob `'glob': { branches, ... }` key can only ADD a second check (RAISE a file's bar), never lower a file below the global floor. So "lower one file's bar via override" is impossible. The honest lever for a genuinely-untestable file is: split its untestable part into its own file and add THAT file to the coverage `exclude` list (documented). This is what was done — `build()` was split into `build.ts` (covered), and the thin `cli.ts` wiring was excluded.
+
+Vitest threshold semantics: `perFile: true` makes the numeric thresholds (`branches`/`functions`/`lines`/`statements`) apply to EACH file individually — any file below the bar fails the run. "Per-file floor" IS the mechanism that also guards the whole project: because every file must independently clear its bar, there is no averaging hole to backstop.
 
 In `vitest.config.ts`, replace the `thresholds` block with:
 
