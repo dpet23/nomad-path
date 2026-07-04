@@ -41,7 +41,12 @@ describe('parseKml: FlightAware gx:Track', () => {
         const result = parseKml(FLIGHT, SOURCE);
         expect(result.errors).toEqual([]);
         const feature = result.features[0];
-        expect(feature).toMatchObject({ sourceFile: SOURCE, sourceIndex: 0, name: 'Flight track', description: 'Fictional flight' });
+        expect(feature).toMatchObject({
+            sourceFile: SOURCE,
+            sourceIndex: 0,
+            name: 'Flight track',
+            description: 'Fictional flight',
+        });
         const line = feature?.geometries[0] as RawLine;
         expect(line.type).toBe('line');
         expect(line.lon).toEqual([4.101, 4.102, 4.104]);
@@ -52,9 +57,7 @@ describe('parseKml: FlightAware gx:Track', () => {
 
     it('reads gx:coord as space-separated "lon lat ele" (lon first)', () => {
         const line = parseKml(FLIGHT, SOURCE).features[0]?.geometries[0] as RawLine;
-        expect(line.lon[0]).toBe(4.101);
-        expect(line.lat[0]).toBe(-54.501);
-        expect(line.ele?.[0]).toBe(100);
+        expect([line.lon[0], line.lat[0], line.ele?.[0]]).toEqual([4.101, -54.501, 100]);
     });
 
     it('emits airport Point placemarks as their own point features (dropping them is a later rule, not a parser guess)', () => {
@@ -64,8 +67,7 @@ describe('parseKml: FlightAware gx:Track', () => {
         expect(airport?.name).toBe('YMML Airport');
         const point = airport?.geometries[0] as RawPoint;
         expect(point.type).toBe('point');
-        expect(point.lon).toBe(4.201);
-        expect(point.lat).toBe(-54.601);
+        expect([point.lon, point.lat]).toEqual([4.201, -54.601]);
     });
 });
 
@@ -90,8 +92,7 @@ describe('parseKml: coordinates parsing', () => {
             <Point><coordinates>4.201,-54.601</coordinates></Point>
           </Placemark>`);
         const point = parseKml(doc, SOURCE).features[0]?.geometries[0] as RawPoint;
-        expect(point.lon).toBe(4.201);
-        expect(point.lat).toBe(-54.601);
+        expect([point.lon, point.lat]).toEqual([4.201, -54.601]);
     });
 
     it('tolerates leading/trailing whitespace and tabs around a coordinates block', () => {
@@ -166,9 +167,9 @@ describe('parseKml: mixed and multi-geometry files (no special-casing)', () => {
           </Folder>`);
         const result = parseKml(doc, SOURCE);
         expect(result.errors).toEqual([]);
-        expect(result.features.map((f) => f.geometries[0]?.type)).toEqual(['line', 'point']);
-        expect(result.features.map((f) => f.folder)).toEqual(['Cyclone', 'Cyclone']);
-        expect(result.features.map((f) => f.sourceIndex)).toEqual([0, 1]);
+        expect(result.features.map(f => f.geometries[0]?.type)).toEqual(['line', 'point']);
+        expect(result.features.map(f => f.folder)).toEqual(['Cyclone', 'Cyclone']);
+        expect(result.features.map(f => f.sourceIndex)).toEqual([0, 1]);
     });
 
     it('silently ignores non-geometry document furniture (ScreenOverlay, Style)', () => {

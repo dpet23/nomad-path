@@ -72,11 +72,11 @@ Handle OsmAnd + AllTrails + GoPro + waypoint variants: `trk`->line RawGeometry (
 ### Task 3: KML parser
 
 **Files:** `packages/pipeline/src/parse/kml.ts`, tests with inline fictional KML.
-`gx:Track` (when[] + gx:coord[] "lon lat ele") -> line RawGeometry; `Placemark/Point` -> point; nested `Folder` recursion; lines+polygons for cyclone geometry (round-trip, no special-casing). Airport-waypoint recognition is a config/rule concern, NOT a parser guess — parser emits all geometry, the config-resolve stage drops recognised-unwanted.
+`gx:Track` (when[] + gx:coord[] "lon lat ele" space-separated) -> line; `LineString`/`Point`/`Polygon` (`coordinates` = comma-separated lon,lat[,ele] tuples) -> line/point/polygon; nested `Folder` recursion, innermost folder name -> `folder`. **One feature per Placemark, translate-not-filter** (design log 2026-07-04): a cyclone's many point+line placemarks each become their own feature; bundling them into one object and dropping recognised-unwanted airport waypoints is a LATER rule stage, NOT a parser guess or special-case. Hard errors (collected): malformed XML / non-numeric coord / when-vs-coord length mismatch / a line with < 2 points. Non-geometry furniture (ScreenOverlay, Style) silently ignored. Same mechanism as GPX (`XMLParser` + `fast-xml-validator` `SyntaxValidator`). Verified against real corpus FlightAware + GDACS cyclone files (0 errors).
 
-- [ ] State space + all tests first (incl. when/coord length mismatch = error).
-- [ ] Implement; same `{ features, errors }` contract as GPX.
-- [ ] Commit `feat(pipeline): add kml parser for flightaware and gdacs geometry`.
+- [x] State space + all tests first (incl. when/coord length mismatch = error).
+- [x] Implement; same `{ features, errors }` contract as GPX.
+- [x] Commit `feat(pipeline): add kml parser for flightaware and gdacs geometry`.
 
 ### Task 4: Config load + resolve
 
