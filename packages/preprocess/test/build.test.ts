@@ -83,6 +83,18 @@ describe('build: exit codes and logging', () => {
         expect(log.entries.some(e => e.level === 'error' && e.msg.includes('config file not found'))).toBe(true);
     });
 
+    it('reads an explicit --config file (not the default nomadpath.yaml)', () => {
+        write('walk.gpx', gpx('Walk'));
+        // A selector that matches nothing surfaces as an unmatched-selector warning only
+        // if this custom file was actually loaded - proving --config was read, not the default.
+        const custom = join(root, 'custom.yaml');
+        writeFileSync(custom, 'tracks:\n  from-custom-config/: { hidden: true }\n');
+        const log = new CapturingLogger();
+        const code = build(root, { config: custom }, log);
+        expect(code).toBe(0);
+        expect(log.entries.some(e => e.level === 'warn' && e.msg.includes('from-custom-config/'))).toBe(true);
+    });
+
     it('returns 1 and writes nothing when a file has a hard parse error', () => {
         write('bad.gpx', '<gpx><trk></gpx>');
         const log = new CapturingLogger();
