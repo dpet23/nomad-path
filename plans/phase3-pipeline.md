@@ -99,21 +99,20 @@ Parse `nomadpath.yaml` (strict zod, fail loud on unknown keys). `resolveTrackSet
 
 **As built:** `scanFolder` + `unmatchedSelectors` in `scan.ts`; CLI in `cli.ts` uses `commander` (auto-help). Output by severity: build status (incl. `N short segment(s) skipped`) -> stdout; unmatched-selector warnings + error report -> stderr; exit 0/1/2. `ParseResult`/`ScanResult` gained a `stats: BuildStats` channel (`shortSegmentsSkipped`, extensible). NB: TS parameter properties + enums etc. are NOT supported by Node's type-stripping (no build step) - use explicit field + assignment. CLI tested via real subprocess (`spawnSync`), so `cli.ts` shows 0% coverage though it is exercised.
 
-### Task 6: Compute stages
+### Task 6: Compute stages — DEFERRED
 
-**Files:** `packages/preprocess/src/compute/*.ts` (timezone, day, sunAngle, distance/bounds), tests.
-Geodesic, on raw lon/lat: timezone-from-location (tz-lookup, first point) -> local day (calendar date) unless config `day` override; sunAngle per point (suncalc); per-item bounds + trip bounds (antimeridian-aware, excluding `excludeFromBounds`). NO speed derivation.
+**Deferred wholesale** (design log 2026-07-04; spec `docs/superpowers/specs/2026-07-04-defer-compute-assemble-emit-design.md`). `day`/`sunAngle`/`bounds` are derived data whose exact shape only the (not-yet-built) UI can specify - building now is guessing. Each returns additively (one `compute/<x>.ts` + one stamp in emit + one schema field) when a UI consumer names it. `tz-lookup`/`suncalc`/`@turf/bbox` not installed.
 
-- [ ] State space incl. antimeridian bounds, dateline day assignment, config day override. All tests first.
-- [ ] Implement each as a pure stage. Commit `feat(pipeline): add timezone, day, sun-angle, and bounds compute`.
+**Anticipated later (non-committal):** `day` (+ config `day` override) and `sunAngle` return with the tree/colour UI (phase 4+/6); `bounds` (+ `excludeFromBounds`) with the map-fit need, decided on measured deck.gl evidence.
 
-### Task 7: Assemble + validate + emit
+### Task 7: Emit the validated raw trip file — DONE
 
-**Files:** `packages/preprocess/src/assemble.ts`, `packages/preprocess/src/emit.ts`, wire into `cli.ts`, tests.
-RawFeature + resolved settings + computed fields -> contract `TripItem`s (stable `id` from sourcePath+element, `order` chronological, `panel`, stamped fields). Assemble `TripData`, run `validateTripData` (collect-all), fail loud with full report if any issue, else emit compact JSON (atomic write). Waypoint routing: `wpt`+folder -> waypoints panel; tracks -> tracks panel (disaster routing deferred).
+**Files:** `packages/preprocess/src/emit.ts`, wired into `cli.ts`, tests. (No `assemble` module - `id`/`panel`/`order` were rejected as fabricated fields with no named consumer; design log 2026-07-04.)
 
-- [ ] Tests: full fixture folder -> valid TripData that `validateTripData` passes AND round-trips; injected bad data -> full error report, no file written.
-- [ ] Commit `feat(pipeline): assemble, validate, and emit trip data`.
+**As built:** `emit(features, name, outPath)` projects each `RawFeature` to the shrunk contract item `{ name?, description?, transportMode?, folder?, geometries }` (drops provenance `sourceFile`/`sourceIndex`; `activity` -> `transportMode`; `folder` raw), wraps in `{ version, name?, items }`, runs `validateTripData` (collect-all, fail loud, nothing written on failure), else writes compact JSON atomically (temp sibling + rename). Wired into `cli.ts` at the scan seam; emit-failure = exit 1 + full stderr report. Contract shrunk to the raw shape and the within-track monotonic-time check dropped (corpus verification found it rejected legitimate multi-device merges). Verified: all 5 `~/Documents/holidays` trips emit valid files (Hawaii = 320 items, 0 issues).
+
+- [x] Tests: fixture features -> valid trip file that `validateTripData` passes AND round-trips; injected bad geometry -> full error report, no file written; provenance/fabricated fields absent; atomic (no temp leftover).
+- [x] Commits: `feat(preprocess): project, validate, and atomically emit the trip file` + `feat(preprocess): wire emit into the cli` + `refactor(contract): shrink to the raw trip shape` + `fix(contract): drop within-track monotonic-time check`.
 
 ### Task 8: Config docs + phase gate
 

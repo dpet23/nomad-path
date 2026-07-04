@@ -47,7 +47,7 @@ function resolveConfig(inputDir: string, options: Options): Config {
     return loadConfig(readFileSync(path, 'utf8'), path);
 }
 
-/** Scan the input dir, report warnings/errors to stderr, and (later) emit trip-data.json. */
+/** Scan the input dir, report warnings/errors to stderr, and emit trip-data.json. */
 function run(inputDir: string, options: Options): void {
     if (!existsSync(inputDir) || !statSync(inputDir).isDirectory()) {
         process.stderr.write(`error: input dir not found: ${inputDir}\n`);
