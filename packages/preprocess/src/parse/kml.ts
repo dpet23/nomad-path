@@ -4,15 +4,26 @@
  * geometry that placemark holds, kept as-is. It does NOT bundle related
  * placemarks (e.g. the points and lines of one cyclone) into a single object,
  * nor drop recognised-but-unwanted airport waypoints; that grouping and
- * filtering is a later rule stage's job. The only refusals are structural:
- * XML that will not parse, non-numeric coordinates, a gx:Track whose when and
- * coord lists disagree, and a line with fewer than two points.
+ * filtering is a later rule stage's job. Fatal refusals: XML that will not
+ * parse, non-numeric coordinates, a gx:Track whose when and coord lists
+ * disagree. A geometry with fewer than two points is skipped and tallied as a
+ * build stat (normal data), not an error.
  */
 
 import { XMLParser } from 'fast-xml-parser';
 import { SyntaxValidator } from 'fast-xml-validator';
 
-import type { ParseError, ParseResult, RawFeature, RawGeometry, RawLine, RawPoint, RawPolygon } from '../model.ts';
+import type {
+    BuildStats,
+    ParseError,
+    ParseResult,
+    RawFeature,
+    RawGeometry,
+    RawLine,
+    RawPoint,
+    RawPolygon,
+} from '../model.ts';
+import { emptyStats } from '../model.ts';
 
 /** fast-xml-parser output: child elements keyed by tag. */
 type XmlNode = Record<string, unknown>;
@@ -54,7 +65,19 @@ interface Vertex {
     ele: number | null;
 }
 
-class ParseFailure extends Error {}
+/**
+ * Thrown to unwind out of one placemark. kind 'error' = a fatal problem
+ * (corruption) collected as a ParseError; kind 'short' = a geometry with too few
+ * points, skipped and tallied as a build stat (normal, never an error).
+ */
+class ParseFailure extends Error {
+    readonly kind: 'error' | 'short';
+
+    constructor(message: string, kind: 'error' | 'short' = 'error') {
+        super(message);
+        this.kind = kind;
+    }
+}
 
 /** Strict finite number; throws ParseFailure so the caller can collect one error and move on. */
 function coord(token: string, label: string): number {
@@ -107,7 +130,7 @@ function parseTrack(track: XmlNode, label: string): RawLine {
 /** Build a line, requiring at least two vertices, carrying ele only if some point has it. */
 function lineFromVertices(vertices: Vertex[], label: string): RawLine {
     if (vertices.length < 2) {
-        throw new ParseFailure(`${label}: a line needs at least 2 points, found ${String(vertices.length)}`);
+        throw new ParseFailure(`${label}: a line needs at least 2 points, found ${String(vertices.length)}`, 'short');
     }
     const line: RawLine = { type: 'line', lon: vertices.map(v => v.lon), lat: vertices.map(v => v.lat) };
     if (vertices.some(v => v.ele !== null)) line.ele = vertices.map(v => v.ele);
@@ -149,6 +172,7 @@ interface Context {
     sourceFile: string;
     features: RawFeature[];
     fail: (message: string) => void;
+    stats: BuildStats;
     next: () => number;
 }
 
@@ -161,7 +185,11 @@ function walk(container: XmlNode, folder: string | undefined, ctx: Context): voi
         try {
             geometry = geometryOf(placemark, label);
         } catch (e) {
-            ctx.fail(e instanceof Error ? e.message : String(e));
+            if (e instanceof ParseFailure && e.kind === 'short') {
+                ctx.stats.shortSegmentsSkipped += 1;
+            } else {
+                ctx.fail(e instanceof Error ? e.message : String(e));
+            }
             continue;
         }
         if (geometry === undefined) continue;
@@ -179,6 +207,7 @@ function walk(container: XmlNode, folder: string | undefined, ctx: Context): voi
 export function parseKml(xml: string, sourceFile: string): ParseResult {
     const features: RawFeature[] = [];
     const errors: ParseError[] = [];
+    const stats = emptyStats();
     const fail = (message: string) => errors.push({ sourceFile, message });
 
     let root: XmlNode | undefined;
@@ -187,17 +216,17 @@ export function parseKml(xml: string, sourceFile: string): ParseResult {
         root = (parser.parse(xml) as XmlNode).kml as XmlNode | undefined;
     } catch (e) {
         fail(`malformed XML: ${e instanceof Error ? e.message : String(e)}`);
-        return { features, errors };
+        return { features, errors, stats };
     }
     if (root === undefined || typeof root !== 'object') {
         fail('not a KML document: missing <kml> root element');
-        return { features, errors };
+        return { features, errors, stats };
     }
 
     let sourceIndex = 0;
-    const ctx: Context = { sourceFile, features, fail, next: () => sourceIndex++ };
+    const ctx: Context = { sourceFile, features, fail, stats, next: () => sourceIndex++ };
     // Placemarks and Folders can sit directly under <kml> or under a <Document>.
     walk((root.Document as XmlNode | undefined) ?? root, undefined, ctx);
 
-    return { features, errors };
+    return { features, errors, stats };
 }

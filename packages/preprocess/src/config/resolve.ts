@@ -36,6 +36,15 @@ function toGlob(selector: string): string {
 }
 
 /**
+ * Whether a path-glob selector matches a POSIX path. Single source of truth for
+ * the glob semantics (folder-prefix expansion + dotfile matching) used by track
+ * resolution, ignore filtering, and the scan's unmatched-selector check.
+ */
+export function selectorMatches(selector: string, path: string): boolean {
+    return picomatch.isMatch(path, toGlob(selector), { dot: true });
+}
+
+/**
  * Specificity score: [segment count, literal-segment count]. Scored on the
  * ORIGINAL selector, not its ** normalization - a folder-prefix like `flights/`
  * (depth 1) is deliberately LESS specific than a same-area file glob like
@@ -62,7 +71,7 @@ interface Match {
 function matchesFor(path: string, config: Config): Match[] {
     const matches: Match[] = [];
     for (const [selector, settings] of Object.entries(config.tracks)) {
-        if (picomatch.isMatch(path, toGlob(selector), { dot: true })) {
+        if (selectorMatches(selector, path)) {
             matches.push({ selector, settings, score: specificity(selector) });
         }
     }
@@ -130,5 +139,5 @@ export function resolveWaypointSettings(folder: string | undefined, config: Conf
 
 /** Whether a scanned path should be skipped entirely (any ignore glob matches). */
 export function isIgnored(path: string, config: Config): boolean {
-    return config.ignore.some(glob => picomatch.isMatch(path, toGlob(glob), { dot: true }));
+    return config.ignore.some(glob => selectorMatches(glob, path));
 }

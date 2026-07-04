@@ -13,7 +13,7 @@
 ## Global constraints (from design log)
 
 - **GoPro naive timestamps = UTC**; sanity-check loudly if a parsed time is absurd.
-- **Transport mode = `osmand:activity` ONLY** (`metadata/extensions` or `trk/extensions`); legacy `transport`/`keywords` are NOT inputs; `--audit` flags legacy-only files.
+- **Transport mode = `osmand:activity` ONLY** (`metadata/extensions` or `trk/extensions`); legacy `transport`/`keywords` are NOT inputs and are ignored (legacy-only detection deferred, no audit mode - see design log 2026-07-04).
 - **Missing attribute data accepted as-is** — never derive speed; pass through, absent stays absent.
 - **Raw WGS84 lon/lat**, all geo math geodesic.
 - **Day = local calendar date of first point** via timezone-from-location; no rollover, config override only.
@@ -88,14 +88,16 @@ Parse `nomadpath.yaml` (strict zod, fail loud on unknown keys). `resolveTrackSet
 
 **As built:** `loadConfig(yaml, sourceFile)` (strict zod, unknown keys + bad types + non-ISO `day` fail loud). Specificity scored on the ORIGINAL selector as `[segment-depth, literal-segment-count]` — a folder-prefix (`flights/`, depth 1) is deliberately less specific than a same-area file glob (`flights/scenic-*.kml`, depth 2); exact file beats glob at equal depth. Glob matching via picomatch with `{ dot: true }` (so `.git/` and `*.swp` match). Equal-specificity same-property disagreement -> hard error naming both selectors.
 
-### Task 5: Folder scan + audit mode
+### Task 5: Folder scan + CLI
 
-**Files:** `packages/preprocess/src/scan.ts`, `packages/preprocess/src/audit.ts`, `packages/preprocess/src/cli.ts` (bin `nomadpath-preprocess`), tests.
-Walk input dir (respect `ignore`), dispatch by extension to parsers, collect features+errors. `--audit`: parse read-only, report every anomaly (parse errors, legacy-transport-only files, missing-time lines, unmatched config selectors) and emit NOTHING. Wire `bin` in package.json. CLI = convention+flags (`nomadpath-preprocess <dir>` + `--config`/`--out`/`--audit`).
+**Files:** `packages/preprocess/src/scan.ts`, `packages/preprocess/src/cli.ts` (bin `nomadpath-preprocess`), tests. (No `audit.ts` / `--audit` - dropped, see design log 2026-07-04.)
+`scanFolder(inputDir, config)`: walk input dir, skip `ignore` matches, dispatch by extension (`.gpx` -> parseGpx, `.kml` -> parseKml, others ignored), return collected `{ features, errors }` with `sourceFile` = POSIX path relative to input root. `unmatchedSelectors(scannedPaths, folders, config)`: config `tracks:`/`waypoints:` keys that matched zero scanned files/folders (non-fatal warning input). CLI = convention+flags (`nomadpath-preprocess <dir>` + `--config` default `<dir>/nomadpath.yaml`, `--out` default `<dir>/trip-data.json`); prints unmatched-selector warnings to stderr (non-blocking); hard errors abort with the full report and emit nothing. (Emit itself wired in Task 7; Task 5 stops at scan + collected errors + warnings + arg handling.)
 
-- [ ] Tests over a fictional fixture folder tree (built in a temp dir).
-- [ ] Implement. Commit `feat(pipeline): add folder scan, cli, and audit mode`.
-- [ ] **Verify `--audit` over `~/Documents/holidays` read-only** — expect zero hard errors on known-good trips; record findings.
+- [x] Tests over a fictional fixture folder tree (built in a temp dir): nested dirs, ignore globs, mixed extensions, an unreadable/bad file -> collected error, unmatched selector -> warning.
+- [x] Implement. Commit `feat(preprocess): add folder scan and cli`.
+- [x] **Verify over `~/Documents/holidays` read-only** — all 5 real trips scan with ZERO hard errors. Finding: 2025 Hawaii has 152 stray single-point segments (OsmAnd pause/resume); originally a fatal error, now correctly SKIPPED + counted in the status line (see design log 2026-07-04 short-segment decision). Other trips: Europe 127 features, NZ 16, Vanuatu 29, Fiji 125.
+
+**As built:** `scanFolder` + `unmatchedSelectors` in `scan.ts`; CLI in `cli.ts` uses `commander` (auto-help). Output by severity: build status (incl. `N short segment(s) skipped`) -> stdout; unmatched-selector warnings + error report -> stderr; exit 0/1/2. `ParseResult`/`ScanResult` gained a `stats: BuildStats` channel (`shortSegmentsSkipped`, extensible). NB: TS parameter properties + enums etc. are NOT supported by Node's type-stripping (no build step) - use explicit field + assignment. CLI tested via real subprocess (`spawnSync`), so `cli.ts` shows 0% coverage though it is exercised.
 
 ### Task 6: Compute stages
 
@@ -118,5 +120,5 @@ RawFeature + resolved settings + computed fields -> contract `TripItem`s (stable
 **Files:** `docs/usage/configuration.md` (NEW, in mkdocs nav), `docs/architecture/pipeline.md` (NEW), update `data-formats` note.
 
 - [ ] Write `configuration.md`: the full config reference with **worked inheritance + conflict examples** (user explicitly asked for good docs on the additive resolution). Every key, defaults, specificity rules, the equal-specificity error.
-- [ ] Write `pipeline.md`: stage diagram, parser edge, three-bucket handling, audit mode, CLI usage.
+- [ ] Write `pipeline.md`: stage diagram, parser edge (translate-not-filter), CLI usage, unmatched-selector warning.
 - [ ] All gates green (`check` + `test:e2e`). Tick checkboxes; update design log + memory; merge `epic/pipeline` -> master `--no-ff`.

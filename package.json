@@ -21,6 +21,7 @@
     "test:unit": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npm run test:e2e --workspace @nomadpath/e2e",
+    "preprocess": "nomadpath-preprocess",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage",
     "prepare": "husky"
   },

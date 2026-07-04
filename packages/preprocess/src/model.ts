@@ -60,7 +60,24 @@ export interface ParseError {
     message: string;
 }
 
+/**
+ * Counters for droppable-but-normal events, aggregated into the end-of-build
+ * status line. Not errors and not per-item warnings - a stray single-point
+ * segment (OsmAnd pause/resume artifact) is normal, so it is skipped and tallied
+ * here. Grows as the build gains more reportable stats.
+ */
+export interface BuildStats {
+    /** Segments/geometries dropped because a line needs >= 2 points. */
+    shortSegmentsSkipped: number;
+}
+
+/** A fresh zeroed stats object (one place to add a counter). */
+export function emptyStats(): BuildStats {
+    return { shortSegmentsSkipped: 0 };
+}
+
 export interface ParseResult {
     features: RawFeature[];
     errors: ParseError[];
+    stats: BuildStats;
 }

@@ -211,15 +211,26 @@ describe('parseKml: hard errors (collected, never thrown)', () => {
         expect(parseKml(doc, SOURCE).errors.length).toBeGreaterThan(0);
     });
 
-    it('reports a LineString with a single point as an error (a line needs >= 2 vertices)', () => {
-        const doc = kml(`
-          <Placemark><name>Path</name>
-            <LineString><coordinates>4.1,-54.5,0</coordinates></LineString>
-          </Placemark>`);
-        expect(parseKml(doc, SOURCE).errors.length).toBeGreaterThan(0);
-    });
-
     it('handles an empty document (no placemarks) as zero features, zero errors', () => {
-        expect(parseKml(kml(''), SOURCE)).toEqual({ features: [], errors: [] });
+        const result = parseKml(kml(''), SOURCE);
+        expect(result.features).toEqual([]);
+        expect(result.errors).toEqual([]);
+        expect(result.stats.shortSegmentsSkipped).toBe(0);
+    });
+});
+
+describe('parseKml: short lines (skipped and counted, never an error)', () => {
+    it('skips a single-point LineString placemark and counts it, without an error', () => {
+        const doc = kml(`
+          <Placemark><name>Degenerate</name>
+            <LineString><coordinates>4.1,-54.5,0</coordinates></LineString>
+          </Placemark>
+          <Placemark><name>Good</name>
+            <LineString><coordinates>4.1,-54.5,0 4.2,-54.6,0</coordinates></LineString>
+          </Placemark>`);
+        const result = parseKml(doc, SOURCE);
+        expect(result.errors).toEqual([]);
+        expect(result.features.map(f => f.name)).toEqual(['Good']);
+        expect(result.stats.shortSegmentsSkipped).toBe(1);
     });
 });

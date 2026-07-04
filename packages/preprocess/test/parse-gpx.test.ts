@@ -291,17 +291,48 @@ describe('parseGpx: hard errors (collected, never thrown)', () => {
         expect(parseGpx(doc, SOURCE).errors.length).toBeGreaterThan(0);
     });
 
-    it('reports a segment with a single point as an error (a line needs >= 2 vertices)', () => {
-        const doc = gpx(`
-          <trk><trkseg>
-            <trkpt lat="-54.55" lon="4.15"/>
-          </trkseg></trk>`);
-        expect(parseGpx(doc, SOURCE).errors.length).toBeGreaterThan(0);
-    });
-
     it('handles an empty gpx document (no trk, no wpt) as zero features, zero errors', () => {
         const result = parseGpx(gpx(''), SOURCE);
         expect(result.features).toEqual([]);
         expect(result.errors).toEqual([]);
+        expect(result.stats.shortSegmentsSkipped).toBe(0);
+    });
+});
+
+describe('parseGpx: short segments (skipped and counted, never an error)', () => {
+    it('skips a stray single-point segment but keeps the other segments (OsmAnd pause/resume)', () => {
+        const doc = gpx(`
+          <trk><name>Paused walk</name><trkseg>
+            <trkpt lat="-54.55" lon="4.15"/>
+          </trkseg><trkseg>
+            <trkpt lat="-54.501" lon="4.101"/><trkpt lat="-54.502" lon="4.102"/>
+          </trkseg><trkseg>
+            <trkpt lat="-54.503" lon="4.103"/><trkpt lat="-54.504" lon="4.104"/>
+          </trkseg></trk>`);
+        const result = parseGpx(doc, SOURCE);
+        expect(result.errors).toEqual([]);
+        expect(result.features).toHaveLength(1);
+        expect(result.features[0]?.geometries).toHaveLength(2);
+        expect(result.stats.shortSegmentsSkipped).toBe(1);
+    });
+
+    it('counts a short segment as skipped, not as an error', () => {
+        const doc = gpx(`
+          <trk><trkseg>
+            <trkpt lat="-54.55" lon="4.15"/>
+          </trkseg><trkseg>
+            <trkpt lat="-54.501" lon="4.101"/><trkpt lat="-54.502" lon="4.102"/>
+          </trkseg></trk>`);
+        expect(parseGpx(doc, SOURCE).stats.shortSegmentsSkipped).toBe(1);
+    });
+
+    it('still errors when a track has ONLY a single-point segment (no usable geometry)', () => {
+        const doc = gpx(`
+          <trk><trkseg>
+            <trkpt lat="-54.55" lon="4.15"/>
+          </trkseg></trk>`);
+        const result = parseGpx(doc, SOURCE);
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.features).toEqual([]);
     });
 });
