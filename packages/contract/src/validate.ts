@@ -55,17 +55,14 @@ function checkGeometry(geometry: Geometry, path: string, issues: ContractIssue[]
     }
 }
 
-/** Checks per-point array parity and timestamp monotonicity on a line. */
+/** Checks per-point array parity on a line. */
 function checkLine(line: LineGeometry, path: string, issues: ContractIssue[]): void {
     const pointCount = line.lon.length;
-    if (line.time !== undefined) {
-        if (line.time.length !== pointCount) {
-            issues.push({
-                path,
-                message: `time length (${String(line.time.length)}) does not match point count (${String(pointCount)})`,
-            });
-        }
-        checkTimeMonotonic(line.time, path, issues);
+    if (line.time !== undefined && line.time.length !== pointCount) {
+        issues.push({
+            path,
+            message: `time length (${String(line.time.length)}) does not match point count (${String(pointCount)})`,
+        });
     }
     for (const attribute of PER_POINT_ATTRIBUTE_NAMES) {
         const values = line[attribute];
@@ -74,21 +71,6 @@ function checkLine(line: LineGeometry, path: string, issues: ContractIssue[]): v
                 path,
                 message: `${attribute} length (${String(values.length)}) does not match point count (${String(pointCount)})`,
             });
-        }
-    }
-}
-
-/** Reports the first decreasing timestamp pair, if any. */
-function checkTimeMonotonic(time: readonly number[], path: string, issues: ContractIssue[]): void {
-    for (let i = 1; i < time.length; i += 1) {
-        const previous = time[i - 1];
-        const current = time[i];
-        if (previous !== undefined && current !== undefined && current < previous) {
-            issues.push({
-                path: `${path}.time`,
-                message: `timestamps must be non-decreasing (index ${String(i)})`,
-            });
-            return;
         }
     }
 }

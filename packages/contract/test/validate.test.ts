@@ -19,8 +19,8 @@ describe('validateTripData: success cases', () => {
         ).toEqual([]);
     });
 
-    it('accepts equal consecutive timestamps (non-decreasing, not strictly increasing)', () => {
-        const line = buildLineGeometry({ time: [100, 100, 200] });
+    it('accepts out-of-order timestamps (time is not an ordering key)', () => {
+        const line = buildLineGeometry({ time: [300, 100, 200] });
         expect(validateTripData(buildTripData({ items: [buildTrackItem({ geometries: [line] })] }))).toEqual([]);
     });
 });
@@ -45,12 +45,6 @@ describe('validateTripData: semantic failures', () => {
         expect(issues.length).toBeGreaterThan(0);
     });
 
-    it('reports decreasing timestamps', () => {
-        const line = buildLineGeometry({ time: [200, 100, 300] });
-        const issues = validateTripData(buildTripData({ items: [buildTrackItem({ geometries: [line] })] }));
-        expect(issues.some(i => i.message.includes('non-decreasing'))).toBe(true);
-    });
-
     it('reports an unclosed polygon ring', () => {
         const polygon = buildPolygonGeometry({
             lon: [4.1, 4.3, 4.3, 4.1],
@@ -72,8 +66,8 @@ describe('validateTripData: semantic failures', () => {
         const a = buildTrackItem({ name: 'First bad track', geometries: [badLineA] });
         const b = buildTrackItem({ name: 'Second bad track', geometries: [badLineB] });
         const issues = validateTripData(buildTripData({ items: [a, b] }));
-        // speed length + decreasing time + lon/lat length mismatch
-        expect(issues.length).toBeGreaterThanOrEqual(3);
+        // speed length + lon/lat length mismatch
+        expect(issues.length).toBeGreaterThanOrEqual(2);
     });
 
     it('issue paths point at the offending item', () => {

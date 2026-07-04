@@ -35,7 +35,7 @@ const lineGeometrySchema = z.strictObject({
     type: z.literal('line'),
     lon: z.array(longitude).min(2),
     lat: z.array(latitude).min(2),
-    /** Epoch seconds UTC, non-decreasing (checked in validate.ts). */
+    /** Epoch seconds UTC. Not required to be ordered - multi-device merges legitimately interleave timestamps; the UI draws in array order and reads time per-point. */
     time: z.array(z.number()).optional(),
     ...PER_POINT_ATTRIBUTES,
 });
