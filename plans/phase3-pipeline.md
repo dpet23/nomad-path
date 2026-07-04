@@ -63,11 +63,11 @@ Define the parser-output model (pre-contract): `RawFeature { sourceFile, sourceP
 ### Task 2: GPX parser
 
 **Files:** `packages/pipeline/src/parse/gpx.ts`, tests with inline fictional GPX strings.
-Handle OsmAnd + AllTrails + GoPro + waypoint variants: `trk`->line RawGeometry (ele/time/speed where present, speed absent for AllTrails, nested speed_2d for GoPro), `wpt`->point RawGeometry with folder/sym, `osmand:activity` from either extensions location. GoPro naive time -> UTC epoch. Three-bucket handling: malformed XML / no coords / missing required = hard error (collected); non-geometry junk = silent skip.
+Handle OsmAnd + AllTrails + GoPro + waypoint variants: `trk`->line RawGeometry (ele/time/speed where present, speed absent for AllTrails, nested speed_2d for GoPro), `wpt`->point RawGeometry with folder/sym, `osmand:activity` from either extensions location. GoPro naive time -> UTC epoch. **Parser translates, never filters** (see design log 2026-07-04): every source point (incl. `fix=none`) and segment passes through; missing per-point time/ele/speed -> null (kept, never fabricated). Hard errors (collected, never thrown): malformed XML / non-numeric coords / a segment with < 2 points / a trk with no usable segment. Mechanism: `fast-xml-parser` `XMLParser` + `fast-xml-validator` `SyntaxValidator` (non-deprecated APIs).
 
-- [ ] State space: each source variant x each field present/absent/malformed. Write all tests first.
-- [ ] Implement; return `{ features: RawFeature[], errors: ParseError[] }` (never throw).
-- [ ] Commit `feat(pipeline): add gpx parser for osmand, alltrails, gopro, waypoints`.
+- [x] State space: each source variant x each field present/absent/malformed. Write all tests first.
+- [x] Implement; return `{ features: RawFeature[], errors: ParseError[] }` (never throw).
+- [x] Commit `feat(pipeline): add gpx parser for osmand, alltrails, gopro, waypoints`.
 
 ### Task 3: KML parser
 

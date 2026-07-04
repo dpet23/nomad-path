@@ -15,8 +15,8 @@ export interface RawLine {
     /** Parallel arrays, WGS84. */
     lon: number[];
     lat: number[];
-    /** Epoch seconds UTC, parallel to lon/lat. */
-    time?: number[];
+    /** Epoch seconds UTC, parallel to lon/lat; null = missing at that point. */
+    time?: (number | null)[];
     /** Metres; null = missing at that point. */
     ele?: (number | null)[];
     /** Metres per second; null = missing at that point. Never derived. */
@@ -60,16 +60,7 @@ export interface ParseError {
     message: string;
 }
 
-/** A non-fatal anomaly surfaced by --audit (e.g. legacy transport markers). */
-export interface ParseWarning {
-    sourceFile: string;
-    /** Stable machine-readable kind, e.g. "legacy-transport", "missing-time". */
-    code: string;
-    message: string;
-}
-
 export interface ParseResult {
     features: RawFeature[];
     errors: ParseError[];
-    warnings: ParseWarning[];
 }

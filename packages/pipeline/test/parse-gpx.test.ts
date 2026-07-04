@@ -35,14 +35,19 @@ describe('parseGpx: OsmAnd tracks', () => {
         expect(result.errors).toEqual([]);
         expect(result.features).toHaveLength(1);
         const feature = result.features[0];
-        expect(feature).toMatchObject({ sourceFile: SOURCE, sourceIndex: 0, name: 'Harbour stroll', activity: 'Walking' });
+        expect(feature).toMatchObject({
+            sourceFile: SOURCE,
+            sourceIndex: 0,
+            name: 'Harbour stroll',
+            activity: 'Walking',
+        });
         const line = feature?.geometries[0] as RawLine;
         expect(line.type).toBe('line');
         expect(line.lon).toEqual([4.101, 4.102, 4.104]);
         expect(line.lat).toEqual([-54.501, -54.502, -54.503]);
         expect(line.ele).toEqual([100, 150, 200]);
         expect(line.speed).toEqual([1, 1.5, 2]);
-        expect(line.time).toEqual([1894176000, 1894176010, 1894176020]);
+        expect(line.time).toEqual([1894694400, 1894694410, 1894694420]);
     });
 
     it('emits one line geometry per trkseg on the same feature', () => {
@@ -69,7 +74,7 @@ describe('parseGpx: OsmAnd tracks', () => {
             <trkpt lat="-54.51" lon="4.11"/><trkpt lat="-54.52" lon="4.12"/>
           </trkseg></trk>`);
         const result = parseGpx(doc, SOURCE);
-        expect(result.features.map((f) => [f.sourceIndex, f.name])).toEqual([
+        expect(result.features.map(f => [f.sourceIndex, f.name])).toEqual([
             [0, 'A'],
             [1, 'B'],
         ]);
@@ -130,24 +135,24 @@ describe('parseGpx: GoPro variant', () => {
     it('treats naive fractional timestamps as UTC', () => {
         const line = parseGpx(GOPRO, SOURCE).features[0]?.geometries[0] as RawLine;
         // 2030-01-17T23:24:47.799Z
-        expect(line.time?.[0]).toBeCloseTo(1894404287.799, 3);
+        expect(line.time?.[0]).toBeCloseTo(1894922687.799, 3);
     });
 
     it('reads speed from nested speed_2d/value', () => {
         const line = parseGpx(GOPRO, SOURCE).features[0]?.geometries[0] as RawLine;
-        expect(line.speed).toEqual([1.051, 1.06]);
+        expect(line.speed).toEqual([1.051, 1.06, 0]);
     });
 
     it('accepts negative elevations', () => {
         const line = parseGpx(GOPRO, SOURCE).features[0]?.geometries[0] as RawLine;
-        expect(line.ele?.[0]).toBe(-1.357);
+        expect(line.ele).toEqual([-1.357, -1.357, 0]);
     });
 
-    it('drops points explicitly marked fix=none and warns', () => {
+    it('keeps points marked fix=none as-is (filtering is a later rule stage, not a parser guess)', () => {
         const result = parseGpx(GOPRO, SOURCE);
         const line = result.features[0]?.geometries[0] as RawLine;
-        expect(line.lon).toHaveLength(2);
-        expect(result.warnings.some((w) => w.code === 'dropped-no-fix')).toBe(true);
+        expect(line.lon).toEqual([4.3093, 4.3094, 0]);
+        expect(line.lat).toEqual([-54.7682, -54.7683, 0]);
     });
 });
 
@@ -168,7 +173,11 @@ describe('parseGpx: waypoints', () => {
         expect(result.errors).toEqual([]);
         expect(result.features).toHaveLength(2);
         const first = result.features[0];
-        expect(first).toMatchObject({ name: 'Harbour View Hotel', description: 'Fictional Isle', folder: 'Accommodation' });
+        expect(first).toMatchObject({
+            name: 'Harbour View Hotel',
+            description: 'Fictional Isle',
+            folder: 'Accommodation',
+        });
         expect((first?.geometries[0] as RawPoint).sym).toBe('https://example.test/marker_a.png');
         const second = result.features[1];
         expect(second?.folder).toBeUndefined();
@@ -183,32 +192,29 @@ describe('parseGpx: waypoints', () => {
           </trkseg></trk>`);
         const result = parseGpx(doc, SOURCE);
         expect(result.features).toHaveLength(2);
-        expect(result.features.map((f) => f.geometries[0]?.type).sort()).toEqual(['line', 'point']);
+        // Waypoints are emitted before tracks, so the order is deterministic.
+        expect(result.features.map(f => f.geometries[0]?.type)).toEqual(['point', 'line']);
     });
 });
 
-describe('parseGpx: time handling edge cases', () => {
+describe('parseGpx: per-point time/ele/speed (faithful, never fabricated)', () => {
     it('omits the time array entirely when no point has time', () => {
         const doc = gpx(`
           <trk><trkseg>
             <trkpt lat="-54.501" lon="4.101"/><trkpt lat="-54.502" lon="4.102"/>
           </trkseg></trk>`);
-        const result = parseGpx(doc, SOURCE);
-        const line = result.features[0]?.geometries[0] as RawLine;
+        const line = parseGpx(doc, SOURCE).features[0]?.geometries[0] as RawLine;
         expect(line.time).toBeUndefined();
-        expect(result.warnings.some((w) => w.code === 'missing-time')).toBe(true);
     });
 
-    it('drops the whole time array when only SOME points have time (never fabricates)', () => {
+    it('keeps a partial time array with null at points lacking time (never fabricates, never drops)', () => {
         const doc = gpx(`
           <trk><trkseg>
             <trkpt lat="-54.501" lon="4.101"><time>2030-01-15T08:00:00Z</time></trkpt>
             <trkpt lat="-54.502" lon="4.102"/>
           </trkseg></trk>`);
-        const result = parseGpx(doc, SOURCE);
-        const line = result.features[0]?.geometries[0] as RawLine;
-        expect(line.time).toBeUndefined();
-        expect(result.warnings.some((w) => w.code === 'partial-time')).toBe(true);
+        const line = parseGpx(doc, SOURCE).features[0]?.geometries[0] as RawLine;
+        expect(line.time).toEqual([1894694400, null]);
     });
 
     it('records null for missing ele/speed at individual points (as-is rule)', () => {
@@ -234,29 +240,25 @@ describe('parseGpx: time handling edge cases', () => {
     });
 });
 
-describe('parseGpx: legacy transport markers', () => {
-    it('warns on files with ONLY legacy markers (trkpt transport attr / keywords) and does not read them', () => {
+describe('parseGpx: transport mode is osmand:activity only', () => {
+    it('does not read legacy transport markers (trkpt transport attr / metadata keywords)', () => {
         const doc = gpx(`
           <metadata><keywords><transport>Walking</transport></keywords></metadata>
           <trk><trkseg>
             <trkpt lat="-54.501" lon="4.101" transport="Walking"/>
             <trkpt lat="-54.502" lon="4.102" transport="Walking"/>
           </trkseg></trk>`);
-        const result = parseGpx(doc, SOURCE);
-        expect(result.features[0]?.activity).toBeUndefined();
-        expect(result.warnings.some((w) => w.code === 'legacy-transport')).toBe(true);
+        expect(parseGpx(doc, SOURCE).features[0]?.activity).toBeUndefined();
     });
 
-    it('does not warn when osmand:activity is present alongside legacy markers', () => {
+    it('reads osmand:activity even when legacy markers are also present', () => {
         const doc = gpx(`
           <metadata><extensions><osmand:activity>Walking</osmand:activity></extensions></metadata>
           <trk><trkseg>
             <trkpt lat="-54.501" lon="4.101" transport="Walking"/>
             <trkpt lat="-54.502" lon="4.102" transport="Walking"/>
           </trkseg></trk>`);
-        const result = parseGpx(doc, SOURCE);
-        expect(result.features[0]?.activity).toBe('Walking');
-        expect(result.warnings.some((w) => w.code === 'legacy-transport')).toBe(false);
+        expect(parseGpx(doc, SOURCE).features[0]?.activity).toBe('Walking');
     });
 });
 
@@ -273,8 +275,7 @@ describe('parseGpx: hard errors (collected, never thrown)', () => {
           <trk><trkseg>
             <trkpt lat="-54.501" lon="4.101"/><trkpt lon="4.102"/>
           </trkseg></trk>`);
-        const result = parseGpx(doc, SOURCE);
-        expect(result.errors.length).toBeGreaterThan(0);
+        expect(parseGpx(doc, SOURCE).errors.length).toBeGreaterThan(0);
     });
 
     it('reports non-numeric coordinates as an error', () => {
@@ -290,17 +291,12 @@ describe('parseGpx: hard errors (collected, never thrown)', () => {
         expect(parseGpx(doc, SOURCE).errors.length).toBeGreaterThan(0);
     });
 
-    it('drops a 1-point segment with a warning, keeping the rest of the track', () => {
+    it('reports a segment with a single point as an error (a line needs >= 2 vertices)', () => {
         const doc = gpx(`
           <trk><trkseg>
             <trkpt lat="-54.55" lon="4.15"/>
-          </trkseg><trkseg>
-            <trkpt lat="-54.501" lon="4.101"/><trkpt lat="-54.502" lon="4.102"/>
           </trkseg></trk>`);
-        const result = parseGpx(doc, SOURCE);
-        expect(result.errors).toEqual([]);
-        expect(result.features[0]?.geometries).toHaveLength(1);
-        expect(result.warnings.some((w) => w.code === 'short-segment')).toBe(true);
+        expect(parseGpx(doc, SOURCE).errors.length).toBeGreaterThan(0);
     });
 
     it('handles an empty gpx document (no trk, no wpt) as zero features, zero errors', () => {
