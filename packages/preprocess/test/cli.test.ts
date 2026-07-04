@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { validateTripData } from '@nomadpath/contract';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli.ts');
@@ -101,5 +102,24 @@ describe('cli: unmatched config selectors warn but do not block', () => {
         const result = run([root, '--config', cfgPath]);
         expect(result.status).toBe(0);
         expect(result.stderr).toMatch(/ghost\//);
+    });
+});
+
+describe('cli: emit', () => {
+    it('writes trip-data.json for a clean fixture folder and exits 0', () => {
+        write('walk.gpx', gpxTrack('Walk'));
+        const result = run([root]);
+        expect(result.status).toBe(0);
+        expect(existsSync(join(root, 'trip-data.json'))).toBe(true);
+        const data: unknown = JSON.parse(readFileSync(join(root, 'trip-data.json'), 'utf8'));
+        expect(validateTripData(data)).toEqual([]);
+    });
+
+    it('honours --out', () => {
+        write('walk.gpx', gpxTrack('Walk'));
+        const out = join(root, 'custom.json');
+        const result = run([root, '--out', out]);
+        expect(result.status).toBe(0);
+        expect(existsSync(out)).toBe(true);
     });
 });

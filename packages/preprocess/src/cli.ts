@@ -24,6 +24,7 @@ import { Command } from 'commander';
 
 import type { Config } from './config/schema.ts';
 import { loadConfig } from './config/schema.ts';
+import { emit } from './emit.ts';
 import { BuildStats } from './model.ts';
 import { scanFolder, unmatchedSelectors } from './scan.ts';
 
@@ -75,7 +76,14 @@ function run(inputDir: string, options: Options): void {
         ...BuildStats.format(scan.stats),
     ];
     process.stdout.write(`${parts.join(', ')}.\n`);
-    // Task 7 adds compute -> assemble -> validate -> emit trip-data.json here (respecting --out).
+
+    const outPath = options.out ?? join(inputDir, 'trip-data.json');
+    try {
+        emit(scan.features, config.name, outPath);
+    } catch (err) {
+        process.stderr.write(`\n${err instanceof Error ? err.message : String(err)}\n`);
+        process.exit(1);
+    }
 }
 
 const program = new Command();
