@@ -1,3 +1,4 @@
+// Subprocess smoke tests for real-bin wiring; build() logic is unit-tested in build.test.ts.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -73,38 +74,6 @@ describe('cli: arguments and success', () => {
     });
 });
 
-describe('cli: hard errors abort with a full report', () => {
-    it('exits non-zero and lists every parse error', () => {
-        write('a/bad.gpx', '<gpx><trk></gpx>');
-        write('b/also-bad.gpx', '<gpx><trk></gpx>');
-        write('c/good.gpx', gpxTrack('Good'));
-        const result = run([root]);
-        expect(result.status).not.toBe(0);
-        expect(result.stderr).toMatch(/a\/bad\.gpx/);
-        expect(result.stderr).toMatch(/b\/also-bad\.gpx/);
-    });
-});
-
-describe('cli: unmatched config selectors warn but do not block', () => {
-    it('exits 0 but warns on stderr about a selector that matched nothing', () => {
-        write('tracks/walk.gpx', gpxTrack('Walk'));
-        writeFileSync(join(root, 'nomadpath.yaml'), 'tracks:\n  flights/: { hidden: true }\n');
-        const result = run([root]);
-        expect(result.status).toBe(0);
-        expect(result.stderr).toMatch(/flights\//);
-        expect(result.stderr).toMatch(/matched no/i);
-    });
-
-    it('loads config from --config when given explicitly', () => {
-        write('tracks/walk.gpx', gpxTrack('Walk'));
-        const cfgPath = join(root, 'custom.yaml');
-        writeFileSync(cfgPath, 'tracks:\n  ghost/: { hidden: true }\n');
-        const result = run([root, '--config', cfgPath]);
-        expect(result.status).toBe(0);
-        expect(result.stderr).toMatch(/ghost\//);
-    });
-});
-
 describe('cli: emit', () => {
     it('writes trip-data.json for a clean fixture folder and exits 0', () => {
         write('walk.gpx', gpxTrack('Walk'));
@@ -113,13 +82,5 @@ describe('cli: emit', () => {
         expect(existsSync(join(root, 'trip-data.json'))).toBe(true);
         const data: unknown = JSON.parse(readFileSync(join(root, 'trip-data.json'), 'utf8'));
         expect(validateTripData(data)).toEqual([]);
-    });
-
-    it('honours --out', () => {
-        write('walk.gpx', gpxTrack('Walk'));
-        const out = join(root, 'custom.json');
-        const result = run([root, '--out', out]);
-        expect(result.status).toBe(0);
-        expect(existsSync(out)).toBe(true);
     });
 });
