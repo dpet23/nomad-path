@@ -9,8 +9,12 @@
   },
   "dependencies": {
     "@nomadpath/contract": "*",
+    "@types/picomatch": "^4.0.3",
     "fast-xml-parser": "^5.9.3",
-    "fast-xml-validator": "^1.1.1"
+    "fast-xml-validator": "^1.1.1",
+    "picomatch": "^4.0.5",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "*",

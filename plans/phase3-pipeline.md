@@ -83,8 +83,10 @@ Handle OsmAnd + AllTrails + GoPro + waypoint variants: `trk`->line RawGeometry (
 **Files:** `packages/pipeline/src/config/schema.ts` (zod), `packages/pipeline/src/config/resolve.ts`, tests.
 Parse `nomadpath.yaml` (strict zod, fail loud on unknown keys). `resolveTrackSettings(path, config)` + `resolveWaypointSettings(folder, config)` implementing additive merge + depth/literalness specificity + equal-specificity-conflict hard error. `ignore` matching for the scan.
 
-- [ ] State space: single match, multiple additive matches, override, inheritance, equal-specificity conflict, no match (defaults), ignore globs. ALL tests first — this is the subtlest logic in the phase.
-- [ ] Implement. Commit `feat(pipeline): add config schema and additive resolution`.
+- [x] State space: single match, multiple additive matches, override, inheritance, equal-specificity conflict, no match (defaults), ignore globs. ALL tests first — this is the subtlest logic in the phase.
+- [x] Implement. Commit `feat(pipeline): add config schema and additive resolution`.
+
+**As built:** `loadConfig(yaml, sourceFile)` (strict zod, unknown keys + bad types + non-ISO `day` fail loud). Specificity scored on the ORIGINAL selector as `[segment-depth, literal-segment-count]` — a folder-prefix (`flights/`, depth 1) is deliberately less specific than a same-area file glob (`flights/scenic-*.kml`, depth 2); exact file beats glob at equal depth. Glob matching via picomatch with `{ dot: true }` (so `.git/` and `*.swp` match). Equal-specificity same-property disagreement -> hard error naming both selectors.
 
 ### Task 5: Folder scan + audit mode
 
