@@ -1,8 +1,8 @@
 {
-  "name": "@nomadpath/pipeline",
+  "name": "@nomadpath/preprocess",
   "private": true,
   "version": "0.1.0",
-  "description": "Deploy-time pipeline: raw GPX/KML folder + config in, validated compact trip data out",
+  "description": "Deploy-time preprocessing pipeline: raw GPX/KML folder + config in, validated compact trip data out",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

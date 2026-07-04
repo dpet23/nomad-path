@@ -12,13 +12,13 @@ Visualises GPS trip recordings on interactive basemaps. Two components joined by
 
 ```text
 packages/contract/   @nomadpath/contract — shared types + schema + semantic validation (leaf package)
-packages/pipeline/   @nomadpath/pipeline — parsers -> common model -> compute -> assemble -> validate -> emit
+packages/preprocess/ @nomadpath/preprocess — parsers -> common model -> compute -> assemble -> validate -> emit
 packages/ui/         @nomadpath/ui — src/core (map-agnostic) + src/render (MapRenderer adapters) + src/widgets
 packages/demo/       @nomadpath/demo — dev demo page + server
 packages/e2e/        @nomadpath/e2e — full-system Playwright tests (desktop + mobile-emulation projects)
 ```
 
-Packages export TS source directly; Node >= 23.6 runs it natively (no dev build step). Import boundaries are lint-enforced: contract imports no sibling; pipeline never imports ui or map libs; ui/src/core never imports map libs.
+Packages export TS source directly; Node >= 23.6 runs it natively (no dev build step). Import boundaries are lint-enforced: contract imports no sibling; preprocess never imports ui or map libs; ui/src/core never imports map libs.
 
 **Dependency placement** (`import-x/no-extraneous-dependencies` enforces no phantom imports):
 

@@ -7,7 +7,7 @@ export default defineConfig({
                 test: { name: 'contract', root: 'packages/contract', environment: 'node' },
             },
             {
-                test: { name: 'pipeline', root: 'packages/pipeline', environment: 'node' },
+                test: { name: 'preprocess', root: 'packages/preprocess', environment: 'node' },
             },
             {
                 test: { name: 'ui', root: 'packages/ui', environment: 'node' },

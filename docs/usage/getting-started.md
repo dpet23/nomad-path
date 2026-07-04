@@ -45,7 +45,7 @@ Every commit runs lint-staged (Prettier auto-formats staged files), then `npm ru
 
 ```text
 packages/contract/   shared data contract (types + schema + validation)
-packages/pipeline/   deploy-time pipeline (raw GPX/KML -> trip data file)
+packages/preprocess/ deploy-time preprocessing (raw GPX/KML -> trip data file)
 packages/ui/         browser UI library
 packages/demo/       dev demo page + server
 packages/e2e/        full-system Playwright tests
