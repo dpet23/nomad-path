@@ -19,7 +19,7 @@
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`
 - **Fixtures**: fictional only (south-Atlantic archipelago); non-overlapping ranges (speeds 1-2 m/s, ele 100-200 m, times within 2030-01-15 UTC). Never copy from `~/Documents/holidays` (read-only reference). Compute epoch constants (`Date.parse(...)/1000`), never eyeball.
 - **No circular assertions**; assert concrete expected values. Remaining tests must stay meaningful, not emptied shells.
-- **Pre-commit hook** runs lint-staged -> typecheck -> test:coverage (75% gate). A commit failing the hook means the code is wrong. Note: `.superpowers/` scratch files are gitignored but `prettier --check .` may still flag them — if the hook complains about a file under `.superpowers/`, run `prettier --write` on just that path; never modify tracked source outside your task to satisfy the hook.
+- **Pre-commit hook** runs lint-staged -> typecheck -> test:coverage (75% gate). A commit failing the hook means the code is wrong — fix the code, never modify tracked source outside your task to satisfy the hook.
 
 ---
 
