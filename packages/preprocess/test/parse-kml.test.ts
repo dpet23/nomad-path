@@ -95,6 +95,16 @@ describe('parseKml: coordinates parsing', () => {
         expect([point.lon, point.lat]).toEqual([4.201, -54.601]);
     });
 
+    it('reads a tuple with a trailing comma but empty elevation as null ele', () => {
+        const doc = kml(`
+          <Placemark><name>Path</name>
+            <LineString><coordinates>4.101,-54.501, 4.102,-54.502,</coordinates></LineString>
+          </Placemark>`);
+        const line = parseKml(doc, SOURCE).features[0]?.geometries[0] as RawLine;
+        expect(line.lon).toEqual([4.101, 4.102]);
+        expect(line.ele).toBeUndefined();
+    });
+
     it('tolerates leading/trailing whitespace and tabs around a coordinates block', () => {
         const doc = kml(`
           <Placemark><name>Path</name>
@@ -135,6 +145,30 @@ describe('parseKml: folders', () => {
         expect(result.features[0]?.name).toBe('Deep pin');
     });
 
+    it('inherits the parent Folder name for an unnamed child Folder', () => {
+        const doc = kml(`
+          <Folder><name>Cyclones</name>
+            <Folder>
+              <Placemark><name>Eye</name>
+                <Point><coordinates>4.2,-54.6,0</coordinates></Point>
+              </Placemark>
+            </Folder>
+          </Folder>`);
+        expect(parseKml(doc, SOURCE).features[0]?.folder).toBe('Cyclones');
+    });
+
+    it('walks placemarks sitting directly under <kml> with no <Document> wrapper', () => {
+        const doc = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Placemark><name>Loose pin</name>
+    <Point><coordinates>4.2,-54.6,0</coordinates></Point>
+  </Placemark>
+</kml>`;
+        const result = parseKml(doc, SOURCE);
+        expect(result.errors).toEqual([]);
+        expect(result.features.map(f => f.name)).toEqual(['Loose pin']);
+    });
+
     it('sets folder to the innermost enclosing Folder name', () => {
         const doc = kml(`
           <Folder><name>Cyclones</name>
@@ -151,6 +185,29 @@ describe('parseKml: folders', () => {
             <Point><coordinates>4.2,-54.6,0</coordinates></Point>
           </Placemark>`);
         expect(parseKml(doc, SOURCE).features[0]?.folder).toBeUndefined();
+    });
+
+    it('reads a name with nested markup (mixed #text content) rather than dropping it', () => {
+        const doc = kml(`
+          <Placemark><name>Flight <b>QF1</b></name>
+            <Point><coordinates>4.2,-54.6,0</coordinates></Point>
+          </Placemark>`);
+        expect(parseKml(doc, SOURCE).features[0]?.name).toBe('Flight');
+    });
+});
+
+describe('parseKml: placemarks with no recognised geometry', () => {
+    it('drops a placemark that holds none of gx:Track/LineString/Polygon/Point (no feature, no error)', () => {
+        const doc = kml(`
+          <Placemark><name>Furniture only</name>
+            <description>No geometry element here</description>
+          </Placemark>
+          <Placemark><name>Good</name>
+            <Point><coordinates>4.2,-54.6,0</coordinates></Point>
+          </Placemark>`);
+        const result = parseKml(doc, SOURCE);
+        expect(result.errors).toEqual([]);
+        expect(result.features.map(f => f.name)).toEqual(['Good']);
     });
 });
 
@@ -193,6 +250,13 @@ describe('parseKml: hard errors (collected, never thrown)', () => {
         expect(result.errors[0]?.sourceFile).toBe(SOURCE);
     });
 
+    it('reports well-formed XML with no <kml> root element as an error', () => {
+        const result = parseKml('<root><foo/></root>', SOURCE);
+        expect(result.features).toEqual([]);
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0]?.message).toMatch(/not a KML document/);
+    });
+
     it('reports a gx:Track whose when and gx:coord lists differ in length', () => {
         const doc = kml(`
           <Placemark><name>Track</name><gx:Track>
@@ -201,6 +265,25 @@ describe('parseKml: hard errors (collected, never thrown)', () => {
             <gx:coord>4.101 -54.501 100</gx:coord>
           </gx:Track></Placemark>`);
         expect(parseKml(doc, SOURCE).errors.length).toBeGreaterThan(0);
+    });
+
+    it('reports a Point with an empty coordinates block as an error', () => {
+        const doc = kml(`
+          <Placemark><name>Empty pin</name>
+            <Point><coordinates>   </coordinates></Point>
+          </Placemark>`);
+        const result = parseKml(doc, SOURCE);
+        expect(result.features).toEqual([]);
+        expect(result.errors[0]?.message).toMatch(/Point has no coordinates/);
+    });
+
+    it('labels an error by placemark index when the placemark has no name', () => {
+        const doc = kml(`
+          <Placemark>
+            <LineString><coordinates>north-ish,-54.5,0 4.2,-54.6,0</coordinates></LineString>
+          </Placemark>`);
+        const result = parseKml(doc, SOURCE);
+        expect(result.errors[0]?.message).toMatch(/placemark 0/);
     });
 
     it('reports a non-numeric coordinate as an error', () => {

@@ -40,6 +40,10 @@ waypoints:
         expect(() => config('tracsk: {}')).toThrow();
     });
 
+    it('rejects malformed YAML with "invalid YAML" and the source file in the message', () => {
+        expect(() => config('tracks:\n  a.gpx: { hidden: true')).toThrow(/nomadpath\.yaml: invalid YAML/);
+    });
+
     it('rejects an unknown track-selector property', () => {
         expect(() => config('tracks:\n  flights/: { hiden: true }')).toThrow();
     });

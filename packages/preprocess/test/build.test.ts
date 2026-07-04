@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { validateTripData } from '@nomadpath/contract';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { build } from '../src/cli.ts';
+import { build } from '../src/build.ts';
 import { CapturingLogger } from '../src/logger.ts';
 
 let root: string;
@@ -27,6 +27,15 @@ const gpx = (name: string): string =>
     `<trk><name>${name}</name><trkseg>` +
     `<trkpt lat="-54.501" lon="4.101"/><trkpt lat="-54.502" lon="4.102"/>` +
     `</trkseg></trk></gpx>`;
+
+// A KML polygon whose four-point outer ring is NOT closed (first position != last).
+// It parses cleanly - the parser keeps rings verbatim, closing them is not its job -
+// but the contract's semantic check rejects an open ring, so emit() throws on it.
+const openPolygonKml = (name: string): string =>
+    `<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>` +
+    `<Placemark><name>${name}</name><Polygon><outerBoundaryIs><LinearRing><coordinates>` +
+    `4.10,-54.50,0 4.20,-54.50,0 4.20,-54.60,0 4.15,-54.55,0` +
+    `</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark></Document></kml>`;
 
 describe('build: output path', () => {
     it('writes <inputDir>/trip-data.json by default and exits 0', () => {
@@ -81,6 +90,16 @@ describe('build: exit codes and logging', () => {
         expect(code).toBe(1);
         expect(existsSync(join(root, 'trip-data.json'))).toBe(false);
         expect(log.entries.some(e => e.level === 'error')).toBe(true);
+    });
+
+    it('returns 1 and writes nothing when a parsed feature fails contract validation at emit', () => {
+        // Scans clean (no parse errors) but emit() throws because the polygon ring is open.
+        write('area.kml', openPolygonKml('Open area'));
+        const log = new CapturingLogger();
+        const code = build(root, {}, log);
+        expect(code).toBe(1);
+        expect(existsSync(join(root, 'trip-data.json'))).toBe(false);
+        expect(log.entries.some(e => e.level === 'error' && e.msg.includes('polygon ring must be closed'))).toBe(true);
     });
 
     it('logs the success status as info (stdout severity), not warn/error', () => {
