@@ -44,10 +44,8 @@ export function buildPolygonGeometry(overrides: Partial<PolygonGeometry> = {}): 
 
 export function buildTrackItem(overrides: Partial<TripItem> = {}): TripItem {
     return {
-        id: 'tracks/2030-01-15/morning-walk.gpx#trk0',
         name: 'Morning walk',
-        panel: 'tracks',
-        order: 0,
+        description: 'A gentle coastal loop',
         transportMode: 'Walking',
         geometries: [buildLineGeometry()],
         ...overrides,
@@ -56,12 +54,9 @@ export function buildTrackItem(overrides: Partial<TripItem> = {}): TripItem {
 
 export function buildWaypointItem(overrides: Partial<TripItem> = {}): TripItem {
     return {
-        id: 'accommodation.gpx#wpt0',
         name: 'Harbour View Hotel',
         description: 'Fictional Isle, South Atlantic',
-        panel: 'waypoints',
-        groupLabel: 'Accommodation',
-        order: 1,
+        folder: 'Accommodation',
         geometries: [buildPointGeometry()],
         ...overrides,
     };

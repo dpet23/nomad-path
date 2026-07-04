@@ -3,7 +3,6 @@ import {
     buildPolygonGeometry,
     buildTrackItem,
     buildTripData,
-    buildWaypointItem,
     validateTripData,
 } from '@nomadpath/contract';
 import { describe, expect, it } from 'vitest';
@@ -31,12 +30,6 @@ describe('validateTripData: structural failures', () => {
         const issues = validateTripData('garbage');
         expect(issues.length).toBeGreaterThan(0);
     });
-
-    it('reports a path for nested structural issues', () => {
-        const doc = buildTripData({ items: [buildTrackItem({ order: 1.5 })] });
-        const issues = validateTripData(doc);
-        expect(issues.some(i => i.path.includes('items.0.order'))).toBe(true);
-    });
 });
 
 describe('validateTripData: semantic failures', () => {
@@ -58,20 +51,6 @@ describe('validateTripData: semantic failures', () => {
         expect(issues.some(i => i.message.includes('non-decreasing'))).toBe(true);
     });
 
-    it('reports duplicate item ids', () => {
-        const a = buildTrackItem({ order: 0 });
-        const b = buildTrackItem({ order: 1 });
-        const issues = validateTripData(buildTripData({ items: [a, b] }));
-        expect(issues.some(i => i.message.includes('duplicate') && i.message.includes('id'))).toBe(true);
-    });
-
-    it('reports duplicate order values', () => {
-        const a = buildTrackItem({ id: 'a', order: 5 });
-        const b = buildWaypointItem({ id: 'b', order: 5 });
-        const issues = validateTripData(buildTripData({ items: [a, b] }));
-        expect(issues.some(i => i.message.includes('duplicate') && i.message.includes('order'))).toBe(true);
-    });
-
     it('reports an unclosed polygon ring', () => {
         const polygon = buildPolygonGeometry({
             lon: [4.1, 4.3, 4.3, 4.1],
@@ -88,19 +67,20 @@ describe('validateTripData: semantic failures', () => {
     });
 
     it('collects ALL issues from a document with several unrelated problems', () => {
-        const badLine = buildLineGeometry({ speed: [1], time: [300, 200, 100] });
-        const a = buildTrackItem({ id: 'dup', order: 7, geometries: [badLine] });
-        const b = buildTrackItem({ id: 'dup', order: 7 });
+        const badLineA = buildLineGeometry({ speed: [1], time: [300, 200, 100] });
+        const badLineB = buildLineGeometry({ lat: [-54.5, -54.6] });
+        const a = buildTrackItem({ name: 'First bad track', geometries: [badLineA] });
+        const b = buildTrackItem({ name: 'Second bad track', geometries: [badLineB] });
         const issues = validateTripData(buildTripData({ items: [a, b] }));
-        // speed length + decreasing time + duplicate id + duplicate order
-        expect(issues.length).toBeGreaterThanOrEqual(4);
+        // speed length + decreasing time + lon/lat length mismatch
+        expect(issues.length).toBeGreaterThanOrEqual(3);
     });
 
     it('issue paths point at the offending item', () => {
         const line = buildLineGeometry({ speed: [1] });
         const issues = validateTripData(
             buildTripData({
-                items: [buildTrackItem(), buildTrackItem({ id: 'flight', order: 5, geometries: [line] })],
+                items: [buildTrackItem(), buildTrackItem({ name: 'Flight leg', geometries: [line] })],
             }),
         );
         expect(issues.some(i => i.path.includes('items.1'))).toBe(true);

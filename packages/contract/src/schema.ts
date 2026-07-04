@@ -58,35 +58,17 @@ const polygonGeometrySchema = z.strictObject({
 const geometrySchema = z.discriminatedUnion('type', [lineGeometrySchema, pointGeometrySchema, polygonGeometrySchema]);
 
 /**
- * Which widget an item belongs to. Registry: adding a panel means adding an
- * entry here plus a widget and a bucketing derivation in the UI; the UI treats
- * an unknown panel value in data as item-level degrade (skip + notice).
+ * A raw trip item: one named or unnamed geometry group carried through from
+ * source data, with no UI-shaped identity, ordering, or panel assignment.
  */
-export const PANELS = {
-    tracks: { description: 'Track tree grouped by local day, split by dividers' },
-    waypoints: { description: 'Waypoint list grouped by folder label' },
-} as const;
-
-export type Panel = keyof typeof PANELS;
-
-export const PANEL_NAMES = Object.keys(PANELS) as readonly Panel[];
-
 const itemSchema = z.strictObject({
-    /**
-     * Unique. Pipeline-derived from source provenance (file + element) so UI
-     * notices and debug output trace back to the file that produced the item.
-     */
-    id: z.string().min(1),
-    name: z.string().min(1),
+    name: z.string().min(1).optional(),
     /** Popup text shown on hover/tap. */
     description: z.string().optional(),
-    panel: z.enum(PANEL_NAMES),
-    /** Waypoint folder value; absent = top-level ungrouped item. */
-    groupLabel: z.string().optional(),
-    /** Global chronological ordering; unique integer per item. */
-    order: z.int(),
     /** From osmand:activity, verbatim; absent = no data ("other"). */
     transportMode: z.string().optional(),
+    /** Waypoint folder value; absent = top-level ungrouped item. */
+    folder: z.string().optional(),
     geometries: z.array(geometrySchema).min(1),
 });
 

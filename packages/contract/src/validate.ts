@@ -1,4 +1,4 @@
-import type { Geometry, LineGeometry, PolygonGeometry, TripData, TripItem } from './schema.ts';
+import type { Geometry, LineGeometry, PolygonGeometry, TripData } from './schema.ts';
 import { PER_POINT_ATTRIBUTE_NAMES, tripDataSchema } from './schema.ts';
 
 export interface ContractIssue {
@@ -27,8 +27,6 @@ export function validateTripData(doc: unknown): ContractIssue[] {
 function semanticIssues(data: TripData): ContractIssue[] {
     const issues: ContractIssue[] = [];
 
-    checkUniqueness(data.items, issues);
-
     data.items.forEach((item, itemIndex) => {
         const itemPath = `items.${String(itemIndex)}`;
         item.geometries.forEach((geometry, geometryIndex) => {
@@ -37,31 +35,6 @@ function semanticIssues(data: TripData): ContractIssue[] {
     });
 
     return issues;
-}
-
-function checkUniqueness(items: readonly TripItem[], issues: ContractIssue[]): void {
-    const seenIds = new Map<string, number>();
-    const seenOrders = new Map<number, number>();
-    items.forEach((item, index) => {
-        const idFirstSeen = seenIds.get(item.id);
-        if (idFirstSeen === undefined) {
-            seenIds.set(item.id, index);
-        } else {
-            issues.push({
-                path: `items.${String(index)}.id`,
-                message: `duplicate item id "${item.id}" (first used by items.${String(idFirstSeen)})`,
-            });
-        }
-        const orderFirstSeen = seenOrders.get(item.order);
-        if (orderFirstSeen === undefined) {
-            seenOrders.set(item.order, index);
-        } else {
-            issues.push({
-                path: `items.${String(index)}.order`,
-                message: `duplicate order ${String(item.order)} (first used by items.${String(orderFirstSeen)})`,
-            });
-        }
-    });
 }
 
 /** Dispatches per-geometry semantic checks (points need none beyond Zod). */

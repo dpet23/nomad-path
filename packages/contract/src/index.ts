@@ -9,20 +9,12 @@ export {
 export type {
     Geometry,
     LineGeometry,
-    Panel,
     PerPointAttribute,
     PointGeometry,
     PolygonGeometry,
     TripData,
     TripItem,
 } from './schema.ts';
-export {
-    CONTRACT_VERSION,
-    PANEL_NAMES,
-    PANELS,
-    PER_POINT_ATTRIBUTE_NAMES,
-    PER_POINT_ATTRIBUTES,
-    tripDataSchema,
-} from './schema.ts';
+export { CONTRACT_VERSION, PER_POINT_ATTRIBUTE_NAMES, PER_POINT_ATTRIBUTES, tripDataSchema } from './schema.ts';
 export type { ContractIssue } from './validate.ts';
 export { validateTripData } from './validate.ts';

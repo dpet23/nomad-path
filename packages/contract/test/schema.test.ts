@@ -61,9 +61,9 @@ describe('tripDataSchema: top level', () => {
 });
 
 describe('tripDataSchema: items', () => {
-    it('accepts a waypoint item without the optional groupLabel (top-level item)', () => {
+    it('accepts a waypoint item without the optional folder (top-level item)', () => {
         const item = buildWaypointItem();
-        delete item.groupLabel;
+        delete item.folder;
         accepts(buildTripData({ items: [item] }));
     });
 
@@ -73,21 +73,14 @@ describe('tripDataSchema: items', () => {
         accepts(buildTripData({ items: [item] }));
     });
 
-    it('rejects an unknown panel value', () => {
-        rejects(buildTripData({ items: [{ ...buildTrackItem(), panel: 'disasters' as never }] }));
-    });
-
-    it('rejects a non-integer order', () => {
-        rejects(buildTripData({ items: [buildTrackItem({ order: 1.5 })] }));
+    it('accepts an item without the optional name', () => {
+        const item = buildTrackItem();
+        delete item.name;
+        accepts(buildTripData({ items: [item] }));
     });
 
     it('rejects an item with no geometries', () => {
         rejects(buildTripData({ items: [buildTrackItem({ geometries: [] })] }));
-    });
-
-    it.each(['id', 'name', 'panel', 'order'] as const)('rejects an item missing required field %s', field => {
-        const { [field]: _omitted, ...rest } = buildTrackItem();
-        rejects(buildTripData({ items: [rest as never] }));
     });
 });
 
