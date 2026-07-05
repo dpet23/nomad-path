@@ -141,6 +141,9 @@ export function createTripStore(): TripStore {
         hoveredItem.value = index;
     }
 
+    // Written from inside the computed below: safe because the write is an
+    // idempotent value-equality memo (it only ever re-adopts an equal-valued
+    // previous reference), so lazy re-runs after invalidation cannot drift.
     let previousDomain: [number, number] | undefined;
     const visibleDomain = computed<[number, number] | undefined>(() => {
         const current = data.value;

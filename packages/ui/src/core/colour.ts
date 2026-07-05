@@ -1,6 +1,19 @@
 import type { LineGeometry, PerPointAttribute, TripItem } from '@nomadpath/contract';
 import { PER_POINT_ATTRIBUTE_NAMES } from '@nomadpath/contract';
 
+interface ContinuousEntry {
+    kind: 'continuous';
+}
+
+interface CategoricalEntry {
+    kind: 'categorical';
+    category: (item: TripItem) => string | undefined;
+}
+
+const continuousEntries: Record<PerPointAttribute, ContinuousEntry> = Object.fromEntries(
+    PER_POINT_ATTRIBUTE_NAMES.map(name => [name, { kind: 'continuous' }]),
+) as Record<PerPointAttribute, ContinuousEntry>;
+
 /**
  * The registry of attributes a track line can be colour-coded by: the single
  * source of truth for both the set of valid attributes and how each is
@@ -15,19 +28,6 @@ import { PER_POINT_ATTRIBUTE_NAMES } from '@nomadpath/contract';
  * presentation concern, deferred to phase 5 where it is tuned against actual
  * visible basemaps.
  */
-interface ContinuousEntry {
-    kind: 'continuous';
-}
-
-interface CategoricalEntry {
-    kind: 'categorical';
-    category: (item: TripItem) => string | undefined;
-}
-
-const continuousEntries: Record<PerPointAttribute, ContinuousEntry> = Object.fromEntries(
-    PER_POINT_ATTRIBUTE_NAMES.map(name => [name, { kind: 'continuous' }]),
-) as Record<PerPointAttribute, ContinuousEntry>;
-
 export const COLOUR_ATTRIBUTE_REGISTRY = {
     ...continuousEntries,
     transportMode: {
@@ -226,6 +226,9 @@ function rgbPrimeForHueSextant(hPrime: number, c: number, x: number): [number, n
  */
 export function itemLineColours(item: TripItem, attr: ColourAttribute, ctx: ColourContext): Uint8ClampedArray[] {
     const lines = item.geometries.filter(isLineGeometry);
+    // Widened so an off-contract attr (reachable only past the type system)
+    // resolves to undefined and falls through to the NO_DATA_COLOUR flood,
+    // rather than the lookup being type-proven always-present.
     const registry: Partial<Record<string, (typeof COLOUR_ATTRIBUTE_REGISTRY)[ColourAttribute]>> =
         COLOUR_ATTRIBUTE_REGISTRY;
     const entry = registry[attr];
@@ -260,7 +263,7 @@ export function isPerPointAttribute(attr: ColourAttribute): attr is PerPointAttr
 
 /**
  * Fills an RGBA byte array of `pointCount` points, every point set to the
- * same colour: used for the transportMode flood and for the NO_DATA_COLOUR
+ * same colour: used for the categorical flood and for the NO_DATA_COLOUR
  * fallback when an attribute is missing or has no usable domain.
  */
 function floodColour(colour: readonly [number, number, number, number], pointCount: number): Uint8ClampedArray {
