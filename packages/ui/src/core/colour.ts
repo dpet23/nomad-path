@@ -1,7 +1,46 @@
 import type { LineGeometry, PerPointAttribute, TripItem } from '@nomadpath/contract';
 import { PER_POINT_ATTRIBUTE_NAMES } from '@nomadpath/contract';
 
-import type { ColourAttribute } from './store.ts';
+/**
+ * The registry of attributes a track line can be colour-coded by: the single
+ * source of truth for both the set of valid attributes and how each is
+ * dispatched. Each contract per-point numeric attribute (from
+ * `PER_POINT_ATTRIBUTE_NAMES`) gets a `continuous` entry; the UI-only
+ * synthetic `transportMode` (not a per-point array in the contract; derived
+ * by the UI itself) gets a `categorical` entry carrying its category
+ * extraction function. Adding a second categorical attribute means adding one
+ * entry here, not widening a string-literal check at every dispatch site.
+ * Palettes (colour scales) are deliberately NOT part of this registry: which
+ * colours represent a domain or a category is a `(basemap x attribute)`
+ * presentation concern, deferred to phase 5 where it is tuned against actual
+ * visible basemaps.
+ */
+interface ContinuousEntry {
+    kind: 'continuous';
+}
+
+interface CategoricalEntry {
+    kind: 'categorical';
+    category: (item: TripItem) => string | undefined;
+}
+
+const continuousEntries: Record<PerPointAttribute, ContinuousEntry> = Object.fromEntries(
+    PER_POINT_ATTRIBUTE_NAMES.map(name => [name, { kind: 'continuous' }]),
+) as Record<PerPointAttribute, ContinuousEntry>;
+
+export const COLOUR_ATTRIBUTE_REGISTRY = {
+    ...continuousEntries,
+    transportMode: {
+        kind: 'categorical',
+        category: (item: TripItem): string | undefined => item.transportMode,
+    } satisfies CategoricalEntry,
+} as const satisfies Record<string, ContinuousEntry | CategoricalEntry>;
+
+/**
+ * One key from the `COLOUR_ATTRIBUTE_REGISTRY`: the attribute currently used
+ * to colour-code track lines.
+ */
+export type ColourAttribute = keyof typeof COLOUR_ATTRIBUTE_REGISTRY;
 
 /**
  * The standard neutral grey: the sole source of "no data" across every
@@ -172,22 +211,28 @@ function rgbPrimeForHueSextant(hPrime: number, c: number, x: number): [number, n
 
 /**
  * Computes one RGBA byte array per line geometry on `item`, coloured
- * according to `attr`. `transportMode` floods every point of every line with
- * the item's single category colour (via `categoricalColour` against
- * `ctx.categories`, which spans ALL items so identity survives visibility
- * toggling); missing `transportMode` floods `NO_DATA_COLOUR`. Any other
- * (per-point numeric) attribute maps each line's own values through
- * `ctx.domain` via `rampColours`; a missing `ctx.domain`, or a missing
- * attribute array on a given line, floods `NO_DATA_COLOUR` for that line.
- * Point and polygon geometries never receive line colours; an item with no
- * line geometries returns an empty array. The input item is never mutated.
+ * according to `attr`, dispatching on the attribute's registry `kind` (never
+ * on its name). A `categorical` attribute (e.g. `transportMode`) floods every
+ * point of every line with the item's single category colour, extracted via
+ * the registry entry's `category` function and coloured via
+ * `categoricalColour` against `ctx.categories` (which spans ALL items so
+ * identity survives visibility toggling); a missing category floods
+ * `NO_DATA_COLOUR`. A `continuous` attribute maps each line's own values
+ * through `ctx.domain` via `rampColours`; a missing `ctx.domain`, or a
+ * missing attribute array on a given line, floods `NO_DATA_COLOUR` for that
+ * line. Point and polygon geometries never receive line colours; an item
+ * with no line geometries returns an empty array. The input item is never
+ * mutated.
  */
 export function itemLineColours(item: TripItem, attr: ColourAttribute, ctx: ColourContext): Uint8ClampedArray[] {
     const lines = item.geometries.filter(isLineGeometry);
+    const registry: Partial<Record<string, (typeof COLOUR_ATTRIBUTE_REGISTRY)[ColourAttribute]>> =
+        COLOUR_ATTRIBUTE_REGISTRY;
+    const entry = registry[attr];
 
-    if (attr === 'transportMode') {
-        const colour =
-            item.transportMode === undefined ? NO_DATA_COLOUR : categoricalColour(item.transportMode, ctx.categories);
+    if (entry?.kind === 'categorical') {
+        const category = entry.category(item);
+        const colour = category === undefined ? NO_DATA_COLOUR : categoricalColour(category, ctx.categories);
         return lines.map(line => floodColour(colour, line.lon.length));
     }
 
@@ -202,10 +247,14 @@ export function itemLineColours(item: TripItem, attr: ColourAttribute, ctx: Colo
 
 /**
  * Reports whether `attr` is one of the contract's per-point numeric
- * attributes (as opposed to the UI-only synthetic `transportMode`), so
- * `itemLineColours` can safely index a line geometry by it.
+ * attributes (as opposed to a categorical registry entry like the
+ * UI-only synthetic `transportMode`), so `itemLineColours` (and the store's
+ * `visibleDomain` computed) can safely index a line geometry by it / pass it
+ * to `continuousDomain`. Equivalent to checking the registry entry's `kind`,
+ * but phrased as a type guard so callers get the narrowed `PerPointAttribute`
+ * type rather than just a boolean.
  */
-function isPerPointAttribute(attr: ColourAttribute): attr is PerPointAttribute {
+export function isPerPointAttribute(attr: ColourAttribute): attr is PerPointAttribute {
     return (PER_POINT_ATTRIBUTE_NAMES as readonly string[]).includes(attr);
 }
 

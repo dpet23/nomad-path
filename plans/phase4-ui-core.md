@@ -144,6 +144,21 @@ export function itemLineColours(item: TripItem, attr: ColourAttribute, ctx: Colo
 - [ ] Implement (colour.ts pure functions + store computeds `visibleDomain`, `itemColours`); `npm run check` green (coverage floor included).
 - [ ] Commit `feat(ui): add colour ramps, categorical generator, and no-data grey`.
 
+### Task 5.5: Registry-driven attribute kinds (added 2026-07-05, user-requested)
+
+**Files:** modify `packages/ui/src/core/colour.ts`, `packages/ui/src/core/store.ts`; tests only where symbols move or the registry cross-check is added.
+
+Named use case (user, 2026-07-05): `attr === 'transportMode'` string dispatch already appears at three behavioural sites (itemLineColours, the visibleDomain guard, the categories computed) and phase 5/6 consumers (renderer, legend, attribute dropdown) read the same seam - a second categorical attribute would mean finding and widening every literal. Pure refactor - NO behaviour change.
+
+- Replace the `COLOUR_ATTRIBUTES` array with a registry object that is the single source of truth: each entry carries `kind: 'continuous' | 'categorical'` and, for categorical, the category extraction (e.g. `transportMode: { kind: 'categorical', category: item => item.transportMode }`). `ColourAttribute` derived from the registry keys. Registry lives in colour.ts (the dispatch consumer); store imports from it.
+- All three dispatch sites branch on `kind`, never on an attribute name. The string `'transportMode'` survives only in its registry entry and in the store's default `selectedAttribute` value (choosing a default attribute is naming one, not kind-branching).
+- Cross-check test: the registry's continuous keys are exactly `PER_POINT_ATTRIBUTE_NAMES` (the two registries must not drift).
+- Palettes deliberately NOT in this registry: colour scales are a `(basemap x attribute)` presentation concern, deferred to phase 5 where they are tuned against visible basemaps; the seam is threading palette data through `rampColours`/`categoricalColour` at the `itemLineColours` call site later.
+
+- [x] Refactor; existing tests pass unchanged except where moved symbols are imported; add the registry cross-check test; `npm run check` green.
+- [x] Design log entry (dated) superseding the transportMode-special-case shape; notes the palette-registry deferral and seam.
+- [x] Commit `refactor(ui): drive colour dispatch from an attribute-kind registry`.
+
 ### Task 6: Docs + phase gate
 
 **Files:** create `docs/architecture/ui-core.md` (+ `mkdocs.yml` nav); update `docs/architecture/overview.md` UI paragraph if stale; design log entries; this file's checkboxes; memory.

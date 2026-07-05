@@ -1,23 +1,22 @@
-import { PER_POINT_ATTRIBUTE_NAMES } from '@nomadpath/contract';
 import { computed, type Signal, signal } from '@preact/signals-core';
 
-import { continuousDomain, itemLineColours } from './colour.ts';
+import {
+    COLOUR_ATTRIBUTE_REGISTRY,
+    type ColourAttribute,
+    continuousDomain,
+    isPerPointAttribute,
+    itemLineColours,
+} from './colour.ts';
 import { type DecodeResult, decodeTripData } from './decode.ts';
 
-/**
- * The registry of attributes a track line can be colour-coded by: the
- * contract's per-point numeric attributes, plus the UI-only synthetic
- * `transportMode` attribute (not a per-point array in the contract; it is
- * derived by the UI itself). This is UI-side vocabulary, not contract
- * vocabulary, so it lives here rather than in `@nomadpath/contract`.
- */
-export const COLOUR_ATTRIBUTES = [...PER_POINT_ATTRIBUTE_NAMES, 'transportMode'] as const;
+export type { ColourAttribute } from './colour.ts';
 
 /**
- * One value from the `COLOUR_ATTRIBUTES` registry: the attribute currently
- * used to colour-code track lines.
+ * The ordered list of `COLOUR_ATTRIBUTE_REGISTRY` keys: the attributes a
+ * track line can be colour-coded by, in registry declaration order (contract
+ * per-point numeric attributes, then the UI-only synthetic `transportMode`).
  */
-export type ColourAttribute = (typeof COLOUR_ATTRIBUTES)[number];
+export const COLOUR_ATTRIBUTES = Object.keys(COLOUR_ATTRIBUTE_REGISTRY) as readonly ColourAttribute[];
 
 /**
  * The UI core's reactive store: signals for the small set of mutable
@@ -147,7 +146,7 @@ export function createTripStore(): TripStore {
         const current = data.value;
         const attr = selectedAttribute.value;
         const nextDomain =
-            !current?.ok || attr === 'transportMode'
+            !current?.ok || !isPerPointAttribute(attr)
                 ? undefined
                 : continuousDomain(
                       current.items.filter((_, index) => visibility.value[index] === true),
@@ -165,9 +164,17 @@ export function createTripStore(): TripStore {
             return [];
         }
         const attr = selectedAttribute.value;
-        const categories = Array.from(
-            new Set(current.items.map(item => item.transportMode).filter((mode): mode is string => mode !== undefined)),
-        );
+        const entry = COLOUR_ATTRIBUTE_REGISTRY[attr];
+        const categories =
+            entry.kind === 'categorical'
+                ? Array.from(
+                      new Set(
+                          current.items
+                              .map(item => entry.category(item))
+                              .filter((category): category is string => category !== undefined),
+                      ),
+                  )
+                : [];
         const domain = visibleDomain.value;
         const ctx = domain === undefined ? { categories } : { categories, domain };
         return current.items.map(item => itemLineColours(item, attr, ctx));

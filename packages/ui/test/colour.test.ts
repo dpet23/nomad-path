@@ -1,9 +1,10 @@
 import type { PerPointAttribute, TripItem } from '@nomadpath/contract';
-import { buildLineGeometry, buildPointGeometry, buildTrackItem } from '@nomadpath/contract';
+import { buildLineGeometry, buildPointGeometry, buildTrackItem, PER_POINT_ATTRIBUTE_NAMES } from '@nomadpath/contract';
 import { describe, expect, it } from 'vitest';
 
 import {
     categoricalColour,
+    COLOUR_ATTRIBUTE_REGISTRY,
     continuousDomain,
     itemLineColours,
     NO_DATA_COLOUR,
@@ -13,6 +14,26 @@ import {
 describe('NO_DATA_COLOUR', () => {
     it('is a fixed neutral grey RGBA tuple, opaque', () => {
         expect(NO_DATA_COLOUR).toEqual([128, 128, 128, 255]);
+    });
+});
+
+describe('COLOUR_ATTRIBUTE_REGISTRY', () => {
+    it('has a continuous entry for exactly the contract per-point attributes (ele, speed), no more, no fewer', () => {
+        const continuousKeys = Object.entries(COLOUR_ATTRIBUTE_REGISTRY)
+            .filter(([, entry]) => entry.kind === 'continuous')
+            .map(([key]) => key)
+            .sort((a, b) => a.localeCompare(b));
+
+        expect(continuousKeys).toEqual(['ele', 'speed']);
+        expect(continuousKeys).toEqual([...PER_POINT_ATTRIBUTE_NAMES].sort((a, b) => a.localeCompare(b)));
+    });
+
+    it('has exactly one categorical entry, transportMode, with a category-extraction function', () => {
+        const categoricalKeys = Object.entries(COLOUR_ATTRIBUTE_REGISTRY)
+            .filter(([, entry]) => entry.kind === 'categorical')
+            .map(([key]) => key);
+
+        expect(categoricalKeys).toEqual(['transportMode']);
     });
 });
 
