@@ -96,6 +96,9 @@ export function createTripStore(): TripStore {
     }
 
     function setHovered(index: number | null): void {
+        if (index !== null && (index < 0 || index >= visibility.value.length)) {
+            return;
+        }
         hoveredItem.value = index;
     }
 

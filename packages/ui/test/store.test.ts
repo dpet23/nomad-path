@@ -247,13 +247,23 @@ describe('createTripStore', () => {
             expect(store.hoveredItem.value).toBeNull();
         });
 
-        it('is a safe no-op (sets the raw value, never throws) for an out-of-range index', () => {
+        it('is a safe no-op (leaves hoveredItem unchanged) for an out-of-range index', () => {
+            const store = createTripStore();
+            store.load(buildTripData({ items: [buildTrackItem()] }));
+            store.setHovered(0);
+
+            store.setHovered(99);
+
+            expect(store.hoveredItem.value).toBe(0);
+        });
+
+        it('keeps hoveredItem null as a safe no-op when called with an out-of-range index from the initial state', () => {
             const store = createTripStore();
             store.load(buildTripData({ items: [buildTrackItem()] }));
 
-            expect(() => {
-                store.setHovered(99);
-            }).not.toThrow();
+            store.setHovered(99);
+
+            expect(store.hoveredItem.value).toBeNull();
         });
 
         it('accepts null even when nothing has been loaded', () => {
@@ -290,6 +300,7 @@ describe('createTripStore', () => {
 
         it('updates a computed derived from hoveredItem after setHovered', () => {
             const store = createTripStore();
+            store.load(buildTripData({ items: [buildTrackItem()] }));
             const isHovering = computed(() => store.hoveredItem.value !== null);
             expect(isHovering.value).toBe(false);
 
