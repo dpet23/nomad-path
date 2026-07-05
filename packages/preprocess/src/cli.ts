@@ -20,9 +20,6 @@
  * build.test.ts - which is why cli.ts is excluded from the coverage floor.
  */
 
-import { argv } from 'node:process';
-import { pathToFileURL } from 'node:url';
-
 import { Command } from 'commander';
 
 import type { Options } from './build.ts';
@@ -56,6 +53,10 @@ function main(): void {
     }
 }
 
-// Run only as a real bin, not when imported (e.g. by build() tests), so importing
-// this module never triggers commander's argv parsing / process.exit.
-if (argv[1] !== undefined && import.meta.url === pathToFileURL(argv[1]).href) main();
+// Run only as the real entry point, not when imported (e.g. by build() tests),
+// so importing this module never triggers commander's argv parsing / process.exit.
+// import.meta.main is Node's own entry-point check - it resolves symlinks, so it
+// is correct whether the tool is run as src/cli.ts directly or via the installed
+// `bin` symlink (an earlier hand-rolled argv[1] vs import.meta.url comparison was
+// NOT symlink-aware and silently no-op'd the whole CLI when run via the bin).
+if (import.meta.main) main();

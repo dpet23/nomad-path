@@ -84,3 +84,43 @@ describe('cli: emit', () => {
         expect(validateTripData(data)).toEqual([]);
     });
 });
+
+// This block exercises the REAL shipped entry point - the installed `bin` symlink
+// (node_modules/.bin/nomadpath-preprocess), which is how users and the watch-mode
+// git hook actually invoke the tool. Every other test here spawns the SOURCE file
+// (src/cli.ts) directly, so it takes a path production never takes: the entry-point
+// guard distinguishes "run as entry" from "imported", and a symlink used to make a
+// hand-rolled guard silently no-op the whole CLI via the bin - invisible to the
+// source-path tests. This is really a packaged-executable / e2e-layer concern; it
+// belongs in the future full-system e2e suite and should move there once that is
+// designed. It lives here for now as the regression guard for that layer.
+describe('cli: real bin invocation (packaged-executable layer)', () => {
+    const BIN = join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        '..',
+        'node_modules',
+        '.bin',
+        'nomadpath-preprocess',
+    );
+
+    /** Run the tool via its installed bin symlink, the way it actually ships. */
+    function runBin(args: string[]): Run {
+        const result = spawnSync(process.execPath, [BIN, ...args], { encoding: 'utf8' });
+        return { status: result.status ?? 1, stdout: result.stdout, stderr: result.stderr };
+    }
+
+    it('prints help and exits 0 when invoked through the bin symlink', () => {
+        const result = runBin(['--help']);
+        expect(result.status).toBe(0);
+        expect(result.stdout).toMatch(/Usage: nomadpath-preprocess/);
+    });
+
+    it('builds a trip file when the real bin is run over a folder', () => {
+        write('tracks/walk.gpx', gpxTrack('Walk'));
+        const result = runBin([root]);
+        expect(result.status).toBe(0);
+        expect(existsSync(join(root, 'trip-data.json'))).toBe(true);
+    });
+});
