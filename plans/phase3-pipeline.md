@@ -118,6 +118,8 @@ Parse `nomadpath.yaml` (strict zod, fail loud on unknown keys). `resolveTrackSet
 
 **Files:** `docs/usage/configuration.md` (NEW, in mkdocs nav), `docs/architecture/pipeline.md` (NEW), update `data-formats` note.
 
-- [ ] Write `configuration.md`: the full config reference with **worked inheritance + conflict examples** (user explicitly asked for good docs on the additive resolution). Every key, defaults, specificity rules, the equal-specificity error.
-- [ ] Write `pipeline.md`: stage diagram, parser edge (translate-not-filter), CLI usage, unmatched-selector warning.
-- [ ] All gates green (`check` + `test:e2e`). Tick checkboxes; update design log + memory; merge `epic/pipeline` -> master `--no-ff`.
+- [x] Write `configuration.md`: the full config reference with **worked inheritance + conflict examples** (user explicitly asked for good docs on the additive resolution). Every key, defaults, specificity rules, the equal-specificity error.
+- [x] Write `pipeline.md`: stage diagram, parser edge (translate-not-filter), CLI usage, unmatched-selector warning.
+- [x] All gates green (`check` + `test:e2e`). Tick checkboxes; update design log + memory; merge `epic/pipeline` -> master `--no-ff`.
+
+**As built:** `docs/usage/configuration.md` (full reference: top-level keys, `tracks`/`waypoints` properties + defaults, additive-merge algorithm, specificity tiers, two worked inheritance examples + the equal-specificity conflict error with its exact message, glob semantics, full example) and `docs/architecture/pipeline.md` (stage diagram scan->parse->emit, translate-not-filter, hard-error list, short-segment skip, emit atomic/fail-loud, CLI usage + exit codes + severity-split output, unmatched-selector warning, testability notes). Both added to `mkdocs.yml` nav. Reconciled `overview.md`'s stale model note (dropped the rejected pre-stamped group-label/day/divider/defaultVisible/ordering wording; now matches the shrunk contract) and its `pipeline`->`preprocess` boundary bullet. `npm run check` (incl. lint:links over the new relative doc links) + `test:e2e` green.

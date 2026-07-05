@@ -8,6 +8,8 @@ nav:
   - Home: index.md
   - Usage:
       - Getting started: usage/getting-started.md
+      - Configuration: usage/configuration.md
   - Architecture:
       - Overview: architecture/overview.md
+      - Pipeline: architecture/pipeline.md
       - Data contract: architecture/data-contract.md
