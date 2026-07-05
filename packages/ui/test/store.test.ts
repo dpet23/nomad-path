@@ -1,7 +1,8 @@
-import { buildTrackItem, buildTripData, buildWaypointItem } from '@nomadpath/contract';
+import { buildLineGeometry, buildTrackItem, buildTripData, buildWaypointItem } from '@nomadpath/contract';
 import { computed } from '@preact/signals-core';
 import { describe, expect, it } from 'vitest';
 
+import { NO_DATA_COLOUR } from '../src/core/colour.ts';
 import { COLOUR_ATTRIBUTES, createTripStore } from '../src/core/store.ts';
 
 describe('COLOUR_ATTRIBUTES', () => {
@@ -275,6 +276,226 @@ describe('createTripStore', () => {
                 store.setHovered(null);
             }).not.toThrow();
             expect(store.hoveredItem.value).toBeNull();
+        });
+    });
+
+    describe('visibleDomain', () => {
+        it('is undefined before anything is loaded', () => {
+            const store = createTripStore();
+            store.setSelectedAttribute('ele');
+
+            expect(store.visibleDomain.value).toBeUndefined();
+        });
+
+        it('is undefined for the transportMode attribute', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 200] })],
+                        }),
+                    ],
+                }),
+            );
+
+            expect(store.visibleDomain.value).toBeUndefined();
+        });
+
+        it('computes the domain over all items when all are visible', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            name: 'A',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 150] })],
+                        }),
+                        buildTrackItem({
+                            name: 'B',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [90, 400] })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+
+            expect(store.visibleDomain.value).toEqual([90, 400]);
+        });
+
+        it('shrinks the domain when the item carrying the max value is hidden', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            name: 'A',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 150] })],
+                        }),
+                        buildTrackItem({
+                            name: 'B (max)',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [90, 400] })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+            expect(store.visibleDomain.value).toEqual([90, 400]);
+
+            store.setItemVisible(1, false);
+
+            expect(store.visibleDomain.value).toEqual([100, 150]);
+        });
+
+        it('returns the same array reference when toggling a non-extreme item leaves the domain value-equal', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            name: 'Extremes',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [90, 400] })],
+                        }),
+                        buildTrackItem({
+                            name: 'Middle',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [150, 200] })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+            const before = store.visibleDomain.value;
+            expect(before).toEqual([90, 400]);
+
+            store.setItemVisible(1, false);
+
+            expect(store.visibleDomain.value).toBe(before);
+        });
+
+        it('recomputes reactively when selectedAttribute changes', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            geometries: [
+                                buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 200], speed: [1, 2] }),
+                            ],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+            expect(store.visibleDomain.value).toEqual([100, 200]);
+
+            store.setSelectedAttribute('speed');
+
+            expect(store.visibleDomain.value).toEqual([1, 2]);
+        });
+    });
+
+    describe('itemColours', () => {
+        it('is an empty array before anything is loaded', () => {
+            const store = createTripStore();
+
+            expect(store.itemColours.value).toEqual([]);
+        });
+
+        it('is an empty array after a failing load', () => {
+            const store = createTripStore();
+
+            store.load({ not: 'trip data' });
+
+            expect(store.itemColours.value).toEqual([]);
+        });
+
+        it('produces one colour-array-list per item, parallel to data.items', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 200] })],
+                        }),
+                        buildWaypointItem(),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+
+            expect(store.itemColours.value).toHaveLength(2);
+            expect(store.itemColours.value[1]).toEqual([]);
+        });
+
+        it('floods NO_DATA_COLOUR for an item missing the selected attribute', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            geometries: [buildLineGeometry({ ele: undefined, lon: [1, 2], lat: [1, 2] })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+
+            const colours = store.itemColours.value[0]?.[0];
+            expect(Array.from(colours ?? [])).toEqual([...NO_DATA_COLOUR, ...NO_DATA_COLOUR]);
+        });
+
+        it("keeps a transportMode item's colour identity stable when the item is hidden and re-shown", () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            name: 'A',
+                            transportMode: 'Cycling',
+                            geometries: [buildLineGeometry({ lon: [1, 2] })],
+                        }),
+                        buildTrackItem({
+                            name: 'B',
+                            transportMode: 'Driving',
+                            geometries: [buildLineGeometry({ lon: [1, 2] })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('transportMode');
+            const before = store.itemColours.value[0]?.[0];
+
+            store.setItemVisible(1, false);
+            store.setItemVisible(1, true);
+
+            expect(Array.from(store.itemColours.value[0]?.[0] ?? [])).toEqual(Array.from(before ?? []));
+        });
+
+        it('recomputes reactively after setSelectedAttribute', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            geometries: [
+                                buildLineGeometry({
+                                    lon: [1, 2, 3],
+                                    lat: [1, 2, 3],
+                                    ele: [100, 175, 200],
+                                    speed: [1, 1.1, 2],
+                                }),
+                            ],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+            const eleColours = store.itemColours.value[0]?.[0]?.subarray(4, 8);
+
+            store.setSelectedAttribute('speed');
+
+            const speedColours = store.itemColours.value[0]?.[0]?.subarray(4, 8);
+            expect(Array.from(speedColours ?? [])).not.toEqual(Array.from(eleColours ?? []));
         });
     });
 
