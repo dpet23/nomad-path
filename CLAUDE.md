@@ -2,6 +2,14 @@
 
 Visualises GPS trip recordings on interactive basemaps. Two components joined by a shared contract: a deploy-time pipeline (raw GPX/KML folder -> one compact data file, strict + fail-loud) and a fully client-side UI library (never crashes, friendly in-UI errors). See `docs/architecture/overview.md`.
 
+## Governing principle (do not violate)
+
+**Nothing is set in stone, and every piece of code needs a specific NAMED use case.**
+
+- All docs (contract, schema, design log, plans) are provisional; expect them to change under profiling. Never treat one as authoritative or frozen.
+- "The contract/plan says so" is NEVER a sufficient justification for code. Find the real use case or remove the code.
+- Before writing any field/function/type, name the concrete consumer that needs this exact thing NOW. "The UI will probably want it" / "it's cheap" / "it's derived data" all fail the test - defer it. Precompute only what is expensive or whose input is unavailable later; never cheap always-derivable values (ids, sort orders, bucket labels). Output format is directed by what the UI actually needs, discovered as the UI is built. Apply this test to your own plans, not just to user requests.
+
 ## Source-of-truth documents
 
 - **Design decision log**: `plans/looking-to-plan-the-piped-nova.md` — append-only; never silently reverse a decision, supersede it with a dated entry.
@@ -12,13 +20,13 @@ Visualises GPS trip recordings on interactive basemaps. Two components joined by
 
 ```text
 packages/contract/   @nomadpath/contract — shared types + schema + semantic validation (leaf package)
-packages/pipeline/   @nomadpath/pipeline — parsers -> common model -> compute -> assemble -> validate -> emit
+packages/preprocess/ @nomadpath/preprocess — parsers -> common model -> compute -> assemble -> validate -> emit
 packages/ui/         @nomadpath/ui — src/core (map-agnostic) + src/render (MapRenderer adapters) + src/widgets
 packages/demo/       @nomadpath/demo — dev demo page + server
 packages/e2e/        @nomadpath/e2e — full-system Playwright tests (desktop + mobile-emulation projects)
 ```
 
-Packages export TS source directly; Node >= 23.6 runs it natively (no dev build step). Import boundaries are lint-enforced: contract imports no sibling; pipeline never imports ui or map libs; ui/src/core never imports map libs.
+Packages export TS source directly; Node >= 23.6 runs it natively (no dev build step). Import boundaries are lint-enforced: contract imports no sibling; preprocess never imports ui or map libs; ui/src/core never imports map libs.
 
 **Dependency placement** (`import-x/no-extraneous-dependencies` enforces no phantom imports):
 
@@ -37,7 +45,7 @@ Pre-commit hook: lint-staged (prettier + eslint --fix) -> typecheck -> test:cove
 
 ## Conventions
 
-- **Branching**: each phase/epic on `epic/<name>` off `master`, merged back with `--no-ff`. Main branch is `master`.
+- **Branching**: ALL work — phases, epics, and even small side improvements (tooling, lint, docs) — happens on an `epic/<name>` branch off `master`, merged back with `--no-ff`. Never commit directly to master. Main branch is `master`.
 - **Commits**: one concern per commit; conventional-commit style subjects (`feat:`, `fix:`, `test:`, `chore:`, `docs:`).
 - **TDD**: enumerate the full state space before writing tests; write all tests first (allowed to fail); success AND failure cases. Tests must find bugs, not just prove correctness.
 - **UI testing**: drive real UI interactions (clicks, dropdowns) — never internal APIs. Assert both widget state and renderer state.

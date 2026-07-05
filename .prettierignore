@@ -3,4 +3,6 @@ coverage/
 dist/
 playwright-report/
 test-results/
+site/
 package-lock.json
+.superpowers/

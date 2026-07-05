@@ -1,0 +1,27 @@
+{
+  "name": "@nomadpath/preprocess",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Deploy-time preprocessing pipeline: raw GPX/KML folder + config in, validated compact trip data out",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "nomadpath-preprocess": "./src/cli.ts"
+  },
+  "dependencies": {
+    "@nomadpath/contract": "*",
+    "@types/picomatch": "^4.0.3",
+    "commander": "^15.0.0",
+    "fast-xml-parser": "^5.9.3",
+    "fast-xml-validator": "^1.1.1",
+    "picomatch": "^4.0.5",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "vitest": "*"
+  }
+}

@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint';
 /**
  * Import boundaries between workspace packages (see docs/architecture/overview.md):
  * - contract is the shared leaf: it imports no other workspace package.
- * - pipeline never imports the ui (nor any map/render library).
+ * - preprocess never imports the ui (nor any map/render library).
  * - ui core stays map-agnostic: only renderer adapters may import map libraries.
  */
 const boundaries = [
@@ -22,7 +22,7 @@ const boundaries = [
                 {
                     patterns: [
                         {
-                            group: ['@nomadpath/pipeline', '@nomadpath/ui', '@nomadpath/demo'],
+                            group: ['@nomadpath/preprocess', '@nomadpath/ui', '@nomadpath/demo'],
                             message: 'contract is the shared leaf package; it must not import the other packages.',
                         },
                     ],
@@ -31,7 +31,7 @@ const boundaries = [
         },
     },
     {
-        files: ['packages/pipeline/**/*.ts'],
+        files: ['packages/preprocess/**/*.ts'],
         rules: {
             'no-restricted-imports': [
                 'error',
@@ -39,7 +39,7 @@ const boundaries = [
                     patterns: [
                         {
                             group: ['@nomadpath/ui', '@nomadpath/demo', 'maplibre-gl', '@deck.gl/*', 'deck.gl'],
-                            message: 'the pipeline must not depend on the ui or map/render libraries.',
+                            message: 'the preprocess package must not depend on the ui or map/render libraries.',
                         },
                     ],
                 },
@@ -67,7 +67,7 @@ const boundaries = [
 
 export default tseslint.config(
     {
-        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results'],
+        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results', 'site'],
     },
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,
@@ -99,7 +99,7 @@ export default tseslint.config(
             // space after // and /* -- readability; prettier does not enforce this
             'spaced-comment': ['error', 'always'],
             // the UI ships to viewers with no reliable console; keep it clean. Overridden
-            // below for the pipeline (a CLI whose job is terminal output) and the demo.
+            // below for the preprocess CLI (terminal output is its job) and the demo.
             'no-console': 'error',
             'no-shadow': 'off',
             '@typescript-eslint/no-shadow': ['error', { hoist: 'all', ignoreTypeValueShadow: true }],
@@ -144,8 +144,8 @@ export default tseslint.config(
         extends: [tseslint.configs.disableTypeChecked],
     },
     {
-        // the pipeline is a CLI (terminal output is its job) and the demo is a dev tool
-        files: ['packages/pipeline/**/*.ts', 'packages/demo/**/*.ts'],
+        // the preprocess package is a CLI (terminal output is its job) and the demo is a dev tool
+        files: ['packages/preprocess/**/*.ts', 'packages/demo/**/*.ts'],
         rules: {
             'no-console': 'off',
         },

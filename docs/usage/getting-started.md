@@ -34,8 +34,16 @@ Scripts compose from single-purpose leaves; aggregates call the leaves via `npm 
 | `npm run test:coverage` | Unit tests with the 75% coverage gate                                           |
 | `npm run test:e2e`      | Playwright end-to-end tests (desktop + mobile emulation projects)               |
 | `npm run check`         | Everything the pre-commit hook runs: format check + lint + typecheck + coverage |
+| `npm run build:docs`    | Render this documentation with MkDocs (`--strict`: broken links/nav fail)       |
+| `npm run serve:docs`    | Live-reloading docs preview at `http://127.0.0.1:8000`                          |
 
 Focused unit tests: `npm run test:unit -- <path-or-pattern>`.
+
+## Building the docs
+
+The docs are [MkDocs](https://www.mkdocs.org/) + the Material theme. Rather than add a Python virtualenv to the repo, the `build:docs` / `serve:docs` scripts run MkDocs through [`uv`](https://docs.astral.sh/uv/)'s `uvx` (ephemeral, pinned `mkdocs-material`), so the only prerequisite is having `uv` installed. `build:docs` runs `--strict`, so a broken internal link or a page missing from the nav fails the build — note that a link to a source file outside `docs/` is _not_ a valid docs link (it resolves on the filesystem but not in the rendered site). The built site lands in `site/` (git-ignored). Docs are not part of `npm run check` or the pre-commit hook (they need `uv` and network); run `build:docs` manually or in CI.
+
+Internal working docs (superpowers specs/plans) that land under `docs/` are kept out of the published build via `exclude_docs` in `mkdocs.yml`, so a stray plan file never fails the strict build. When those are finished-work temp files, delete them; the durable record lives in the design log under `plans/`.
 
 ## Pre-commit hook
 
@@ -45,7 +53,7 @@ Every commit runs lint-staged (Prettier auto-formats staged files), then `npm ru
 
 ```text
 packages/contract/   shared data contract (types + schema + validation)
-packages/pipeline/   deploy-time pipeline (raw GPX/KML -> trip data file)
+packages/preprocess/ deploy-time preprocessing (raw GPX/KML -> trip data file)
 packages/ui/         browser UI library
 packages/demo/       dev demo page + server
 packages/e2e/        full-system Playwright tests

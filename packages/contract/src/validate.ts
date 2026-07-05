@@ -1,4 +1,4 @@
-import type { Bounds, Geometry, LineGeometry, PolygonGeometry, TripData, TripItem } from './schema.ts';
+import type { Geometry, LineGeometry, PolygonGeometry, TripData } from './schema.ts';
 import { PER_POINT_ATTRIBUTE_NAMES, tripDataSchema } from './schema.ts';
 
 export interface ContractIssue {
@@ -27,87 +27,14 @@ export function validateTripData(doc: unknown): ContractIssue[] {
 function semanticIssues(data: TripData): ContractIssue[] {
     const issues: ContractIssue[] = [];
 
-    checkBounds(data.bounds, 'bounds', issues);
-    checkUniqueness(data.items, issues);
-
     data.items.forEach((item, itemIndex) => {
         const itemPath = `items.${String(itemIndex)}`;
-        checkBounds(item.bounds, `${itemPath}.bounds`, issues);
-        checkDay(item, itemPath, issues);
-        checkDivider(item, itemPath, issues);
         item.geometries.forEach((geometry, geometryIndex) => {
             checkGeometry(geometry, `${itemPath}.geometries.${String(geometryIndex)}`, issues);
         });
     });
 
     return issues;
-}
-
-function checkBounds(bounds: Bounds, path: string, issues: ContractIssue[]): void {
-    const [, south, , north] = bounds;
-    // No west <= east check: west > east legitimately encodes an
-    // antimeridian-crossing box. Latitude has no such wraparound.
-    if (south > north) {
-        issues.push({
-            path,
-            message: `bounds south (${String(south)}) exceeds north (${String(north)})`,
-        });
-    }
-}
-
-function checkUniqueness(items: readonly TripItem[], issues: ContractIssue[]): void {
-    const seenIds = new Map<string, number>();
-    const seenOrders = new Map<number, number>();
-    items.forEach((item, index) => {
-        const idFirstSeen = seenIds.get(item.id);
-        if (idFirstSeen === undefined) {
-            seenIds.set(item.id, index);
-        } else {
-            issues.push({
-                path: `items.${String(index)}.id`,
-                message: `duplicate item id "${item.id}" (first used by items.${String(idFirstSeen)})`,
-            });
-        }
-        const orderFirstSeen = seenOrders.get(item.order);
-        if (orderFirstSeen === undefined) {
-            seenOrders.set(item.order, index);
-        } else {
-            issues.push({
-                path: `items.${String(index)}.order`,
-                message: `duplicate order ${String(item.order)} (first used by items.${String(orderFirstSeen)})`,
-            });
-        }
-    });
-}
-
-function checkDay(item: TripItem, itemPath: string, issues: ContractIssue[]): void {
-    if (item.day === undefined) return;
-    const [year, month, dayOfMonth] = item.day.split('-').map(Number) as [number, number, number];
-    const date = new Date(Date.UTC(year, month - 1, dayOfMonth));
-    const roundTrips =
-        date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === dayOfMonth;
-    if (!roundTrips) {
-        issues.push({
-            path: `${itemPath}.day`,
-            message: `"${item.day}" is not a real calendar date`,
-        });
-    }
-}
-
-function checkDivider(item: TripItem, itemPath: string, issues: ContractIssue[]): void {
-    if (!item.divider) return;
-    if (item.panel !== 'tracks') {
-        issues.push({
-            path: `${itemPath}.divider`,
-            message: `divider items must be on the "tracks" panel, got "${item.panel}"`,
-        });
-    }
-    if (item.day === undefined) {
-        issues.push({
-            path: `${itemPath}.divider`,
-            message: 'divider items must carry a day',
-        });
-    }
 }
 
 /** Dispatches per-geometry semantic checks (points need none beyond Zod). */
@@ -128,17 +55,14 @@ function checkGeometry(geometry: Geometry, path: string, issues: ContractIssue[]
     }
 }
 
-/** Checks per-point array parity and timestamp monotonicity on a line. */
+/** Checks per-point array parity on a line. */
 function checkLine(line: LineGeometry, path: string, issues: ContractIssue[]): void {
     const pointCount = line.lon.length;
-    if (line.time !== undefined) {
-        if (line.time.length !== pointCount) {
-            issues.push({
-                path,
-                message: `time length (${String(line.time.length)}) does not match point count (${String(pointCount)})`,
-            });
-        }
-        checkTimeMonotonic(line.time, path, issues);
+    if (line.time !== undefined && line.time.length !== pointCount) {
+        issues.push({
+            path,
+            message: `time length (${String(line.time.length)}) does not match point count (${String(pointCount)})`,
+        });
     }
     for (const attribute of PER_POINT_ATTRIBUTE_NAMES) {
         const values = line[attribute];
@@ -147,21 +71,6 @@ function checkLine(line: LineGeometry, path: string, issues: ContractIssue[]): v
                 path,
                 message: `${attribute} length (${String(values.length)}) does not match point count (${String(pointCount)})`,
             });
-        }
-    }
-}
-
-/** Reports the first decreasing timestamp pair, if any. */
-function checkTimeMonotonic(time: readonly number[], path: string, issues: ContractIssue[]): void {
-    for (let i = 1; i < time.length; i += 1) {
-        const previous = time[i - 1];
-        const current = time[i];
-        if (previous !== undefined && current !== undefined && current < previous) {
-            issues.push({
-                path: `${path}.time`,
-                message: `timestamps must be non-decreasing (index ${String(i)})`,
-            });
-            return;
         }
     }
 }

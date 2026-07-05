@@ -19,7 +19,7 @@ raw GPS folder + config          one compact data file           host HTML page
 
 `@nomadpath/contract` holds the TypeScript types and runtime schema for the emitted file, plus semantic validation (coordinate ranges, monotonic timestamps, parallel-array length parity). The pipeline validates its output against it before writing; the UI trusts the data and only guards cheaply. Because both sides import the same package, drift between producer and consumer surfaces as a compile error.
 
-The data model is a **flat list of items**. Each item carries one or more geometries (a track's segments; a line plus points treated as one unit), parallel-array coordinates in raw WGS84 lon/lat, optional per-point attributes (speed, elevation, sun angle, transport mode...), and fields the pipeline resolved at build time: group label, local day, divider flag, default visibility, ordering. The UI does trivial bucketing over those stamped fields — no hard logic, no recomputation.
+The data model is a **flat list of items**. Each item carries one or more geometries (a track's segments; a line plus points treated as one unit), parallel-array coordinates in raw WGS84 lon/lat, and optional per-point attributes (speed, elevation, transport mode...). It carries only raw facts with a named UI consumer; derived, UI-shaped values (item ids, day grouping, dividers, bounds, ordering) are deliberately **not** precomputed — they are cheaply derivable UI-side or belong to features not yet built, and return additively when a consumer names them. See the [data contract](data-contract.md) for the exact shape.
 
 ## Inside the UI library
 
@@ -33,7 +33,7 @@ Widgets are thin views over derived store state.
 ## Import boundaries (lint-enforced)
 
 - `contract` imports no other workspace package.
-- `pipeline` never imports the UI or any map/render library.
+- `preprocess` never imports the UI or any map/render library.
 - `ui/src/core` never imports map libraries; only renderer adapters do.
 
 ## Deciding log
