@@ -20,3 +20,4 @@ nav:
       - Overview: architecture/overview.md
       - Pipeline: architecture/pipeline.md
       - Data contract: architecture/data-contract.md
+      - UI core: architecture/ui-core.md

@@ -52,9 +52,9 @@ Tiered decode needs to validate ITEM BY ITEM (one bad item must not fail the fil
 
 **Interfaces — Produces:** `tripItemSchema` (Zod schema for one item) exported from `@nomadpath/contract`.
 
-- [ ] Test first: `tripItemSchema.safeParse` accepts a fixture item, rejects a non-object.
-- [ ] Export; `npm run test:unit -- packages/contract` green.
-- [ ] Commit `feat(contract): export the per-item schema for tiered ui decode`.
+- [x] Test first: `tripItemSchema.safeParse` accepts a fixture item, rejects a non-object.
+- [x] Export; `npm run test:unit -- packages/contract` green.
+- [x] Commit `feat(contract): export the per-item schema for tiered ui decode`.
 
 ### Task 3: Tiered decode
 
@@ -80,9 +80,9 @@ export type DecodeResult =
   { ok: true; name?: string; items: TripItem[]; notices: DecodeNotice[] } | { ok: false; reason: string };
 ```
 
-- [ ] State space enumerated (valid file / not-object / wrong version / items-not-array / bad item among good / lon-lat mismatch / attr-length mismatch / absent optional / null entries / empty items). ALL tests first, using contract fixture builders + hand-broken variants.
-- [ ] Implement; `npm run test:unit -- packages/ui` green.
-- [ ] Commit `feat(ui): add tiered trip-data decode`.
+- [x] State space enumerated (valid file / not-object / wrong version / items-not-array / bad item among good / lon-lat mismatch / attr-length mismatch / absent optional / null entries / empty items). ALL tests first, using contract fixture builders + hand-broken variants.
+- [x] Implement; `npm run test:unit -- packages/ui` green.
+- [x] Commit `feat(ui): add tiered trip-data decode`.
 
 ### Task 4: Reactive store
 
@@ -111,9 +111,9 @@ export interface TripStore {
 
 `ColourAttribute` registry (single source of truth, derived from the contract's): `COLOUR_ATTRIBUTES = [...PER_POINT_ATTRIBUTE_NAMES, 'transportMode'] as const`.
 
-- [ ] State space + all tests first (load valid / load failure resets state / visibility toggle / out-of-range index is a safe no-op / attribute switch / hover set+clear / reactivity: a computed over a signal updates on action).
-- [ ] Implement; lint boundary rule proven by a failing-then-removed probe import.
-- [ ] Commit `feat(ui): add core reactive store` (+ separate `chore(lint): forbid widget-framework imports in ui core` if config is a distinct concern).
+- [x] State space + all tests first (load valid / load failure resets state / visibility toggle / out-of-range index is a safe no-op / attribute switch / hover set+clear / reactivity: a computed over a signal updates on action).
+- [x] Implement; lint boundary rule proven by a failing-then-removed probe import.
+- [x] Commit `feat(ui): add core reactive store` (+ separate `chore(lint): forbid widget-framework imports in ui core` if config is a distinct concern).
 
 ### Task 5: Colour mapping
 
@@ -140,9 +140,9 @@ export function itemLineColours(item: TripItem, attr: ColourAttribute, ctx: Colo
 // items (adaptive ramp), categories = ALL items (a category's colour identity must not shuffle on toggle)
 ```
 
-- [ ] State space + tests first (null entries / all-null / missing attribute / single-value degenerate domain / category stability under reordering / distinctness for 12 categories / point-only item -> empty result / exact NO_DATA_COLOUR bytes asserted / domain over visible-only: hiding the max-elevation item shrinks the domain, toggling a non-extreme item leaves the domain value-equal and fires no recolour; no circular assertions).
-- [ ] Implement (colour.ts pure functions + store computeds `visibleDomain`, `itemColours`); `npm run check` green (coverage floor included).
-- [ ] Commit `feat(ui): add colour ramps, categorical generator, and no-data grey`.
+- [x] State space + tests first (null entries / all-null / missing attribute / single-value degenerate domain / category stability under reordering / distinctness for 12 categories / point-only item -> empty result / exact NO_DATA_COLOUR bytes asserted / domain over visible-only: hiding the max-elevation item shrinks the domain, toggling a non-extreme item leaves the domain value-equal and fires no recolour; no circular assertions).
+- [x] Implement (colour.ts pure functions + store computeds `visibleDomain`, `itemColours`); `npm run check` green (coverage floor included).
+- [x] Commit `feat(ui): add colour ramps, categorical generator, and no-data grey`.
 
 ### Task 5.5: Registry-driven attribute kinds (added 2026-07-05, user-requested)
 
@@ -163,7 +163,7 @@ Named use case (user, 2026-07-05): `attr === 'transportMode'` string dispatch al
 
 **Files:** create `docs/architecture/ui-core.md` (+ `mkdocs.yml` nav); update `docs/architecture/overview.md` UI paragraph if stale; design log entries; this file's checkboxes; memory.
 
-- [ ] `ui-core.md`: tiered decode table (tier / trigger / result), store surface, availability + colour mapping, the framework decision, what is deferred where (behaviour-described, no analysis indices).
-- [ ] Design log: scope trim + deferral rationale; framework/primitive decision; provisional default attribute.
-- [ ] `npm run check` + `npm run build:docs` + `npm run test:e2e` green; checkboxes ticked.
+- [x] `ui-core.md`: tiered decode table (tier / trigger / result), store surface, availability + colour mapping, the framework decision, what is deferred where (behaviour-described, no analysis indices).
+- [x] Design log: scope trim + deferral rationale; framework/primitive decision; provisional default attribute.
+- [x] `npm run check` + `npm run build:docs` + `npm run test:e2e` green; checkboxes ticked.
 - [ ] Merge `epic/ui-core` -> master `--no-ff`.

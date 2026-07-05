@@ -25,7 +25,7 @@ The data model is a **flat list of items**. Each item carries one or more geomet
 
 The UI is split into a **map-agnostic core** and **renderer adapters**:
 
-- The core owns data decoding, the central reactive store, derived state (track tree grouping, legends, per-basemap colour palettes, visibility, hover), and error handling. It never imports a map library.
+- The core owns data decoding (the tiered error model), the central reactive store (visibility, hover, attribute selection), and per-point colour mapping (adaptive continuous ramps, stable categorical colours, one shared no-data grey). Further derived state (track tree grouping, legends, per-basemap colour palettes) arrives with the widgets and renderer that consume it. The core never imports a map library or a widget framework - only the framework-agnostic signal primitive. See [UI core](ui-core.md).
 - A `MapRenderer` adapter (first: MapLibre GL + deck.gl) turns core intent (`renderTracks`, `setBasemap`, `fitBounds`...) into map-library calls, and advertises optional capabilities via `supports()` flags.
 
 Widgets are thin views over derived store state.
@@ -34,7 +34,7 @@ Widgets are thin views over derived store state.
 
 - `contract` imports no other workspace package.
 - `preprocess` never imports the UI or any map/render library.
-- `ui/src/core` never imports map libraries; only renderer adapters do.
+- `ui/src/core` never imports map libraries (only renderer adapters do) nor widget frameworks (only widgets do).
 
 ## Deciding log
 
