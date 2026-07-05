@@ -16,11 +16,11 @@ The pipeline is a staged flow over a **common intermediate model** (`RawFeature`
    collect paths                      collect errors                   -> atomic write
 ```
 
-- **scan** ([`scan.ts`](../../packages/preprocess/src/scan.ts)) walks the input directory, skips paths matching an `ignore` glob, dispatches each recognised file (`.gpx`, `.kml`) to its parser, and collects all features and errors. Unrecognised extensions are ignored silently. Source paths are recorded as POSIX paths relative to the input root, so a build is identical across machines.
-- **parse** ([`parse/gpx.ts`](../../packages/preprocess/src/parse/gpx.ts), [`parse/kml.ts`](../../packages/preprocess/src/parse/kml.ts)) translates one source format into `RawFeature`s. Parsers **translate, never filter** (see below).
-- **emit** ([`emit.ts`](../../packages/preprocess/src/emit.ts)) projects each `RawFeature` to a contract item, validates the whole trip, and writes the file — or fails loud, writing nothing.
+- **scan** (`scan.ts`) walks the input directory, skips paths matching an `ignore` glob, dispatches each recognised file (`.gpx`, `.kml`) to its parser, and collects all features and errors. Unrecognised extensions are ignored silently. Source paths are recorded as POSIX paths relative to the input root, so a build is identical across machines.
+- **parse** (`parse/gpx.ts`, `parse/kml.ts`) translates one source format into `RawFeature`s. Parsers **translate, never filter** (see below).
+- **emit** (`emit.ts`) projects each `RawFeature` to a contract item, validates the whole trip, and writes the file — or fails loud, writing nothing.
 
-Config resolution ([`config/`](../../packages/preprocess/src/config/)) runs alongside as a pure lookup; see the [configuration reference](../usage/configuration.md) for its additive-merge rules. The `build()` function ([`build.ts`](../../packages/preprocess/src/build.ts)) wires these together and returns an exit code; the CLI ([`cli.ts`](../../packages/preprocess/src/cli.ts)) is thin bin wiring around it.
+Config resolution (`config/`) runs alongside as a pure lookup; see the [configuration reference](../usage/configuration.md) for its additive-merge rules. The `build()` function (`build.ts`) wires these together and returns an exit code; the CLI (`cli.ts`) is thin bin wiring around it. All paths are under `packages/preprocess/src/`.
 
 > **Deferred stages.** A `compute` stage (day grouping, sun angle, bounds) was designed but **deferred wholesale** — those are derived values whose exact shape only the not-yet-built UI can specify, so building them now would be guessing. Each returns additively — one `compute/<x>.ts`, one field in emit, one schema field — when a UI consumer names it. See the design log, 2026-07-04.
 

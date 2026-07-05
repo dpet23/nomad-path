@@ -67,7 +67,7 @@ const boundaries = [
 
 export default tseslint.config(
     {
-        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results'],
+        ignores: ['node_modules', 'coverage', 'dist', 'playwright-report', 'test-results', 'site'],
     },
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,

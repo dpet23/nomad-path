@@ -1,6 +1,13 @@
 site_name: Nomad Path
 site_description: Visualise GPS trip recordings on interactive basemaps
 
+# Internal working docs (superpowers specs/plans for agentic workers) may land
+# under docs/ for proximity to the code; keep them out of the published build so
+# a stray plan file never fails `mkdocs build --strict`. (exclude_docs is
+# mkdocs-only - revisit when switching to zensical, once it reaches parity.)
+exclude_docs: |
+  superpowers/
+
 theme:
   name: material
 

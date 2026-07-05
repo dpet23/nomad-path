@@ -22,6 +22,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npm run test:e2e --workspace @nomadpath/e2e",
     "preprocess": "nomadpath-preprocess",
+    "build:docs": "uvx --with mkdocs-material==9.7.6 mkdocs build --strict",
+    "serve:docs": "uvx --with mkdocs-material==9.7.6 mkdocs serve",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage",
     "prepare": "husky"
   },
