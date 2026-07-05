@@ -15,6 +15,12 @@ export type {
     TripData,
     TripItem,
 } from './schema.ts';
-export { CONTRACT_VERSION, PER_POINT_ATTRIBUTE_NAMES, PER_POINT_ATTRIBUTES, tripDataSchema } from './schema.ts';
+export {
+    CONTRACT_VERSION,
+    PER_POINT_ATTRIBUTE_NAMES,
+    PER_POINT_ATTRIBUTES,
+    tripDataSchema,
+    tripItemSchema,
+} from './schema.ts';
 export type { ContractIssue } from './validate.ts';
 export { validateTripData } from './validate.ts';

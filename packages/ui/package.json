@@ -8,7 +8,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@nomadpath/contract": "*"
+    "@nomadpath/contract": "*",
+    "@preact/signals-core": "^1.14.3"
   },
   "devDependencies": {
     "vitest": "*"

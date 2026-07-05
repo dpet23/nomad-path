@@ -58,6 +58,10 @@ const boundaries = [
                             message:
                                 'ui core is map-agnostic; only renderer adapters (src/render) may import map libraries.',
                         },
+                        {
+                            group: ['preact', 'preact/*', 'lit', 'lit/*'],
+                            message: 'ui core is widget-framework-agnostic; only src/widgets may import preact or lit.',
+                        },
                     ],
                 },
             ],
