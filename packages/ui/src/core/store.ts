@@ -55,7 +55,11 @@ export interface TripStore {
     setSelectedAttribute(attr: ColourAttribute): void;
     /** Sets the active basemap id. */
     setActiveBasemap(id: string): void;
-    /** Sets or clears (`null`) the currently hovered item's index. */
+    /**
+     * Sets or clears (`null`) the currently hovered item's index. Out-of-range
+     * numeric indices are a safe no-op, matching the library's never-crash
+     * guarantee; `null` is always accepted.
+     */
     setHovered(index: number | null): void;
 }
 

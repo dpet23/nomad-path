@@ -76,7 +76,9 @@ describe('createTripStore', () => {
 
         it('resets hoveredItem to null on a valid payload, even if previously set', () => {
             const store = createTripStore();
+            store.load(buildTripData({ items: [buildTrackItem(), buildWaypointItem()] }));
             store.setHovered(1);
+            expect(store.hoveredItem.value).toBe(1);
 
             store.load(buildTripData());
 
