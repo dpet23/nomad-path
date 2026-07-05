@@ -1,5 +1,5 @@
 import { buildLineGeometry, buildTrackItem, buildTripData, buildWaypointItem } from '@nomadpath/contract';
-import { computed } from '@preact/signals-core';
+import { computed, effect } from '@preact/signals-core';
 import { describe, expect, it } from 'vitest';
 
 import { NO_DATA_COLOUR } from '../src/core/colour.ts';
@@ -372,6 +372,86 @@ describe('createTripStore', () => {
             expect(store.visibleDomain.value).toBe(before);
         });
 
+        it('goes from a value to undefined when the only data-carrying item is hidden', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            name: 'With data',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 200] })],
+                        }),
+                        buildTrackItem({
+                            name: 'No data',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: undefined })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+            expect(store.visibleDomain.value).toEqual([100, 200]);
+
+            store.setItemVisible(0, false);
+
+            expect(store.visibleDomain.value).toBeUndefined();
+        });
+
+        it('does not notify dependents on visibility toggles while the domain stays undefined', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            name: 'With data',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 200] })],
+                        }),
+                        buildTrackItem({
+                            name: 'No data',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: undefined })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+            store.setItemVisible(0, false);
+            expect(store.visibleDomain.value).toBeUndefined();
+            let notifications = 0;
+            let observed: readonly [number, number] | undefined;
+            const dispose = effect(() => {
+                observed = store.visibleDomain.value;
+                notifications += 1;
+            });
+            expect(notifications).toBe(1);
+
+            store.setItemVisible(1, false);
+            store.setItemVisible(1, true);
+
+            expect(observed).toBeUndefined();
+            expect(notifications).toBe(1);
+            dispose();
+        });
+
+        it('restores the domain to its concrete value when the hidden data-carrying item is shown again', () => {
+            const store = createTripStore();
+            store.load(
+                buildTripData({
+                    items: [
+                        buildTrackItem({
+                            name: 'With data',
+                            geometries: [buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: [100, 200] })],
+                        }),
+                    ],
+                }),
+            );
+            store.setSelectedAttribute('ele');
+            store.setItemVisible(0, false);
+            expect(store.visibleDomain.value).toBeUndefined();
+
+            store.setItemVisible(0, true);
+
+            expect(store.visibleDomain.value).toEqual([100, 200]);
+        });
+
         it('recomputes reactively when selectedAttribute changes', () => {
             const store = createTripStore();
             store.load(
@@ -469,6 +549,37 @@ describe('createTripStore', () => {
             store.setItemVisible(1, true);
 
             expect(Array.from(store.itemColours.value[0]?.[0] ?? [])).toEqual(Array.from(before ?? []));
+        });
+
+        it("keeps each transport mode's colour identity stable when the same items are loaded in a different order", () => {
+            const cyclingItem = buildTrackItem({
+                name: 'Cycling leg',
+                transportMode: 'Cycling',
+                geometries: [
+                    buildLineGeometry({ lon: [1, 2], lat: [1, 2], ele: undefined, speed: undefined, time: undefined }),
+                ],
+            });
+            const sailingItem = buildTrackItem({
+                name: 'Sailing leg',
+                transportMode: 'Sailing',
+                geometries: [
+                    buildLineGeometry({ lon: [3, 4], lat: [3, 4], ele: undefined, speed: undefined, time: undefined }),
+                ],
+            });
+            const store = createTripStore();
+            store.setSelectedAttribute('transportMode');
+
+            store.load(buildTripData({ items: [cyclingItem, sailingItem] }));
+            const firstBytes = (colours: Uint8ClampedArray | undefined): number[] =>
+                Array.from(colours?.subarray(0, 4) ?? []);
+            const cyclingBefore = firstBytes(store.itemColours.value[0]?.[0]);
+            const sailingBefore = firstBytes(store.itemColours.value[1]?.[0]);
+            expect(cyclingBefore).not.toEqual(sailingBefore);
+
+            store.load(buildTripData({ items: [sailingItem, cyclingItem] }));
+
+            expect(firstBytes(store.itemColours.value[1]?.[0])).toEqual(cyclingBefore);
+            expect(firstBytes(store.itemColours.value[0]?.[0])).toEqual(sailingBefore);
         });
 
         it('recomputes reactively after setSelectedAttribute', () => {

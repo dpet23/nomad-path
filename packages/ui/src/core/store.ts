@@ -85,6 +85,21 @@ export interface TripStore {
 }
 
 /**
+ * Reports whether two continuous colour domains are value-equal: two
+ * `undefined` domains (no data) count as equal, and two defined domains are
+ * equal when their min and max match. This is the `visibleDomain` computed's
+ * change guard, named and explicit so the `defined -> undefined -> defined`
+ * and `undefined -> undefined` transitions are deliberate behaviour rather
+ * than a side effect of an assignment.
+ */
+function domainsEqual(a: [number, number] | undefined, b: [number, number] | undefined): boolean {
+    if (a === undefined || b === undefined) {
+        return a === b;
+    }
+    return a[0] === b[0] && a[1] === b[1];
+}
+
+/**
  * Creates a fresh `TripStore` with its initial state: no data loaded, empty
  * visibility, `selectedAttribute` defaulted to `'transportMode'` (provisional
  * until a `day` attribute exists), `activeBasemap` defaulted to `''` (the
@@ -131,17 +146,14 @@ export function createTripStore(): TripStore {
     const visibleDomain = computed<[number, number] | undefined>(() => {
         const current = data.value;
         const attr = selectedAttribute.value;
-        if (!current?.ok || attr === 'transportMode') {
-            previousDomain = undefined;
-            return previousDomain;
-        }
-        const visibleItems = current.items.filter((_, index) => visibility.value[index] === true);
-        const nextDomain = continuousDomain(visibleItems, attr);
-        const sameAsBefore =
-            previousDomain?.[0] === nextDomain?.[0] &&
-            previousDomain?.[1] === nextDomain?.[1] &&
-            nextDomain !== undefined;
-        if (!sameAsBefore) {
+        const nextDomain =
+            !current?.ok || attr === 'transportMode'
+                ? undefined
+                : continuousDomain(
+                      current.items.filter((_, index) => visibility.value[index] === true),
+                      attr,
+                  );
+        if (!domainsEqual(previousDomain, nextDomain)) {
             previousDomain = nextDomain;
         }
         return previousDomain;
