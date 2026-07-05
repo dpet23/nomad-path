@@ -166,4 +166,4 @@ Named use case (user, 2026-07-05): `attr === 'transportMode'` string dispatch al
 - [x] `ui-core.md`: tiered decode table (tier / trigger / result), store surface, availability + colour mapping, the framework decision, what is deferred where (behaviour-described, no analysis indices).
 - [x] Design log: scope trim + deferral rationale; framework/primitive decision; provisional default attribute.
 - [x] `npm run check` + `npm run build:docs` + `npm run test:e2e` green; checkboxes ticked.
-- [ ] Merge `epic/ui-core` -> master `--no-ff`.
+- [x] Merge `epic/ui-core` -> master `--no-ff`.
