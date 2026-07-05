@@ -61,7 +61,7 @@ const geometrySchema = z.discriminatedUnion('type', [lineGeometrySchema, pointGe
  * A raw trip item: one named or unnamed geometry group carried through from
  * source data, with no UI-shaped identity, ordering, or panel assignment.
  */
-const itemSchema = z.strictObject({
+export const tripItemSchema = z.strictObject({
     name: z.string().min(1).optional(),
     /** Popup text shown on hover/tap. */
     description: z.string().optional(),
@@ -75,11 +75,11 @@ const itemSchema = z.strictObject({
 export const tripDataSchema = z.strictObject({
     version: z.literal(CONTRACT_VERSION),
     name: z.string().optional(),
-    items: z.array(itemSchema),
+    items: z.array(tripItemSchema),
 });
 
 export type TripData = z.infer<typeof tripDataSchema>;
-export type TripItem = z.infer<typeof itemSchema>;
+export type TripItem = z.infer<typeof tripItemSchema>;
 export type Geometry = z.infer<typeof geometrySchema>;
 export type LineGeometry = z.infer<typeof lineGeometrySchema>;
 export type PointGeometry = z.infer<typeof pointGeometrySchema>;
