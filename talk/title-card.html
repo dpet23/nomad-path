@@ -66,6 +66,17 @@
   }
   @keyframes shimmer { from { opacity: .75; } to { opacity: 1; } }
 
+  /* Soft poster vignette: darkens the ground behind the title block to lift text contrast.
+     Sits below the tracks canvas, so the routes stay vibrant while the gradient behind the
+     text is dimmed. */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(72% 55% at 50% 50%, rgba(16,12,34,.40), rgba(16,12,34,0) 75%);
+  }
+
   /* The map: GPS tracks tracing themselves on */
   #tracks {
     position: fixed;
@@ -173,7 +184,7 @@
     color: var(--cream);
     max-width: 22ch;
     line-height: 1.25;
-    text-shadow: 0 1px 14px rgba(20,10,40,.5);
+    text-shadow: 0 0 2px rgba(16,12,34,.85), 0 1px 3px rgba(16,12,34,.8), 0 2px 20px rgba(16,12,34,.5);
     text-wrap: balance;
   }
 
@@ -206,6 +217,7 @@
 </head>
 <body>
   <div class="rays"></div>
+  <div class="scrim"></div>
   <canvas id="tracks"></canvas>
 
   <div class="frame">
@@ -384,6 +396,21 @@
     ctx.restore();
   }
 
+  // dark underlay so a coloured line separates from the bright background (projector legibility)
+  function strokeUnder(pts, count, w) {
+    if (count < 2) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(16,12,34,0.5)';
+    ctx.lineWidth = (w + 1.7) * unit;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < count; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function pin(p, color) {
     ctx.save();
     ctx.shadowColor = color; ctx.shadowBlur = 12 * unit;
@@ -399,6 +426,7 @@
     tracks.forEach((tr, i) => {
       const local = Math.max(0, Math.min(1, (p * 1.25) - i * 0.06));
       const n = Math.floor(local * tr.pts.length);
+      strokeUnder(tr.pts, n, tr.w);
       strokePartial(tr.pts, n, tr.color, tr.w, false);
       if (local >= 1) { pin(tr.pts[0], tr.color); pin(tr.pts[tr.pts.length-1], tr.color); }
     });
