@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nomad Path — Turning GPS Recordings into Travel Stories</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🧭</text></svg>">
+<style>
+  :root {
+    /* Sunset travel-poster palette — cream is INK on a saturated ground, not the paper */
+    --night:  #14122c;
+    --indigo: #2c1b4e;
+    --plum:   #6d2a64;
+    --rose:   #c23c69;
+    --coral:  #ee6c4d;
+    --amber:  #f4a93b;
+    --gold:   #f4c96b;
+    --sun:    #ffd98a;
+    --cream:  #fbeeda;
+    --teal:   #37c2b6;
+    --ink:    #1a1330;
+
+    --font-display: "Futura", "Century Gothic", "Avenir Next", ui-rounded,
+                    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+                  "Times New Roman", serif;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 70% at 50% 118%, rgba(255,217,138,.55) 0%, rgba(255,217,138,0) 45%),
+      linear-gradient(180deg,
+        var(--night)  0%,
+        var(--indigo) 24%,
+        var(--plum)   47%,
+        var(--rose)   66%,
+        var(--coral)  80%,
+        var(--amber)  92%,
+        var(--gold)  100%);
+    color: var(--cream);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Soft deco sun-rays fanning up from the horizon, behind everything */
+  .rays {
+    position: fixed;
+    left: 50%; bottom: -8vmin;
+    width: 160vmax; height: 160vmax;
+    transform: translateX(-50%);
+    background: repeating-conic-gradient(from 90deg at 50% 100%,
+      rgba(255,224,168,.10) 0deg 4deg, rgba(255,224,168,0) 4deg 12deg);
+    -webkit-mask-image: radial-gradient(60% 60% at 50% 100%, #000 0%, transparent 72%);
+            mask-image: radial-gradient(60% 60% at 50% 100%, #000 0%, transparent 72%);
+    pointer-events: none;
+    z-index: 0;
+    animation: shimmer 14s ease-in-out infinite alternate;
+  }
+  @keyframes shimmer { from { opacity: .75; } to { opacity: 1; } }
+
+  /* The map: GPS tracks tracing themselves on */
+  #tracks {
+    position: fixed;
+    inset: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Double-rule poster frame */
+  .frame {
+    position: fixed;
+    inset: clamp(14px, 2.4vmin, 30px);
+    border: 1.5px solid rgba(251,238,218,.85);
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeIn 1s ease .1s forwards;
+  }
+  .frame::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(251,238,218,.4);
+  }
+  .frame span {
+    position: absolute;
+    color: var(--cream);
+    font-size: clamp(.7rem, 1.6vmin, 1rem);
+    opacity: .8;
+  }
+  .frame .tl { top: 10px; left: 12px; }
+  .frame .tr { top: 10px; right: 12px; }
+  .frame .bl { bottom: 8px; left: 12px; }
+  .frame .br { bottom: 8px; right: 12px; }
+
+  /* Content column */
+  .content {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8vmin 6vw;
+    gap: clamp(.7rem, 1.8vmin, 1.4rem);
+  }
+
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: .46em;
+    text-indent: .46em;
+    font-size: clamp(.68rem, 1.7vw, 1.02rem);
+    color: var(--gold);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 1.1em;
+  }
+  .eyebrow::before, .eyebrow::after {
+    content: "";
+    width: clamp(24px, 6vw, 74px);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold));
+  }
+  .eyebrow::after { background: linear-gradient(90deg, var(--gold), transparent); }
+
+  .title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    text-indent: .1em;
+    line-height: .92;
+    font-size: clamp(3rem, 12.5vw, 10rem);
+    margin: 0;
+    color: var(--cream);
+    text-shadow: 0 2px 30px rgba(20,10,40,.45), 0 1px 2px rgba(20,10,40,.5);
+    text-wrap: balance;
+  }
+  .title .amp { color: var(--sun); }
+
+  .rule {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    color: var(--sun);
+    font-size: clamp(1rem, 2.6vw, 1.7rem);
+  }
+  .rule::before, .rule::after {
+    content: "";
+    width: clamp(40px, 12vw, 150px);
+    height: 1px;
+    background: currentColor;
+    opacity: .7;
+  }
+
+  .subtitle {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(1.15rem, 3.4vw, 2.35rem);
+    color: var(--cream);
+    max-width: 22ch;
+    line-height: 1.25;
+    text-shadow: 0 1px 14px rgba(20,10,40,.4);
+    text-wrap: balance;
+  }
+
+  .destinations {
+    margin-top: clamp(1rem, 3vmin, 2.2rem);
+    font-family: var(--font-sans);
+    font-weight: 700;
+    letter-spacing: .3em;
+    text-indent: .3em;
+    font-size: clamp(.6rem, 1.55vw, .98rem);
+    color: var(--ink);
+    text-transform: uppercase;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .2em .9em;
+  }
+  .destinations .star { color: var(--ink); opacity: .55; }
+
+  .byline {
+    position: fixed;
+    right: clamp(26px, 4vmin, 46px);
+    bottom: clamp(22px, 3.4vmin, 40px);
+    z-index: 3;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(.72rem, 1.5vw, 1rem);
+    color: var(--ink);
+    opacity: .85;
+  }
+
+  /* Entrance choreography */
+  .reveal { opacity: 0; animation: riseIn .9s cubic-bezier(.2,.7,.2,1) forwards; }
+  .d1 { animation-delay: .25s; }
+  .d2 { animation-delay: .5s; }
+  .d3 { animation-delay: .8s; }
+  .d4 { animation-delay: 2.3s; }
+  .d5 { animation-delay: 2.6s; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .frame { animation: none; opacity: 1; }
+    .rays { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="rays"></div>
+  <canvas id="tracks"></canvas>
+
+  <div class="frame">
+    <span class="tl">✦</span><span class="tr">✦</span>
+    <span class="bl">✦</span><span class="br">✦</span>
+  </div>
+
+  <main class="content">
+    <div class="eyebrow reveal d1">A Lightning Talk</div>
+    <h1 class="title reveal d2">Nomad&nbsp;Path</h1>
+    <div class="rule reveal d3">✶</div>
+    <p class="subtitle reveal d3">Turning GPS recordings into travel stories</p>
+    <div class="destinations reveal d4">
+      <span>Europe</span><span class="star">✦</span>
+      <span>New&nbsp;Zealand</span><span class="star">✦</span>
+      <span>Vanuatu</span><span class="star">✦</span>
+      <span>Fiji</span><span class="star">✦</span>
+      <span>Hawaii</span>
+    </div>
+  </main>
+
+  <div class="byline reveal d5">Daniel Petrescu</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('tracks');
+  const ctx = canvas.getContext('2d');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Deterministic RNG so the poster looks identical every run (good for a talk).
+  const mulberry32 = (a) => () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+
+  const TRACK_COLORS = ['#fbeeda', '#37c2b6', '#f4c96b', '#f3a9bf'];
+  let W = 0, H = 0, dpr = 1, tracks = [], flight = null, unit = 1;
+
+  // A wandering GPS-like ground track: random walk with momentum, gently bounded.
+  function makeTrack(rng, x0, y0, steps, drift) {
+    const pts = [];
+    let x = x0, y = y0, ang = drift + (rng() - .5) * 1.2, speed = (0.9 + rng() * 0.5);
+    for (let i = 0; i < steps; i++) {
+      pts.push([x, y]);
+      ang += (rng() - .5) * 0.9;
+      const step = unit * speed * (2.4 + rng() * 2.0);
+      x += Math.cos(ang) * step;
+      y += Math.sin(ang) * step * 0.7;
+      // keep it on stage
+      if (x < W * 0.06 || x > W * 0.94) ang = Math.PI - ang;
+      if (y < H * 0.42 || y > H * 0.82) ang = -ang;
+      x = Math.max(W * 0.05, Math.min(W * 0.95, x));
+      y = Math.max(H * 0.40, Math.min(H * 0.84, y));
+    }
+    return pts;
+  }
+
+  // A smooth flight arc bowing up across the sky (nods to the FlightAware data).
+  function makeFlight() {
+    const pts = [];
+    const ax = W * 0.14, ay = H * 0.68, bx = W * 0.86, by = H * 0.44;
+    const cx = W * 0.5, cy = H * 0.24; // control point => upward bow
+    for (let t = 0; t <= 1.0001; t += 0.02) {
+      const mt = 1 - t;
+      const x = mt*mt*ax + 2*mt*t*cx + t*t*bx;
+      const y = mt*mt*ay + 2*mt*t*cy + t*t*by;
+      pts.push([x, y]);
+    }
+    return pts;
+  }
+
+  function build() {
+    const rng = mulberry32(20260710);
+    unit = Math.hypot(W, H) / 900;
+    tracks = [
+      { pts: makeTrack(rng, W*0.16, H*0.70, 46, 0.1),  color: TRACK_COLORS[0], w: 2.4 },
+      { pts: makeTrack(rng, W*0.74, H*0.60, 42, Math.PI*0.9), color: TRACK_COLORS[1], w: 2.4 },
+      { pts: makeTrack(rng, W*0.44, H*0.78, 40, -0.4), color: TRACK_COLORS[2], w: 2.2 },
+      { pts: makeTrack(rng, W*0.58, H*0.52, 34, Math.PI), color: TRACK_COLORS[3], w: 2.0 },
+    ];
+    flight = { pts: makeFlight(), color: '#fbeeda', w: 1.6 };
+  }
+
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    build();
+    if (reduced) draw(1);
+  }
+
+  function strokePartial(pts, count, color, w, dashed) {
+    if (count < 2) return;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w * unit;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 14 * unit;
+    if (dashed) ctx.setLineDash([2 * unit, 7 * unit]);
+    ctx.globalAlpha = dashed ? 0.75 : 0.92;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < count; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function pin(p, color) {
+    ctx.save();
+    ctx.shadowColor = color; ctx.shadowBlur = 12 * unit;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(p[0], p[1], 3.4 * unit, 0, 7); ctx.fill();
+    ctx.globalAlpha = .5; ctx.lineWidth = 1.4 * unit; ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.arc(p[0], p[1], 7 * unit, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw(p) {
+    ctx.clearRect(0, 0, W, H);
+    // ground tracks draw first (slightly staggered), flight arc last
+    tracks.forEach((tr, i) => {
+      const local = Math.max(0, Math.min(1, (p * 1.25) - i * 0.06));
+      const n = Math.floor(local * tr.pts.length);
+      strokePartial(tr.pts, n, tr.color, tr.w, false);
+      if (local >= 1) { pin(tr.pts[0], tr.color); pin(tr.pts[tr.pts.length-1], tr.color); }
+    });
+    const fp = Math.max(0, Math.min(1, (p - 0.15) / 0.85));
+    const fn = Math.floor(fp * flight.pts.length);
+    strokePartial(flight.pts, fn, flight.color, flight.w, true);
+    if (fp >= 1) { pin(flight.pts[0], '#ffd98a'); pin(flight.pts[flight.pts.length-1], '#ffd98a'); }
+  }
+
+  let start = null;
+  const DURATION = 2400;
+  function frame(ts) {
+    if (start === null) start = ts;
+    const p = Math.min(1, (ts - start) / DURATION);
+    const eased = 1 - Math.pow(1 - p, 3);
+    draw(eased);
+    if (p < 1) requestAnimationFrame(frame);
+  }
+
+  addEventListener('resize', () => { resize(); if (!reduced) { start = null; requestAnimationFrame(frame); } });
+  resize();
+  if (!reduced) requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
