@@ -177,22 +177,6 @@
     text-wrap: balance;
   }
 
-  .destinations {
-    margin-top: clamp(1rem, 3vmin, 2.2rem);
-    font-family: var(--font-sans);
-    font-weight: 700;
-    letter-spacing: .3em;
-    text-indent: .3em;
-    font-size: clamp(.6rem, 1.55vw, .98rem);
-    color: var(--ink);
-    text-transform: uppercase;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: .2em .9em;
-  }
-  .destinations .star { color: var(--ink); opacity: .55; }
-
   .byline {
     position: fixed;
     right: clamp(26px, 4vmin, 46px);
@@ -210,7 +194,6 @@
   .d1 { animation-delay: .25s; }
   .d2 { animation-delay: .5s; }
   .d3 { animation-delay: .8s; }
-  .d4 { animation-delay: 2.3s; }
   .d5 { animation-delay: 2.6s; }
   @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
   @keyframes fadeIn { to { opacity: 1; } }
@@ -235,13 +218,6 @@
     <h1 class="title reveal d2">Nomad&nbsp;Path</h1>
     <div class="rule reveal d3">✶</div>
     <p class="subtitle reveal d3">Turning GPS recordings into travel stories</p>
-    <div class="destinations reveal d4">
-      <span>Europe</span><span class="star">✦</span>
-      <span>New&nbsp;Zealand</span><span class="star">✦</span>
-      <span>Vanuatu</span><span class="star">✦</span>
-      <span>Fiji</span><span class="star">✦</span>
-      <span>Hawaii</span>
-    </div>
   </main>
 
   <div class="byline reveal d5">Daniel Petrescu</div>
@@ -260,7 +236,7 @@
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 
-  const TRACK_COLORS = ['#fbeeda', '#37c2b6', '#f4c96b', '#f3a9bf'];
+  const TRACK_COLORS = ['#fbeeda', '#37c2b6', '#ffe28a', '#a8346a'];
   let W = 0, H = 0, dpr = 1, tracks = [], flight = null, unit = 1;
 
   // --- track-shape generators: each reads like a real kind of GPS movement ---
@@ -334,39 +310,51 @@
     return out;
   }
 
+  // bottom edge of the tagline in viewport px — tracks stay strictly below this
+  function taglineBottom() {
+    const el = document.querySelector('.subtitle');
+    if (!el) return H * 0.6;
+    const b = el.getBoundingClientRect().bottom;
+    return (b > 0 && b < H) ? b : H * 0.6;
+  }
+
   function build() {
     const rng = mulberry32(20260710);
     unit = Math.min(W, H) / 560;   // scale off the shorter side so ultrawide doesn't inflate vertical wander
-    const P = (fx, fy) => [W*fx, H*fy];
+
+    // Confine every track to a band BELOW the tagline so nothing crosses the text.
+    const inset = Math.min(30, Math.max(14, 0.024 * Math.min(W, H)));   // matches the CSS frame inset
+    const pad = inset + 6 + 22 * unit;                                  // inner rule + glow/pin allowance
+    const bandTop = Math.min(H * 0.72, taglineBottom() + Math.max(26, 0.045 * H));
+    const bandBottom = H - pad;
+    const bandH = Math.max(40, bandBottom - bandTop);
+    const P = (fx, fy) => [W * fx, bandTop + fy * bandH];   // fy in [0,1] within the track band
+
     tracks = [
       // road trip — straight legs, sharp turns
-      { pts: makeRoad(rng, [P(.09,.70),P(.18,.63),P(.22,.75),P(.33,.68),P(.38,.78),P(.46,.66)], 9, 5*unit),
+      { pts: makeRoad(rng, [P(.10,.55),P(.19,.42),P(.24,.64),P(.34,.48),P(.40,.68),P(.47,.5)], 9, 5*unit),
         color: TRACK_COLORS[0], w: 2.4 },
       // coastal drive — long smooth curve
-      { pts: bez(P(.55,.60), P(.74,.86), P(.93,.66), 60),
+      { pts: bez(P(.54,.5), P(.74,1.0), P(.93,.62), 60),
         color: TRACK_COLORS[1], w: 2.3 },
       // hike — switchbacks climbing
-      { pts: makeHike(rng, P(.63,.82), P(.70,.58), 6, 30*unit),
+      { pts: makeHike(rng, P(.66,.92), P(.72,.42), 6, 24*unit),
         color: TRACK_COLORS[2], w: 2.1 },
       // town exploration — dense wander
-      { pts: makeCluster(rng, P(.30,.82), 58, 44*unit),
+      { pts: makeCluster(rng, P(.28,.84), 54, 34*unit),
         color: TRACK_COLORS[3], w: 1.9 },
     ];
-    // flight arc bowing across the sky (nods to the FlightAware data)
-    flight = { pts: bez(P(.14,.66), P(.5,.20), P(.87,.45), 50), color: '#fbeeda', w: 1.6 };
+    // flight arc across the top of the band (nods to the FlightAware data)
+    flight = { pts: bez(P(.12,.34), P(.5,.02), P(.88,.28), 50), color: '#fbeeda', w: 1.6 };
 
-    // keep tracks (plus their glow + pins) safely inside the poster frame on any aspect ratio
-    const inset = Math.min(30, Math.max(14, 0.024 * Math.min(W, H)));   // matches the CSS frame inset
-    const pad = inset + 6 + 22 * unit;                                  // + inner rule + glow/pin allowance
-    const xMin = pad, xMax = W - pad, yMax = H - pad;
-    tracks.forEach((tr) => tr.pts.forEach((p) => {
+    // hard-clamp everything inside the band + frame, on any aspect ratio
+    const xMin = pad, xMax = W - pad;
+    const clamp = (p) => {
       p[0] = Math.max(xMin, Math.min(xMax, p[0]));
-      p[1] = Math.max(H * 0.46, Math.min(yMax, p[1]));   // below the title, above the bottom frame
-    }));
-    flight.pts.forEach((p) => {                            // the flight may soar high, just not past a frame edge
-      p[0] = Math.max(xMin, Math.min(xMax, p[0]));
-      p[1] = Math.max(pad, Math.min(yMax, p[1]));
-    });
+      p[1] = Math.max(bandTop, Math.min(bandBottom, p[1]));
+    };
+    tracks.forEach((tr) => tr.pts.forEach(clamp));
+    flight.pts.forEach(clamp);
   }
 
   function resize() {
