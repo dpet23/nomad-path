@@ -47,6 +47,7 @@
     font-family: var(--font-sans);
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
+    cursor: default;
   }
 
   /* Soft deco sun-rays fanning up from the horizon, behind everything */
@@ -148,7 +149,6 @@
     text-shadow: 0 2px 30px rgba(20,10,40,.45), 0 1px 2px rgba(20,10,40,.5);
     text-wrap: balance;
   }
-  .title .amp { color: var(--sun); }
 
   .rule {
     display: flex;
@@ -173,7 +173,7 @@
     color: var(--cream);
     max-width: 22ch;
     line-height: 1.25;
-    text-shadow: 0 1px 14px rgba(20,10,40,.4);
+    text-shadow: 0 1px 14px rgba(20,10,40,.5);
     text-wrap: balance;
   }
 
@@ -263,49 +263,110 @@
   const TRACK_COLORS = ['#fbeeda', '#37c2b6', '#f4c96b', '#f3a9bf'];
   let W = 0, H = 0, dpr = 1, tracks = [], flight = null, unit = 1;
 
-  // A wandering GPS-like ground track: random walk with momentum, gently bounded.
-  function makeTrack(rng, x0, y0, steps, drift) {
+  // --- track-shape generators: each reads like a real kind of GPS movement ---
+
+  // straight-ish leg between two waypoints, with slight cross-track GPS jitter
+  function leg(a, b, n, amp, rng, out) {
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + Math.PI / 2;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const j = (rng() - 0.5) * amp;
+      out.push([a[0] + (b[0]-a[0])*t + Math.cos(ang)*j,
+                a[1] + (b[1]-a[1])*t + Math.sin(ang)*j]);
+    }
+  }
+
+  // road trip: legs between waypoints with sharp turns at each
+  function makeRoad(rng, wps, per, amp) {
+    const out = [];
+    for (let i = 0; i < wps.length - 1; i++) leg(wps[i], wps[i+1], per, amp, rng, out);
+    return out;
+  }
+
+  // smooth quadratic curve (coastal drive / flight arc)
+  function bez(a, c, b, steps) {
     const pts = [];
-    let x = x0, y = y0, ang = drift + (rng() - .5) * 1.2, speed = (0.9 + rng() * 0.5);
-    for (let i = 0; i < steps; i++) {
-      pts.push([x, y]);
-      ang += (rng() - .5) * 0.9;
-      const step = unit * speed * (2.4 + rng() * 2.0);
-      x += Math.cos(ang) * step;
-      y += Math.sin(ang) * step * 0.7;
-      // keep it on stage
-      if (x < W * 0.06 || x > W * 0.94) ang = Math.PI - ang;
-      if (y < H * 0.42 || y > H * 0.82) ang = -ang;
-      x = Math.max(W * 0.05, Math.min(W * 0.95, x));
-      y = Math.max(H * 0.40, Math.min(H * 0.84, y));
+    for (let i = 0; i <= steps; i++) {
+      const t = i/steps, mt = 1 - t;
+      pts.push([mt*mt*a[0] + 2*mt*t*c[0] + t*t*b[0],
+                mt*mt*a[1] + 2*mt*t*c[1] + t*t*b[1]]);
     }
     return pts;
   }
 
-  // A smooth flight arc bowing up across the sky (nods to the FlightAware data).
-  function makeFlight() {
-    const pts = [];
-    const ax = W * 0.14, ay = H * 0.68, bx = W * 0.86, by = H * 0.44;
-    const cx = W * 0.5, cy = H * 0.24; // control point => upward bow
-    for (let t = 0; t <= 1.0001; t += 0.02) {
-      const mt = 1 - t;
-      const x = mt*mt*ax + 2*mt*t*cx + t*t*bx;
-      const y = mt*mt*ay + 2*mt*t*cy + t*t*by;
+  // hiking switchbacks climbing from start to end
+  function makeHike(rng, start, end, switches, width) {
+    const dx = end[0]-start[0], dy = end[1]-start[1];
+    let px = -dy, py = dx; const pl = Math.hypot(px, py) || 1; px /= pl; py /= pl;
+    const verts = [], segs = switches * 2;
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const taper = 1 - Math.abs(t - 0.5) * 1.2;           // narrow near ends
+      const side = (i % 2 ? 1 : -1) * width * (0.55 + rng()*0.45) * Math.max(0.15, taper);
+      verts.push([start[0] + dx*t + px*side, start[1] + dy*t + py*side]);
+    }
+    return densify(verts, 3, 2.4 * unit, rng);
+  }
+
+  // town exploration: dense wander held near a centre
+  function makeCluster(rng, c, steps, radius) {
+    const pts = []; let ang = rng()*6.28, x = c[0], y = c[1];
+    for (let i = 0; i < steps; i++) {
       pts.push([x, y]);
+      ang += (rng() - 0.5) * 1.5;
+      const step = radius * (0.12 + rng()*0.16);
+      x += Math.cos(ang)*step + (c[0]-x)*0.06;
+      y += Math.sin(ang)*step + (c[1]-y)*0.06;
     }
     return pts;
+  }
+
+  function densify(pts, per, amp, rng) {
+    const out = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      for (let k = 0; k < per; k++) {
+        const t = k / per;
+        out.push([pts[i][0] + (pts[i+1][0]-pts[i][0])*t + (rng()-0.5)*amp,
+                  pts[i][1] + (pts[i+1][1]-pts[i][1])*t + (rng()-0.5)*amp]);
+      }
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
   }
 
   function build() {
     const rng = mulberry32(20260710);
-    unit = Math.hypot(W, H) / 900;
+    unit = Math.min(W, H) / 560;   // scale off the shorter side so ultrawide doesn't inflate vertical wander
+    const P = (fx, fy) => [W*fx, H*fy];
     tracks = [
-      { pts: makeTrack(rng, W*0.16, H*0.70, 46, 0.1),  color: TRACK_COLORS[0], w: 2.4 },
-      { pts: makeTrack(rng, W*0.74, H*0.60, 42, Math.PI*0.9), color: TRACK_COLORS[1], w: 2.4 },
-      { pts: makeTrack(rng, W*0.44, H*0.78, 40, -0.4), color: TRACK_COLORS[2], w: 2.2 },
-      { pts: makeTrack(rng, W*0.58, H*0.52, 34, Math.PI), color: TRACK_COLORS[3], w: 2.0 },
+      // road trip — straight legs, sharp turns
+      { pts: makeRoad(rng, [P(.09,.70),P(.18,.63),P(.22,.75),P(.33,.68),P(.38,.78),P(.46,.66)], 9, 5*unit),
+        color: TRACK_COLORS[0], w: 2.4 },
+      // coastal drive — long smooth curve
+      { pts: bez(P(.55,.60), P(.74,.86), P(.93,.66), 60),
+        color: TRACK_COLORS[1], w: 2.3 },
+      // hike — switchbacks climbing
+      { pts: makeHike(rng, P(.63,.82), P(.70,.58), 6, 30*unit),
+        color: TRACK_COLORS[2], w: 2.1 },
+      // town exploration — dense wander
+      { pts: makeCluster(rng, P(.30,.82), 58, 44*unit),
+        color: TRACK_COLORS[3], w: 1.9 },
     ];
-    flight = { pts: makeFlight(), color: '#fbeeda', w: 1.6 };
+    // flight arc bowing across the sky (nods to the FlightAware data)
+    flight = { pts: bez(P(.14,.66), P(.5,.20), P(.87,.45), 50), color: '#fbeeda', w: 1.6 };
+
+    // keep tracks (plus their glow + pins) safely inside the poster frame on any aspect ratio
+    const inset = Math.min(30, Math.max(14, 0.024 * Math.min(W, H)));   // matches the CSS frame inset
+    const pad = inset + 6 + 22 * unit;                                  // + inner rule + glow/pin allowance
+    const xMin = pad, xMax = W - pad, yMax = H - pad;
+    tracks.forEach((tr) => tr.pts.forEach((p) => {
+      p[0] = Math.max(xMin, Math.min(xMax, p[0]));
+      p[1] = Math.max(H * 0.46, Math.min(yMax, p[1]));   // below the title, above the bottom frame
+    }));
+    flight.pts.forEach((p) => {                            // the flight may soar high, just not past a frame edge
+      p[0] = Math.max(xMin, Math.min(xMax, p[0]));
+      p[1] = Math.max(pad, Math.min(yMax, p[1]));
+    });
   }
 
   function resize() {
@@ -315,7 +376,6 @@
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     build();
-    if (reduced) draw(1);
   }
 
   function strokePartial(pts, count, color, w, dashed) {
@@ -348,7 +408,6 @@
 
   function draw(p) {
     ctx.clearRect(0, 0, W, H);
-    // ground tracks draw first (slightly staggered), flight arc last
     tracks.forEach((tr, i) => {
       const local = Math.max(0, Math.min(1, (p * 1.25) - i * 0.06));
       const n = Math.floor(local * tr.pts.length);
@@ -361,19 +420,36 @@
     if (fp >= 1) { pin(flight.pts[0], '#ffd98a'); pin(flight.pts[flight.pts.length-1], '#ffd98a'); }
   }
 
-  let start = null;
+  // --- playback: replay on demand so it's fresh at talk time ---
+  let start = null, running = false;
   const DURATION = 2400;
+
   function frame(ts) {
     if (start === null) start = ts;
     const p = Math.min(1, (ts - start) / DURATION);
-    const eased = 1 - Math.pow(1 - p, 3);
-    draw(eased);
+    draw(1 - Math.pow(1 - p, 3));
     if (p < 1) requestAnimationFrame(frame);
+    else running = false;
   }
 
-  addEventListener('resize', () => { resize(); if (!reduced) { start = null; requestAnimationFrame(frame); } });
+  function play() {
+    if (reduced) { draw(1); return; }
+    start = null;
+    if (!running) { running = true; requestAnimationFrame(frame); }
+  }
+
+  addEventListener('resize', () => { resize(); play(); });
+  addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter' || e.key.toLowerCase() === 'r') { e.preventDefault(); play(); }
+  });
+  addEventListener('click', play);
+  addEventListener('focus', play);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') play();
+  });
+
   resize();
-  if (!reduced) requestAnimationFrame(frame);
+  play();
 })();
 </script>
 </body>
