@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thank you — Nomad Path</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🧭</text></svg>">
+<style>
+  :root {
+    --night:  #14122c;
+    --indigo: #2c1b4e;
+    --plum:   #6d2a64;
+    --rose:   #c23c69;
+    --coral:  #ee6c4d;
+    --amber:  #f4a93b;
+    --gold:   #f4c96b;
+    --sun:    #ffd98a;
+    --cream:  #fbeeda;
+    --teal:   #37c2b6;
+    --ink:    #1a1330;
+
+    --font-display: "Futura", "Century Gothic", "Avenir Next", ui-rounded,
+                    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+                  "Times New Roman", serif;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "SF Mono", "JetBrains Mono", "Fira Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 70% at 50% 118%, rgba(255,217,138,.55) 0%, rgba(255,217,138,0) 45%),
+      linear-gradient(180deg,
+        var(--night)  0%,
+        var(--indigo) 24%,
+        var(--plum)   47%,
+        var(--rose)   66%,
+        var(--coral)  80%,
+        var(--amber)  92%,
+        var(--gold)  100%);
+    color: var(--cream);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    cursor: default;
+  }
+
+  .rays {
+    position: fixed;
+    left: 50%; bottom: -8vmin;
+    width: 160vmax; height: 160vmax;
+    transform: translateX(-50%);
+    background: repeating-conic-gradient(from 90deg at 50% 100%,
+      rgba(255,224,168,.10) 0deg 4deg, rgba(255,224,168,0) 4deg 12deg);
+    -webkit-mask-image: radial-gradient(60% 60% at 50% 100%, #000 0%, transparent 72%);
+            mask-image: radial-gradient(60% 60% at 50% 100%, #000 0%, transparent 72%);
+    pointer-events: none;
+    z-index: 0;
+    animation: shimmer 14s ease-in-out infinite alternate;
+  }
+  @keyframes shimmer { from { opacity: .75; } to { opacity: 1; } }
+
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(72% 55% at 50% 50%, rgba(16,12,34,.40), rgba(16,12,34,0) 75%);
+  }
+
+  #tracks {
+    position: fixed;
+    inset: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .frame {
+    position: fixed;
+    inset: clamp(14px, 2.4vmin, 30px);
+    border: 1.5px solid rgba(251,238,218,.85);
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeIn 1s ease .1s forwards;
+  }
+  .frame::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(251,238,218,.4);
+  }
+  .frame span {
+    position: absolute;
+    color: var(--cream);
+    font-size: clamp(.7rem, 1.6vmin, 1rem);
+    opacity: .8;
+  }
+  .frame .tl { top: 10px; left: 12px; }
+  .frame .tr { top: 10px; right: 12px; }
+  .frame .bl { bottom: 8px; left: 12px; }
+  .frame .br { bottom: 8px; right: 12px; }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8vmin 6vw;
+    gap: clamp(.7rem, 1.8vmin, 1.4rem);
+  }
+
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: .46em;
+    text-indent: .46em;
+    font-size: clamp(.68rem, 1.7vw, 1.02rem);
+    color: var(--gold);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 1.1em;
+  }
+  .eyebrow::before, .eyebrow::after {
+    content: "";
+    width: clamp(24px, 6vw, 74px);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold));
+  }
+  .eyebrow::after { background: linear-gradient(90deg, var(--gold), transparent); }
+
+  .title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: none;          /* a warm sign-off, not a shouted wordmark */
+    letter-spacing: .03em;
+    line-height: .95;
+    font-size: clamp(2.6rem, 10vw, 8rem);
+    margin: 0;
+    color: var(--cream);
+    text-shadow: 0 2px 30px rgba(20,10,40,.45), 0 1px 2px rgba(20,10,40,.5);
+    text-wrap: balance;
+  }
+
+  .rule {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    color: var(--sun);
+    font-size: clamp(1rem, 2.6vw, 1.7rem);
+  }
+  .rule::before, .rule::after {
+    content: "";
+    width: clamp(40px, 12vw, 150px);
+    height: 1px;
+    background: currentColor;
+    opacity: .7;
+  }
+
+  .linkwrap {
+    margin-top: clamp(.5rem, 1.6vmin, 1.1rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(.4rem, 1.2vmin, .8rem);
+  }
+  .link-label {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    letter-spacing: .34em;
+    text-indent: .34em;
+    font-size: clamp(.56rem, 1.35vw, .82rem);
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .link {
+    display: inline-flex;
+    align-items: center;
+    gap: .5em;
+    font-family: var(--font-mono);
+    font-size: clamp(.95rem, 2.5vw, 1.55rem);
+    letter-spacing: .01em;
+    color: var(--cream);
+    text-shadow: 0 0 2px rgba(16,12,34,.9), 0 1px 3px rgba(16,12,34,.8);
+    border-bottom: 2px solid rgba(255,217,138,.75);
+    padding-bottom: .14em;
+  }
+  .link .mark { display: inline-flex; }
+  .link .mark svg {
+    width: 1.12em; height: 1.12em; display: block;
+    fill: var(--sun);
+    filter: drop-shadow(0 1px 2px rgba(16,12,34,.7));
+  }
+
+  /* QR sits on its own light card so it always has the contrast a scanner needs */
+  .qr {
+    background: #fbf3e6;
+    padding: clamp(14px, 2.2vmin, 22px);   /* the light padding IS the QR quiet zone */
+    border-radius: 10px;
+    border: 1px solid rgba(255,217,138,.6);
+    box-shadow: 0 8px 28px rgba(16,12,34,.45);
+    line-height: 0;
+  }
+  .qr svg { width: clamp(104px, 15vmin, 150px); height: auto; display: block; }
+
+  .byline {
+    position: fixed;
+    right: clamp(26px, 4vmin, 46px);
+    bottom: clamp(22px, 3.4vmin, 40px);
+    z-index: 3;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(.72rem, 1.5vw, 1rem);
+    color: var(--ink);
+    opacity: .85;
+  }
+
+  .reveal { opacity: 0; animation: riseIn .9s cubic-bezier(.2,.7,.2,1) forwards; }
+  .d1 { animation-delay: .2s; }
+  .d2 { animation-delay: .45s; }
+  .d3 { animation-delay: .7s; }
+  .d4 { animation-delay: 1.0s; }
+  .d5 { animation-delay: 2.4s; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .frame { animation: none; opacity: 1; }
+    .rays { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="rays"></div>
+  <div class="scrim"></div>
+  <canvas id="tracks"></canvas>
+
+  <div class="frame">
+    <span class="tl">✦</span><span class="tr">✦</span>
+    <span class="bl">✦</span><span class="br">✦</span>
+  </div>
+
+  <main class="content">
+    <div class="eyebrow reveal d1">Nomad Path</div>
+    <h1 class="title reveal d2">Thank you</h1>
+    <div class="rule reveal d3">✶</div>
+    <div class="linkwrap reveal d4">
+      <!-- PLACEHOLDER QR — encodes github.com/your-handle/nomad-path.
+           To finalise: regenerate for your real URL (see talk/README.md). -->
+      <div class="qr" role="img" aria-label="QR code linking to the repository">
+        <svg viewBox="0 0 29 29" shape-rendering="crispEdges"><path stroke="#1a1330" d="M0 0.5h7m3 0h3m1 0h1m1 0h2m4 0h7M0 1.5h1m5 0h1m1 0h2m1 0h2m1 0h1m2 0h2m1 0h1m1 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m1 0h1m2 0h2m1 0h3m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h3m2 0h1m2 0h3m3 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m3 0h3m1 0h1m1 0h5m1 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m2 0h4m3 0h1m3 0h1m1 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h1m1 0h1m8 0h2M0 8.5h1m5 0h1m1 0h2m3 0h3m1 0h1m1 0h1m1 0h2m2 0h3M2 9.5h4m2 0h1m1 0h2m2 0h2m1 0h3m1 0h1m1 0h2m1 0h2M0 10.5h2m4 0h1m3 0h2m3 0h2m1 0h1m1 0h1m3 0h1M0 11.5h2m1 0h1m3 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h1m3 0h1M0 12.5h1m1 0h1m1 0h4m1 0h1m1 0h1m4 0h1m5 0h2m4 0h1M0 13.5h1m1 0h1m1 0h2m1 0h1m3 0h1m2 0h3m1 0h3m1 0h3m2 0h2M2 14.5h1m1 0h1m1 0h5m3 0h3m1 0h1m1 0h2m2 0h3M2 15.5h2m1 0h1m5 0h1m2 0h2m3 0h1m3 0h2m1 0h1m1 0h1M1 16.5h2m1 0h1m1 0h2m1 0h3m1 0h2m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2M0 17.5h2m1 0h1m4 0h2m2 0h2m1 0h5m2 0h3m1 0h3M0 18.5h3m1 0h4m1 0h1m2 0h5m2 0h1m4 0h2m2 0h1M0 19.5h1m1 0h3m2 0h1m2 0h3m2 0h2m1 0h1m1 0h1m1 0h1M0 20.5h1m2 0h1m2 0h2m1 0h1m1 0h1m5 0h1m1 0h6m1 0h3M8 21.5h1m1 0h6m2 0h1m1 0h1m3 0h2M0 22.5h7m2 0h1m1 0h6m2 0h2m1 0h1m1 0h3M0 23.5h1m5 0h1m3 0h1m1 0h2m1 0h2m1 0h3m3 0h1m2 0h1M0 24.5h1m1 0h3m1 0h1m2 0h1m3 0h1m2 0h1m2 0h7m1 0h1M0 25.5h1m1 0h3m1 0h1m8 0h1m1 0h5m3 0h2m1 0h1M0 26.5h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h3m2 0h9M0 27.5h1m5 0h1m3 0h2m6 0h1m3 0h2m1 0h2m1 0h1M0 28.5h7m1 0h1m2 0h1m2 0h2m1 0h1m1 0h1m2 0h3m1 0h1"/></svg>
+      </div>
+      <span class="link-label">Code on GitHub</span>
+      <!-- TODO: set your real repo URL once you've pushed -->
+      <span class="link">
+        <span class="mark" aria-hidden="true"><svg viewBox="0 0 496 512" role="img" aria-label="GitHub"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+        <span class="url">github.com/your-handle/nomad-path</span>
+      </span>
+    </div>
+  </main>
+
+  <div class="byline reveal d5">Daniel Petrescu</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('tracks');
+  const ctx = canvas.getContext('2d');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const mulberry32 = (a) => () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+
+  const TRACK_COLORS = ['#fbeeda', '#37c2b6', '#ffe28a', '#a8346a'];
+  let W = 0, H = 0, dpr = 1, tracks = [], flight = null, unit = 1;
+
+  function leg(a, b, n, amp, rng, out) {
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) + Math.PI / 2;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const j = (rng() - 0.5) * amp;
+      out.push([a[0] + (b[0]-a[0])*t + Math.cos(ang)*j,
+                a[1] + (b[1]-a[1])*t + Math.sin(ang)*j]);
+    }
+  }
+  function makeRoad(rng, wps, per, amp) {
+    const out = [];
+    for (let i = 0; i < wps.length - 1; i++) leg(wps[i], wps[i+1], per, amp, rng, out);
+    return out;
+  }
+  function bez(a, c, b, steps) {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i/steps, mt = 1 - t;
+      pts.push([mt*mt*a[0] + 2*mt*t*c[0] + t*t*b[0],
+                mt*mt*a[1] + 2*mt*t*c[1] + t*t*b[1]]);
+    }
+    return pts;
+  }
+  function makeHike(rng, start, end, switches, width) {
+    const dx = end[0]-start[0], dy = end[1]-start[1];
+    let px = -dy, py = dx; const pl = Math.hypot(px, py) || 1; px /= pl; py /= pl;
+    const verts = [], segs = switches * 2;
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const taper = 1 - Math.abs(t - 0.5) * 1.2;
+      const side = (i % 2 ? 1 : -1) * width * (0.55 + rng()*0.45) * Math.max(0.15, taper);
+      verts.push([start[0] + dx*t + px*side, start[1] + dy*t + py*side]);
+    }
+    return densify(verts, 3, 2.4 * unit, rng);
+  }
+  function makeCluster(rng, c, steps, radius) {
+    const pts = []; let ang = rng()*6.28, x = c[0], y = c[1];
+    for (let i = 0; i < steps; i++) {
+      pts.push([x, y]);
+      ang += (rng() - 0.5) * 1.5;
+      const step = radius * (0.12 + rng()*0.16);
+      x += Math.cos(ang)*step + (c[0]-x)*0.06;
+      y += Math.sin(ang)*step + (c[1]-y)*0.06;
+    }
+    return pts;
+  }
+  function densify(pts, per, amp, rng) {
+    const out = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      for (let k = 0; k < per; k++) {
+        const t = k / per;
+        out.push([pts[i][0] + (pts[i+1][0]-pts[i][0])*t + (rng()-0.5)*amp,
+                  pts[i][1] + (pts[i+1][1]-pts[i][1])*t + (rng()-0.5)*amp]);
+      }
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
+  }
+
+  // bottom of the lowest text (the link) — tracks stay strictly below it
+  function contentBottom() {
+    const el = document.querySelector('.link') || document.querySelector('.subtitle');
+    if (!el) return H * 0.62;
+    const b = el.getBoundingClientRect().bottom;
+    return (b > 0 && b < H) ? b : H * 0.62;
+  }
+
+  function build() {
+    const rng = mulberry32(20260710);
+    unit = Math.min(W, H) / 560;
+
+    const inset = Math.min(30, Math.max(14, 0.024 * Math.min(W, H)));
+    const pad = inset + 6 + 22 * unit;
+    const bandTop = Math.min(H * 0.74, contentBottom() + Math.max(26, 0.045 * H));
+    const bandBottom = H - pad;
+    const bandH = Math.max(40, bandBottom - bandTop);
+    const P = (fx, fy) => [W * fx, bandTop + fy * bandH];
+
+    tracks = [
+      { pts: makeRoad(rng, [P(.10,.55),P(.19,.42),P(.24,.64),P(.34,.48),P(.40,.68),P(.47,.5)], 9, 5*unit),
+        color: TRACK_COLORS[0], w: 2.4 },
+      { pts: bez(P(.54,.5), P(.74,1.0), P(.93,.62), 60),
+        color: TRACK_COLORS[1], w: 2.3 },
+      { pts: makeHike(rng, P(.66,.92), P(.72,.42), 6, 24*unit),
+        color: TRACK_COLORS[2], w: 2.1 },
+      { pts: makeCluster(rng, P(.28,.84), 54, 34*unit),
+        color: TRACK_COLORS[3], w: 1.9 },
+    ];
+    flight = { pts: bez(P(.12,.34), P(.5,.02), P(.88,.28), 50), color: '#fbeeda', w: 1.6 };
+
+    const xMin = pad, xMax = W - pad;
+    const clamp = (p) => {
+      p[0] = Math.max(xMin, Math.min(xMax, p[0]));
+      p[1] = Math.max(bandTop, Math.min(bandBottom, p[1]));
+    };
+    tracks.forEach((tr) => tr.pts.forEach(clamp));
+    flight.pts.forEach(clamp);
+  }
+
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    build();
+  }
+
+  function strokePartial(pts, count, color, w, dashed) {
+    if (count < 2) return;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w * unit;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 14 * unit;
+    if (dashed) ctx.setLineDash([2 * unit, 7 * unit]);
+    ctx.globalAlpha = dashed ? 0.75 : 0.92;
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < count; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function strokeUnder(pts, count, w) {
+    if (count < 2) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(16,12,34,0.5)';
+    ctx.lineWidth = (w + 1.7) * unit;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < count; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function pin(p, color) {
+    ctx.save();
+    ctx.shadowColor = color; ctx.shadowBlur = 12 * unit;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(p[0], p[1], 3.4 * unit, 0, 7); ctx.fill();
+    ctx.globalAlpha = .5; ctx.lineWidth = 1.4 * unit; ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.arc(p[0], p[1], 7 * unit, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw(p) {
+    ctx.clearRect(0, 0, W, H);
+    tracks.forEach((tr, i) => {
+      const local = Math.max(0, Math.min(1, (p * 1.25) - i * 0.06));
+      const n = Math.floor(local * tr.pts.length);
+      strokeUnder(tr.pts, n, tr.w);
+      strokePartial(tr.pts, n, tr.color, tr.w, false);
+      if (local >= 1) { pin(tr.pts[0], tr.color); pin(tr.pts[tr.pts.length-1], tr.color); }
+    });
+    const fp = Math.max(0, Math.min(1, (p - 0.15) / 0.85));
+    const fn = Math.floor(fp * flight.pts.length);
+    strokePartial(flight.pts, fn, flight.color, flight.w, true);
+    if (fp >= 1) { pin(flight.pts[0], '#ffd98a'); pin(flight.pts[flight.pts.length-1], '#ffd98a'); }
+  }
+
+  // The bookend: open with the journey ALREADY complete (arrival), then let it
+  // replay on demand like the title card.
+  let start = null, running = false;
+  const DURATION = 2000;
+
+  function frame(ts) {
+    if (start === null) start = ts;
+    const p = Math.min(1, (ts - start) / DURATION);
+    draw(1 - Math.pow(1 - p, 3));
+    if (p < 1) requestAnimationFrame(frame);
+    else running = false;
+  }
+  function play() {
+    if (reduced) { draw(1); return; }
+    start = null;
+    if (!running) { running = true; requestAnimationFrame(frame); }
+  }
+
+  addEventListener('resize', () => { resize(); play(); });
+  addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter' || e.key.toLowerCase() === 'r') { e.preventDefault(); play(); }
+  });
+  addEventListener('click', play);
+  addEventListener('focus', play);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') play();
+  });
+
+  resize();
+  play();
+})();
+</script>
+</body>
+</html>
