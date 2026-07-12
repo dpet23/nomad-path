@@ -30,6 +30,8 @@ const els = {
   attribution: $('attribution'),
   offset: $('offset'),
   offsetValue: $('offset-value'),
+  exag: $('exag'),
+  exagValue: $('exag-value'),
   clampRow: $('clamp-row'),
   clamp: $('clamp'),
   xray: $('xray'),
@@ -43,6 +45,7 @@ const state = {
   pois: [], // {position: [lng,lat,z], name, category}
   modeColors: new Map(), // mode -> [r,g,b]
   offset: 0,
+  exaggeration: 1,
   clamp: false,
   xray: false
 };
@@ -133,7 +136,10 @@ function buildLayers() {
       new PathLayer({
         id: 'tracks',
         data: state.tracks,
-        getPath: d => (state.offset === 0 ? d.path : d.path.map(([x, y, z]) => [x, y, z + state.offset])),
+        getPath: d =>
+          state.offset === 0 && state.exaggeration === 1
+            ? d.path
+            : d.path.map(([x, y, z]) => [x, y, z * state.exaggeration + state.offset]),
         getColor: d => state.modeColors.get(d.mode) ?? OTHER_COLOR,
         getWidth: 4,
         widthMinPixels: 2.5,
@@ -143,7 +149,7 @@ function buildLayers() {
         pickable: true,
         autoHighlight: true,
         highlightColor: [255, 255, 255, 180],
-        updateTriggers: {getPath: [state.offset]},
+        updateTriggers: {getPath: [state.offset, state.exaggeration]},
         extensions: state.clamp && tilesEnabled ? [new TerrainExtension()] : [],
         parameters: state.xray ? {depthCompare: 'always'} : {}
       })
@@ -433,6 +439,11 @@ window.addEventListener('drop', e => {
 els.offset.addEventListener('input', () => {
   state.offset = Number(els.offset.value);
   els.offsetValue.textContent = `${state.offset} m`;
+  updateLayers();
+});
+els.exag.addEventListener('input', () => {
+  state.exaggeration = Number(els.exag.value);
+  els.exagValue.textContent = `×${state.exaggeration.toFixed(1)}`;
   updateLayers();
 });
 els.clamp.addEventListener('change', () => {

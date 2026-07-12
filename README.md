@@ -108,6 +108,10 @@ by my track-building pipeline):
 ## Controls
 
 - **Elevation offset slider** (−100…+200 m): shifts all tracks vertically.
+- **Elevation exaggeration slider** (×1…×5): multiplies track altitudes (applied
+  before the offset). Note it only scales *your tracks* — the Google tiles mesh can't
+  be scaled, so at ×2 a mountain drive floats above the photorealistic summit. Most
+  effective for flights and in no-key mode.
 - **Clamp tracks to 3D surface**: drapes tracks onto the photorealistic mesh, ignoring
   GPS elevation (only shown when tiles are enabled; tracks stay hidden until terrain
   tiles finish loading).
