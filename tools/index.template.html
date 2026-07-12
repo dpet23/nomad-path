@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Southern Lakes 2026 — map ↔ gallery bridge spike</title>
+    <link rel="stylesheet" href="vendor/photoswipe-5.3.7/photoswipe.css">
+    <link rel="stylesheet" href="vendor/photoswipe-dynamic-caption-plugin-1.2.7/photoswipe-dynamic-caption-plugin.css">
+    <link rel="stylesheet" href="vendor/maplibre-gl-5/maplibre-gl.css">
+    <link rel="stylesheet" href="css/spike.css">
+</head>
+<body>
+    <nav id="menu">
+        <span class="brand">Southern Lakes, New Zealand</span>
+        <span class="sub">March 2026 · spike: photo ↔ map bridge</span>
+    </nav>
+
+    <div id="fullpage">
+        <div class="section" id="map-section">
+            <div id="map"></div>
+        </div>
+
+        <div class="section" id="media">
+            <div class="pswp-gallery" id="photoswipe-gallery">
+{{GALLERY}}
+            </div>
+        </div>
+    </div>
+
+    <script src="vendor/maplibre-gl-5/maplibre-gl.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
