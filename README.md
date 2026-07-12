@@ -118,6 +118,9 @@ by my track-building pipeline):
 - **X-ray**: disables depth testing so tracks show through terrain/buildings.
 - **Hover** any track or POI for details.
 
+For lessons aimed at the follow-up MapLibre + deck.gl multi-basemap app, see
+[LEARNINGS.md](LEARNINGS.md).
+
 ## Findings & limits (the point of the spike)
 
 - **It works.** deck.gl's `Tile3DLayer` + `PathLayer` handles 305 tracks / ~100k points
