@@ -3,7 +3,9 @@
 Explores bridging the two halves of the holiday album pages — the interactive
 trip map (future: [nomad-path](../nomad-path-fable)) and the PhotoSwipe 5
 gallery — into one story. **Outcome and API requirements: see
-[LEARNINGS.md](LEARNINGS.md).**
+[LEARNINGS.md](LEARNINGS.md).** A follow-up discussion on how to build the
+album site itself (custom build tool vs SSG, media-pipeline caching, trip
+index) is written up in [LEARNINGS-site-build.md](LEARNINGS-site-build.md).
 
 Features proven:
 
