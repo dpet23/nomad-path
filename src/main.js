@@ -197,6 +197,34 @@ function updateLayers() {
 // GeoJSON processing
 // ---------------------------------------------------------------------------
 
+const normalizeLon = lon => ((((lon + 180) % 360) + 360) % 360) - 180;
+
+// Rewrite longitudes so consecutive points never differ by more than 180° —
+// a path crossing the antimeridian stays continuous (e.g. 179.8 → 180.2
+// instead of 179.8 → -179.8), which stops deck drawing world-spanning
+// segments.
+function unwrapPath(path) {
+  let prev = normalizeLon(path[0][0]);
+  return path.map(([lon, lat, z]) => {
+    const unwrapped = lon - 360 * Math.round((lon - prev) / 360);
+    prev = unwrapped;
+    return [unwrapped, lat, z];
+  });
+}
+
+// deck's MapView doesn't repeat world copies (repeat:true hangs with this
+// scene), so every item gets duplicates shifted ±360°: whichever side of the
+// antimeridian the camera is on, a continuous copy of everything is visible.
+// ~3x vertex count is trivial at this data size.
+function pushWithMirrors(list, item, shiftItem) {
+  list.push(item);
+  list.push({...shiftItem(item, -360), isCopy: true});
+  list.push({...shiftItem(item, 360), isCopy: true});
+}
+
+const shiftTrack = (t, dx) => ({...t, path: t.path.map(([x, y, z]) => [x + dx, y, z])});
+const shiftPoi = (p, dx) => ({...p, position: [p.position[0] + dx, p.position[1], p.position[2]]});
+
 function processGeoJSON(geojson) {
   const tracks = [];
   const pois = [];
@@ -217,21 +245,32 @@ function processGeoJSON(geojson) {
       if (geom.type === 'LineString' && !aligned) missingElevations++;
 
       for (const coords of lines) {
-        tracks.push({
-          path: coords.map((c, i) => [
+        const path = unwrapPath(
+          coords.map((c, i) => [
             c[0],
             c[1],
             aligned && Number.isFinite(elevs[i]) ? elevs[i] : Number.isFinite(c[2]) ? c[2] : 0
-          ]),
-          name: props.name ?? 'Unnamed track',
-          day: props.day,
-          group: props.group,
-          mode: props.transportMode ?? 'unknown'
-        });
+          ])
+        );
+        pushWithMirrors(
+          tracks,
+          {
+            path,
+            name: props.name ?? 'Unnamed track',
+            day: props.day,
+            group: props.group,
+            mode: props.transportMode ?? 'unknown'
+          },
+          shiftTrack
+        );
       }
     } else if (geom.type === 'Point') {
       const [lng, lat, z] = geom.coordinates;
-      pois.push({position: [lng, lat, Number.isFinite(z) ? z : 0], name: props.name ?? 'POI', category: props.category});
+      pushWithMirrors(
+        pois,
+        {position: [normalizeLon(lng), lat, Number.isFinite(z) ? z : 0], name: props.name ?? 'POI', category: props.category},
+        shiftPoi
+      );
     } else {
       skipped++;
     }
@@ -242,7 +281,10 @@ function processGeoJSON(geojson) {
 
 function assignModeColors(tracks) {
   const counts = new Map();
-  for (const t of tracks) counts.set(t.mode, (counts.get(t.mode) ?? 0) + 1);
+  for (const t of tracks) {
+    if (t.isCopy) continue;
+    counts.set(t.mode, (counts.get(t.mode) ?? 0) + 1);
+  }
   const modes = [...counts.keys()].sort();
 
   const colors = new Map();
@@ -270,7 +312,11 @@ function renderLegend(modes, counts, colors) {
 }
 
 function flyToData() {
-  const all = state.tracks.flatMap(t => t.path).concat(state.pois.map(p => p.position));
+  // Mirror copies sit ±360° out of the canonical range and would wreck the bbox.
+  const all = state.tracks
+    .filter(t => !t.isCopy)
+    .flatMap(t => t.path)
+    .concat(state.pois.filter(p => !p.isCopy).map(p => p.position));
   if (!all.length) return;
 
   // The data may straddle the antimeridian (e.g. Australia → Hawaii → Fiji).
@@ -340,8 +386,10 @@ function loadGeoJSONText(text, filename) {
   const notes = [];
   if (missingElevations) notes.push(`${missingElevations} track(s) without aligned elevations (rendered at ground level)`);
   if (skipped) notes.push(`${skipped} unsupported feature(s) skipped`);
+  const nTracks = tracks.filter(t => !t.isCopy).length;
+  const nPois = pois.filter(p => !p.isCopy).length;
   els.stats.textContent =
-    `${filename}: ${tracks.length} tracks, ${pois.length} POIs.` + (notes.length ? ` ${notes.join('; ')}.` : '');
+    `${filename}: ${nTracks} tracks, ${nPois} POIs.` + (notes.length ? ` ${notes.join('; ')}.` : '');
 
   els.controls.style.display = 'block';
   renderLegend(modes, counts, colors);

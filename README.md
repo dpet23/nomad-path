@@ -129,9 +129,17 @@ by my track-building pipeline):
   the mesh). Fixes: raise the offset, use *clamp* (drapes perfectly but flattens
   flights to the ground — draping and true-3D are mutually exclusive per layer), or
   *X-ray* to see everything through terrain.
-- **Antimeridian handled**: trips spanning ±180° longitude (Australia → Hawaii → Fiji)
-  fit correctly; the bbox is computed in both raw and 0–360° framings and the narrower
-  wins.
+- **Antimeridian handled**: three pieces. The camera fit computes the bbox in both raw
+  and 0–360° framings (narrower wins). Each track's longitudes are *unwrapped* so
+  consecutive points never differ by >180° — crossing paths stay continuous instead of
+  rendering as world-spanning horizontal lines. And because deck's `MapView` doesn't
+  repeat world copies, all geometry is duplicated at ±360° (copies are excluded from
+  counts and the camera fit), so a continuous copy is visible from either side of the
+  seam. Remaining limit: the tile basemap itself still ends at ±180°, so a crossing
+  flight continues over black void until you pan across. `MapView({repeat: true})`
+  should repeat the basemap too and make the mirrors unnecessary — untested on real
+  hardware; it initially looked like a hang, but that turned out to be the headless
+  test environment's software GL rendering world views at ~1 fps.
 - **No-key mode** renders tracks on a black background — good for free dev iteration.
   Invalid-key failures surface in a banner (the tile request errors are also in the
   console).
