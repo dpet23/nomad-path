@@ -195,7 +195,7 @@
     z-index: 3;
     font-family: var(--font-serif);
     font-style: italic;
-    font-size: clamp(.72rem, 1.5vw, 1rem);
+    font-size: 2rem;
     color: var(--ink);
     opacity: .85;
   }
@@ -346,12 +346,6 @@
       // road trip — straight legs, sharp turns
       { pts: makeRoad(rng, [P(.10,.55),P(.19,.42),P(.24,.64),P(.34,.48),P(.40,.68),P(.47,.5)], 9, 5*unit),
         color: TRACK_COLORS[0], w: 2.4 },
-      // coastal drive — long smooth curve
-      { pts: bez(P(.54,.5), P(.74,1.0), P(.93,.62), 60),
-        color: TRACK_COLORS[1], w: 2.3 },
-      // hike — switchbacks climbing
-      { pts: makeHike(rng, P(.66,.92), P(.72,.42), 6, 24*unit),
-        color: TRACK_COLORS[2], w: 2.1 },
       // town exploration — dense wander
       { pts: makeCluster(rng, P(.28,.84), 54, 34*unit),
         color: TRACK_COLORS[3], w: 1.9 },
