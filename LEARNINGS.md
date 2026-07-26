@@ -88,6 +88,56 @@ The hardest-won lessons in the spike, generalized:
   OSM requires "© OpenStreetMap contributors"; GIBS wants a NASA courtesy line.
   Make attribution part of each basemap's definition, rendered by shared UI.
 
+## Deployment considerations (when it stops being "run it on my own phone")
+
+The risks split into ones you can't engineer away and ones a real deployment must
+engineer around. Don't confuse them.
+
+- **Performance is per-client and adaptive, not fixable once.** DPR, refresh rate,
+  `maximumScreenSpaceError`, and tile memory all drive power, and the right value is
+  device-dependent — on a dev phone you can drop OS resolution and refresh rate, but
+  you can't ask users to. So detect the device (mobile, `navigator.deviceMemory`,
+  `prefers-reduced-motion`, the Battery Status API) and set a DPR cap
+  (`useDevicePixelRatio: false` renders at CSS resolution — the biggest lever, ~DPR²
+  fewer pixels), an SSE value, and whether to offer 3D at all. Ship an in-app quality
+  toggle like Google Maps' own. Expect thermal throttling on sustained 3D; degrade,
+  don't fight it.
+- **Cost scales with users, and the key can't hide for 3D tiles.** The 1,000 free
+  root-tileset requests/month is per *project*, not per user, and each entry into the
+  3D view is ≈ one billable root request. The key must ride on the client because
+  every tile request carries it and proxying the whole tile firehose is impractical.
+  So make 3D **opt-in** (don't instantiate `Tile3DLayer` until the user asks for it —
+  not even hidden), referrer-restrict the key, set a Google-side hard quota override
+  (the only real cap), and default to a cheap basemap.
+- **A serverless key-gate is worth building — for what it actually does.** Pattern: a
+  Cloud Function (free tier) holds the key, keeps a daily counter in a durable store
+  (Firestore/Datastore free tier, using an atomic increment so concurrent loads don't
+  race), and returns the key to the client only while under a soft daily limit set
+  *below* the Google hard quota cap — otherwise it returns an error the app renders as
+  a friendly "3D view unavailable, back tomorrow." This is genuinely useful for three
+  reasons: (1) the key is no longer in static assets, so automated scrapers of your JS
+  or repo won't harvest it; (2) a soft budget-guard trips before anyone hits Google's
+  raw 403; (3) it's a central kill-switch and demand meter you can change without
+  redeploying the client. What it is **not**: a security boundary or an exact meter.
+  Once handed out, the key is plainly visible in the network tab and usable directly
+  against Google for its ~3-hour session window, bypassing your counter entirely — so
+  a determined abuser routes around it, and one handout can map to several (or zero)
+  real root fetches, so the count only approximates billable events. Referrer
+  restriction + the Google hard quota override stay the actual boundary; the function
+  is a friendly, scraper-resistant layer on top, not a replacement.
+- **ToS and attribution stop being optional in public.** Google logo + aggregated
+  per-tile copyright, no caching tiles beyond the session, plus the 3D Tiles usage
+  restrictions. "Use at your own risk" does not cover a terms breach.
+- **The GPS data is sensitive; local-only is a feature.** These tracks contain home
+  location ("Home → MEL airport") and travel patterns. The spike's drag-drop-local
+  model — the file never leaves the device — is privacy-preserving. Keep it a
+  deliberate design stance, not something that quietly drifts into "upload your tracks
+  to our server," which makes you custodian of people's movement history.
+- **Net: Google-3D is the premium, opt-in, metered exception; the cheap basemaps are
+  the default.** Every point above argues for the multi-basemap architecture already
+  planned — it's what makes the app deployable at all, because it lets the expensive,
+  key-exposing, metered view be the exception rather than the front door.
+
 ## Things that turned out not to matter
 
 - **Scale**: 6.5 MB / ~100k points parses in-browser instantly, re-uploads on every
