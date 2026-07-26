@@ -27,6 +27,31 @@ No API key? The app still works — tracks render in 3D over a black background,
 banner explaining what's missing. Useful for checking your data before spending tile
 requests.
 
+## Running without Node (static demo)
+
+The build is plain static files — no Node needed to *serve* it, only to build it. Vite
+inlines the API key at build time, so build once on a machine with Node and copy the
+folder anywhere:
+
+```sh
+# on a machine with Node, with your key in .env.local:
+npm run build                       # writes dist/ with the key baked into the bundle
+
+# copy dist/ to the demo device, then there (Node not required):
+cd dist && python3 -m http.server 5173
+```
+
+Open `http://localhost:5173`. Two things to know:
+
+- **Serve on a port your key allows.** The key is restricted to referrer origins you
+  set (the setup below suggests `http://localhost:5173/*`), so serving on 5173 reuses
+  that entry. Python's default is port 8000 — either pass `5173` as above, or add the
+  port you use to the key's allowed referrers, or tiles will 403. If you open the demo
+  from *another* device by IP (e.g. `http://192.168.1.50:5173`), add that origin too.
+- **The key is embedded in the bundle in plaintext.** Fine for a trusted local demo,
+  but keep the referrer restriction and quota cap (below) so an extracted key is
+  useless elsewhere, and don't put `dist/` on the public internet.
+
 ## Getting a Google Maps API key
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a
