@@ -24,13 +24,26 @@
 
     #panel {
       position: absolute; top: 12px; left: 12px; z-index: 10;
-      width: 300px; max-height: calc(100vh - 24px); overflow-y: auto;
+      width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto;
       background: color-mix(in srgb, var(--surface) 92%, transparent);
       border: 1px solid var(--border); border-radius: 10px;
       padding: 14px 16px; font-size: 13px; line-height: 1.45;
       backdrop-filter: blur(6px);
     }
-    #panel h1 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
+    #panel h1 { font-size: 15px; margin: 0 8px 8px 0; padding-right: 32px; font-weight: 600; }
+
+    #panel-toggle {
+      position: absolute; top: 8px; right: 8px; z-index: 1;
+      width: 40px; height: 40px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #2a2a28; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--ink); font-size: 18px; line-height: 1; cursor: pointer;
+    }
+    #panel-toggle:hover { background: #383835; }
+    /* Collapsed: hide the body, shrink the panel to just the toggle button. */
+    #panel.collapsed { width: auto; padding: 6px; overflow: visible; }
+    #panel.collapsed #panel-body { display: none; }
+    #panel.collapsed #panel-toggle { position: static; }
     #panel .hint { color: var(--ink-muted); font-size: 12px; margin: 6px 0; }
 
     .file-btn {
@@ -80,6 +93,8 @@
   <div id="map"></div>
 
   <div id="panel">
+    <button id="panel-toggle" type="button" aria-controls="panel-body" aria-expanded="true" aria-label="Hide controls">✕</button>
+    <div id="panel-body">
     <h1>GPS tracks over Google 3D Tiles</h1>
     <label class="file-btn">Open GeoJSON…<input type="file" id="file-input" accept=".geojson,.json,application/geo+json,application/json" /></label>
     <div class="hint">…or drag &amp; drop a trip-data.geojson anywhere on the page.</div>
@@ -112,6 +127,7 @@
     </div>
 
     <div id="legend"></div>
+    </div>
   </div>
 
   <div id="attribution"></div>

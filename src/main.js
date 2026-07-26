@@ -35,7 +35,9 @@ const els = {
   clampRow: $('clamp-row'),
   clamp: $('clamp'),
   xray: $('xray'),
-  fileInput: $('file-input')
+  fileInput: $('file-input'),
+  panel: $('panel'),
+  panelToggle: $('panel-toggle')
 };
 
 const tilesEnabled = Boolean(GOOGLE_MAPS_API_KEY);
@@ -401,6 +403,10 @@ function loadGeoJSONText(text, filename) {
   renderLegend(modes, counts, colors);
   updateLayers();
   flyToData();
+
+  // On a phone the panel covers the map; once data is loaded the map is the
+  // point, so fold the panel away (one tap on ☰ reopens it for the sliders).
+  if (isNarrow()) setPanelCollapsed(true);
 }
 
 function loadFile(file) {
@@ -410,6 +416,16 @@ function loadFile(file) {
 // ---------------------------------------------------------------------------
 // UI wiring
 // ---------------------------------------------------------------------------
+
+// Collapsible panel (mainly for phones, where the panel otherwise covers the map).
+const isNarrow = () => window.matchMedia('(max-width: 640px)').matches;
+function setPanelCollapsed(collapsed) {
+  els.panel.classList.toggle('collapsed', collapsed);
+  els.panelToggle.textContent = collapsed ? '☰' : '✕'; // ☰ / ✕
+  els.panelToggle.setAttribute('aria-expanded', String(!collapsed));
+  els.panelToggle.setAttribute('aria-label', collapsed ? 'Show controls' : 'Hide controls');
+}
+els.panelToggle.addEventListener('click', () => setPanelCollapsed(!els.panel.classList.contains('collapsed')));
 
 els.fileInput.addEventListener('change', e => {
   if (e.target.files?.[0]) loadFile(e.target.files[0]);
