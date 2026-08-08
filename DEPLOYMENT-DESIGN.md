@@ -86,7 +86,10 @@ through it. That is only possible because of verification result 2.
 | API restriction | Map Tiles only | Map Tiles only |
 | Rotation | Edit one secret | Edit one secret, no rebuild |
 
-Neither key is in the bundle, in git, or in a build artifact. The client key still
+In the deployed build neither key is in the bundle, in git, or in a build
+artifact. A *local* build with `VITE_GOOGLE_MAPS_API_KEY` set does bake that key
+into its output — that is today's behaviour and stays supported deliberately, but
+it means a locally built `dist/` is not publishable. The client key still
 reaches browsers — unavoidable, per result 3 — but rotating it is a one-variable
 edit precisely because it is delivered at runtime rather than baked at build time.
 
@@ -138,6 +141,13 @@ skew and in-flight requests.
 **Counters: daily and monthly.** Monthly is the real budget (free tier is
 1,000/month); daily stops one bad day eating the month.
 
+**Both roll on Google's clock, not UTC.** Google's quota periods run on
+US/Pacific, and the tripwire compares our count against what the Cloud Console
+says was billed. Rolling our month at UTC midnight would put the two numbers out
+of step around every boundary, and a tripwire that is permanently a little wrong
+is a tripwire that gets ignored. `resetsAt` is the next Pacific boundary,
+expressed as an absolute instant so the client needs no timezone logic.
+
 Note what the counters are actually *for*. With caching, honest traffic cannot
 exceed ~10/day regardless of visitor numbers, so the caps are not throttling users
 — they are a backstop against a **bug in the caching path**, and a source for the
@@ -145,10 +155,18 @@ tripwire below.
 
 ## Client changes
 
-**Keep `tilesEnabled` synchronous.** Replace the build-time key with a build-time
-*endpoint*: `tilesEnabled = Boolean(VITE_TILES_ENDPOINT)`. Control visibility and
-no-key mode keep working untouched. Leaving the variable unset gives the existing
-free black-background dev mode.
+**Keep `tilesEnabled` synchronous.** Add a build-time *endpoint*,
+`VITE_TILES_ENDPOINT`, **alongside** the existing `VITE_GOOGLE_MAPS_API_KEY`
+rather than replacing it: `tilesEnabled` is true if either is set. Control
+visibility and no-key mode keep working untouched, and leaving both unset still
+gives the free black-background mode.
+
+**The direct-key path must keep working.** A local static build with a key in
+`.env.local` has to behave exactly as it does today — the gate is how the
+*deployed* site gets a key, not a new requirement for running the site at all.
+This costs nothing if `clientKey` is initialised from the build key and merely
+overwritten when a gate answers: the child-tile branch is then identical in both
+modes, and only the root branch differs.
 
 Both this and `VITE_MAX_SCREEN_SPACE_ERROR` stay build *variables* rather than
 source constants, and since Cloudflare runs the build they live in the Pages
@@ -286,27 +304,64 @@ Roughly dependency-ordered; each step is independently verifiable.
 No step is a throwaway: there is no fake-key round, because the assumption it
 existed to test has since been settled by reading loaders.gl directly.
 
-0. **Confirm the Workers runtime lets an outbound `fetch` set `Referer`.** Browsers
-   forbid it as a protected header; Workers are not browsers, but Cloudflare's docs
-   don't say either way. A Worker that calls any header-echo endpoint and returns
-   what arrived settles it — no Google key, no cost. Do this *before* creating
-   keys: if `Referer` is stripped, the sentinel scheme cannot work and the strong
-   key falls back to unrestricted-but-secret, which changes what you create.
-1. Stand the function up with the real strong key as a secret and the forged
-   `Referer`, no cache and no counter. Confirm a live `root.json` fetch succeeds
-   server-side and that the client renders from it.
-2. Add the cache with its TTL. Confirm a second page load does *not* increment
+There is also no infrastructure-only round. Nothing gets deployed to prove a
+pipeline works: the gate's code is written first, and the first push is what
+deploys it. A Worker with nothing to do has nothing to verify.
+
+### Before step 1
+
+Step 1 is verified by loading a page, so the page has to exist first. That means
+the client rewrite is done and deployed by Pages, and both keys are created —
+**with the client key already restricted to the Pages origin**, since that key is
+what browsers receive from the gate's first working response and there is no point
+at which restricting it later is correct.
+
+The client rewrite, precisely, and all of it additive — with no endpoint set the
+behaviour is unchanged:
+
+- `TILES_ENDPOINT` from `VITE_TILES_ENDPOINT`, added next to the existing key
+  constant; `tilesEnabled` becomes true if either is set.
+- New module state: `clientKey`, initialised to the build key so the direct path
+  needs no special case, and `isRootTileset(url)` matching `TILESET_URL`.
+- The custom `fetch` gains a root branch **only when an endpoint is configured** —
+  call the gate, overwrite `clientKey`, return the synthetic `Response` with `url`
+  set. The child branch is untouched in both modes.
+- A runtime no-tiles state for a gate failure or `429`, separate from the
+  build-time flag, rebuilding the layers. It also feeds the `TerrainExtension`
+  guards, which currently read `tilesEnabled`.
+- The startup banner, which currently assumes a missing key is the only reason
+  tiles are off.
+
+Ordering the site against the gate needs no ceremony. Pages deploys first with
+`VITE_TILES_ENDPOINT` unset, which renders in the existing no-tiles mode rather
+than failing, and fixes the origin the Worker's CORS header names. Once the Worker
+is up, its URL goes into the Pages build configuration and the site rebuilds.
+
+### Steps
+
+1. Write the gate — `/api/tileset` fetching `root.json` and returning
+   `{key, tileset}` — with the strong key as a secret and **no application
+   restriction on that key yet**. No cache, no counters. A page that renders proves
+   the Worker, the upstream fetch, the client interception and the synthetic
+   `Response` in one go.
+2. Add the Websites restriction with the sentinel, and have the Worker send it as
+   `Referer`. Load again. Still working proves both that the Workers runtime lets
+   an outbound `fetch` set `Referer` — browsers forbid it, and Cloudflare's docs
+   don't say either way — and that the restriction binds. Denied means forging
+   doesn't work, and since nothing else changed between the two loads, that reading
+   is unambiguous; the strong key then falls back to unrestricted-but-secret.
+3. Add the cache with its TTL. Confirm a second page load does *not* increment
    upstream requests.
-3. Add the counters and the `429` path. Test by setting the cap to 1.
-4. Set both restrictions and re-run `scripts/verify-tiles.sh` against the deployed
-   origin as a config check.
-5. Wire the tripwire: compare the function's session count against Cloud Console
+4. Add the counters and the `429` path. Test by setting the cap to 1.
+5. Re-run `scripts/verify-tiles.sh` against the deployed origin as a config check
+   on restrictions that were set earlier.
+6. Wire the tripwire: compare the function's session count against Cloud Console
    billable requests.
 
-**Both keys are created before step 1**, not split out later. The function has to
-return *some* key from its first working deploy, and if only the strong key exists
-at that point then the strong key is what lands in browser devtools — the precise
-outcome the split exists to prevent.
+**Steps 1 and 2 are one sitting.** Between them the strong key exists with no
+application restriction — held only in a secret store, but at its most exposed, and
+with no spend cap behind it. That gap buys an unambiguous reading of step 2 and
+nothing else, so it should last minutes, not days.
 
 ## Decisions
 
@@ -329,7 +384,7 @@ outcome the split exists to prevent.
    would let visitors route around the one failure worth noticing.
 
 Nothing is open. The only unsettled *fact* is whether Workers can forge `Referer`,
-which is step 0 of the implementation order.
+and it is answered by step 2 rather than by a probe built to ask it.
 
 ## Out of scope
 
