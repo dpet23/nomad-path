@@ -37,6 +37,61 @@ black background, controls and GeoJSON loading all work.
 
 ---
 
+## Setup: the gate Worker
+
+A second deployable, separate from the site. It holds both Google API keys and hands
+the browser a tileset document plus a child-tile key at runtime, so no key is baked
+into the site's bundle. Tile bytes don't pass through it — the browser fetches those
+straight from Google.
+
+Steps are added here as they are done. Later ones need values produced by earlier ones.
+
+1. Create the Worker
+
+    * Build -> Workers & Pages -> Create application -> start from a template
+        * Template code is a placeholder; the first deploy from git replaces it
+        * Don't import the git repository yet -> the repo has no Wrangler config to build
+        * Don't add variables or secrets yet
+    * Deploy once, so a name and hostname are assigned
+
+2. Record three values
+
+    | Value | Needed for |
+    |---|---|
+    | The Worker's name | `name` in the repo's Wrangler config |
+    | `https://<worker>.<subdomain>.workers.dev` | The site's `VITE_TILES_ENDPOINT`, plus `/api/tileset` |
+    | `https://<name>.pages.dev` | The Worker's `ALLOWED_ORIGIN`, and the client key's Websites restriction |
+
+    * The name must match: *"The Worker name in the Cloudflare dashboard must match the `name` in the Wrangler configuration file in the specified root directory, or the build will fail."*
+    * Origins are exact, never `*.pages.dev` -> that wildcard authorises every Pages site on the internet
+
+3. Connect the Worker to the repo
+
+    * Push `worker/wrangler.jsonc` first -> without it in the root directory the build fails
+    * Worker -> Settings -> Builds -> Connect -> select the repo
+
+    | Build setting | Value |
+    |---|---|
+    | Root directory | `worker` |
+    | Build command | *empty* -> no dependencies, no build step |
+    | Deploy command | `npx wrangler deploy` (the default) |
+
+    * Production branch: the same one the site deploys from
+    * Don't use *Create application -> import a repository* -> with no Wrangler config present, Cloudflare autoconfigures by framework detection and opens a PR against the repo
+
+4. Check the gate deployed, before any key exists
+
+    ```sh
+    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset
+    ```
+
+    | Response | Meaning |
+    |---|---|
+    | `{"error":"misconfigured","missing":"GOOGLE_TILES_KEY"}` | **Success.** Our code is live and routing. Costs nothing, exposes nothing. |
+    | Template output, or `404` | The build didn't run or didn't succeed -> Deployments -> open the build log |
+
+---
+
 ## Verify a deploy
 
 1. Check the build ran
