@@ -3,7 +3,7 @@ import {PathLayer, ScatterplotLayer} from '@deck.gl/layers';
 import {Tile3DLayer} from '@deck.gl/geo-layers';
 import {_TerrainExtension as TerrainExtension} from '@deck.gl/extensions';
 
-import {parseTrackFile} from './track-file.js';
+import {parseTrackText, readTrackFile} from './track-file.js';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 // The tileset Worker's /api/tileset URL. When set, the root tileset document
@@ -135,15 +135,16 @@ function tilesetResponse(tileset) {
 // imagery with anything else say which part is theirs, so the providers are
 // labelled rather than listed bare — the tracks drawn over them are not Google
 // data and the line has to make that legible. The producer is whatever the
-// track file named itself as, and is simply absent when it named nothing;
-// there is no wording to invent in that case.
+// track files named themselves as, and is simply absent when they named
+// nothing; there is no wording to invent in that case. An archive can hold
+// files from several devices, so this is a list.
 let imageryCredits = [];
-let trackProducer = null;
+let trackProducers = [];
 
 function renderCredits() {
   els.attribution.textContent = [
     imageryCredits.length && `3D imagery: ${imageryCredits.join(' • ')}`,
-    trackProducer && `Tracks: ${trackProducer}`
+    trackProducers.length && `Tracks: ${trackProducers.join(' • ')}`
   ]
     .filter(Boolean)
     .join(' — ');
@@ -513,28 +514,13 @@ function flyToData() {
   });
 }
 
-function loadTrackText(text, filename) {
-  // A KMZ is a zip, so it arrives as the bytes "PK" and whatever the compressor
-  // put next. Unreadable here, but the fix is one step the reader can take.
-  if (text.startsWith('PK')) {
-    showBanner(`${filename} looks like a KMZ, which is a zipped KML. Unzip it and open the .kml inside.`, true);
-    return;
-  }
-
-  let geojson, producer;
-  try {
-    ({geojson, producer} = parseTrackFile(text));
-  } catch (e) {
-    showBanner(`Could not read ${filename}: ${e.message}`, true);
-    return;
-  }
-
+function showTracks({geojson, producers, read, unreadable}, filename) {
   const {tracks, pois, missingElevations, skipped} = processGeoJSON(geojson);
   if (!tracks.length && !pois.length) {
     showBanner(`${filename}: no tracks or points found.`, true);
     return;
   }
-  trackProducer = producer;
+  trackProducers = [...new Set(producers)];
 
   state.tracks = tracks;
   state.pois = pois;
@@ -542,6 +528,8 @@ function loadTrackText(text, filename) {
   state.modeColors = colors;
 
   const notes = [];
+  if (read > 1) notes.push(`${read} files read from the archive`);
+  if (unreadable) notes.push(`${unreadable} file(s) inside could not be read`);
   if (missingElevations) notes.push(`${missingElevations} track(s) without elevations (rendered at ground level)`);
   if (skipped) notes.push(`${skipped} unsupported feature(s) skipped`);
   const nTracks = tracks.filter(t => !t.isCopy).length;
@@ -561,15 +549,36 @@ function loadTrackText(text, filename) {
   if (isNarrow()) setPanelCollapsed(true);
 }
 
-// Parsing a large export blocks the main thread for long enough to look like a
-// hang, and how long depends on the file and the device, so there is no size
-// worth refusing. Saying what is happening costs nothing and covers every case.
-// The frame is waited for deliberately: without it the message is painted after
-// the work it describes has already finished.
+// Reading one is a single text file; the headless checks drive this directly.
+function loadTrackText(text, filename) {
+  let parsed;
+  try {
+    const {geojson, producer} = parseTrackText(text);
+    parsed = {geojson, producers: producer ? [producer] : [], read: 1, unreadable: 0};
+  } catch (e) {
+    showBanner(`Could not read ${filename}: ${e.message}`, true);
+    return;
+  }
+  showTracks(parsed, filename);
+}
+
+// Unpacking and parsing a large export blocks the main thread for long enough
+// to look like a hang, and how long depends on the file and the device, so
+// there is no size worth refusing. Saying what is happening costs nothing and
+// covers every case. The frame is waited for deliberately: without it the
+// message is painted after the work it describes has already finished.
 async function loadFile(file) {
   els.stats.textContent = `Reading ${file.name}…`;
   await new Promise(requestAnimationFrame);
-  loadTrackText(await file.text(), file.name);
+
+  let parsed;
+  try {
+    parsed = await readTrackFile(file);
+  } catch (e) {
+    showBanner(`Could not read ${file.name}: ${e.message}`, true);
+    return;
+  }
+  showTracks(parsed, file.name);
 }
 
 // ---------------------------------------------------------------------------
