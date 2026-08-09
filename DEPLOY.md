@@ -3,8 +3,12 @@
 Cloudflare Pages, built from git on push. Never build locally and upload — a local
 `dist/` has the API key baked into the bundle.
 
-Until the gate Worker exists (`DEPLOYMENT-DESIGN.md`), the site runs in no-tiles mode:
-black background, controls and GeoJSON loading all work.
+Two deployables: the site here, and the tileset Worker in `worker/` that hands it a
+key at runtime. Until the Worker is wired up, the site runs in no-tiles mode: black
+background, controls and GeoJSON loading all work.
+
+Worker setup is under *Setup: the tileset Worker*; how it works is in
+`worker/README.md`.
 
 ## Setup
 
@@ -32,12 +36,12 @@ black background, controls and GeoJSON loading all work.
         Cloudflare -> Protect & Connect -> Zero Trust -> Access Controls -> Applications
 
 4. Record the hostname
-    * `<name>.pages.dev` -> needed later by the gate Worker's `Access-Control-Allow-Origin`
-    * Same origin goes in the client key's Websites restriction -> exact origin only, never `*.pages.dev`
+    * `<name>.pages.dev` -> needed later by the Worker's `ALLOWED_ORIGIN`
+    * Same origin goes in the mesh key's Websites restriction -> exact origin only, never `*.pages.dev`
 
 ---
 
-## Setup: the gate Worker
+## Setup: the tileset Worker
 
 1. Create the Worker
     * Build -> Workers & Pages -> Create application -> start from any template
@@ -62,15 +66,15 @@ black background, controls and GeoJSON loading all work.
     ```sh
     curl -s https://<worker>.<subdomain>.workers.dev/api/tileset
     ```
-    * Expect `{"error":"misconfigured","missing":"GOOGLE_TILES_KEY"}`
+    * Expect `{"error":"misconfigured","missing":"ROOT_TILES_KEY"}`
     * Template output or `404` -> Deployments -> open the build log
 
 5. Create two keys in the Google Cloud Console
     * Console paths: README -> *Getting a Google Maps API key*, steps 4-5
-    * Strong key -> the Worker fetches `root.json` with it, nothing else holds it
+    * Root key -> the Worker fetches `root.json` with it, nothing else holds it
         * API restrictions -> Restrict key -> Map Tiles API
         * Application restrictions: none -> set in step 7
-    * Client key -> browsers fetch mesh tiles with it
+    * Mesh key -> browsers fetch mesh tiles with it
         * API restrictions -> Restrict key -> Map Tiles API
         * Application restrictions -> Websites -> `https://<name>.pages.dev`, exact
     * "Websites" is what the README calls HTTP referrers -> same control, relabelled
@@ -79,23 +83,31 @@ black background, controls and GeoJSON loading all work.
 
 6. Set both keys as Worker secrets
     * Worker -> Settings -> Variables and Secrets -> Add -> type Secret -> Deploy
-        * `GOOGLE_TILES_KEY`: the strong key
-        * `CLIENT_KEY`: the client key
+        * `ROOT_TILES_KEY`: the root key
+        * `MESH_TILES_KEY`: the mesh key
 
-7. Set the sentinel
-    * Generate: `printf 'https://%s.invalid/gate\n' "$(openssl rand -hex 8)"`
+7. Set the referrer the root key is locked to
+    * Generate: `printf 'https://%s.invalid/root\n' "$(openssl rand -hex 8)"`
     * One value, two strings, not interchangeable:
-        * Worker secret `REFERER_SENTINEL`: `https://<hex>.invalid/gate` -> sent as a header, so a URL
-        * Strong key -> Application restrictions -> Websites: `https://<hex>.invalid/*` -> stored by Google, so a pattern
+        * Worker secret `ROOT_TILES_REFERER`: `https://<hex>.invalid/root` -> sent as a header, so a URL
+        * Root key -> Application restrictions -> Websites: `https://<hex>.invalid/*` -> stored by Google, so a pattern
+    * The path is arbitrary; the restriction is a wildcard, so any path matches
     * `.invalid` is reserved by RFC 2606 -> can never be registered
 
-8. Check the gate serves a tileset
+8. Check the Worker serves a tileset
     ```sh
     curl -s https://<worker>.<subdomain>.workers.dev/api/tileset | head -c 120
     ```
-    * Expect `{"key":"AIza...","tileset":{"asset":...`
-    * `{"error":"upstream_failed","status":403}` -> strong key rejected; compare its Websites value with `REFERER_SENTINEL`
+    * Expect `{"meshKey":"AIza...","tileset":{"asset":...`
+    * `{"error":"upstream_failed","status":403}` -> root key rejected; compare its Websites value with `ROOT_TILES_REFERER`
     * Each call is a billable root request -> check once, don't loop
+
+9. Check the cache
+    ```sh
+    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset | grep -o '"cached":[a-z]*'
+    ```
+    * Run twice -> expect `"cached":false` then `"cached":true`
+    * `false` both times -> the cache is not working; do not point the site at it yet
 
 ---
 
@@ -133,7 +145,7 @@ All are read at build time, so editing one does nothing until a rebuild.
 | Variable | Set on Pages? | Effect |
 |---|---|---|
 | `VITE_GOOGLE_MAPS_API_KEY` | **Never** | Bakes a live key into a public bundle in plaintext. Local `.env.local` only. |
-| `VITE_TILES_ENDPOINT` | Once the gate Worker is live | The gate's URL. Unset ⇒ no-tiles mode. |
+| `VITE_TILES_ENDPOINT` | Once the Worker is live | The Worker's `/api/tileset` URL. Unset ⇒ no-tiles mode. |
 | `VITE_MAX_SCREEN_SPACE_ERROR` | Optional | Tile quality vs. request count. Higher = blurrier and cheaper. Not secret. |
 
 Resulting states:
@@ -141,8 +153,8 @@ Resulting states:
 | `VITE_TILES_ENDPOINT` | Behaviour |
 |---|---|
 | unset | No-tiles mode: black background, controls and GeoJSON loading all work. |
-| set, gate healthy | 3D tiles render. |
-| set, gate returns 429 or fails | Falls back to no-tiles mode at runtime, shows a banner. |
+| set, Worker healthy | 3D tiles render. |
+| set, Worker returns 429 or fails | Falls back to no-tiles mode at runtime, shows a banner. |
 
 To apply a change:
 
@@ -166,6 +178,6 @@ To apply a change:
 | Cannot authorize an org repo | Need org **owner** or **GitHub Apps Manager**. |
 | Build fails, Node/engine error | Build system is v2 (Node 18.17.1); Vite 7 needs `^20.19 \|\| >=22.12`. Settings → Build → set build system **v3** (Node 22.16.0). Do not add `.node-version` or `NODE_VERSION`. |
 | Build succeeds, page blank/black | Expected with `VITE_TILES_ENDPOINT` unset. |
-| Tiles 403 after wiring the gate | Client key's Websites restriction does not name the exact origin, or it is a preview hostname. |
+| Tiles 403 after wiring the Worker | Mesh key's Websites restriction does not name the exact origin, or it is a preview hostname. |
 | Config edit had no effect | Build-time variable, needs a rebuild. See *Env vars → To apply a change*. |
 | Manage or reinstall the Git connection | Project → **Settings** → **Builds**. |

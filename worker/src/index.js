@@ -1,16 +1,17 @@
-// The gate: a Cloudflare Worker, deployed from this directory by Cloudflare's
-// Git integration, which hands a browser a Google 3D Tiles root document along
-// with a key for the mesh tiles hanging off it.
+// A Cloudflare Worker, deployed from this directory by Cloudflare's Git
+// integration, which hands a browser a Google 3D Tiles root document along with
+// a key for the mesh tiles hanging off it.
 //
-// Two keys doing different jobs. The strong key never leaves here and is the
-// only one permitted to fetch root.json — the single billable request in the
-// system. The client key goes to the browser, which then fetches mesh tiles
-// with it straight from Google; those are free. So this is a gate, not a proxy,
-// and tile bytes must never be relayed through it.
+// A tileset is a root document plus the mesh tiles it points at, and each has
+// its own key. ROOT_TILES_KEY fetches the root document — the single billable
+// request in the system — and never leaves this Worker. MESH_TILES_KEY goes to
+// the browser, which fetches mesh tiles with it directly from Google; those are
+// free. This is not a proxy: tile bytes must never be relayed through here.
 //
-// Cost is therefore bounded by how often the document is refreshed rather than
-// by how many people visit. Both keys and the sentinel are secrets set in the
-// Cloudflare dashboard; ALLOWED_ORIGIN is a plain variable in wrangler.jsonc.
+// Cost is therefore bounded by how often the root document is refreshed rather
+// than by how many people visit.
+//
+// See README.md in this directory for where each value is configured.
 
 import {DurableObject} from 'cloudflare:workers';
 
@@ -61,7 +62,7 @@ async function handleTileset(env) {
   // Secrets live in the dashboard, so a freshly deployed Worker can be running
   // with none of them set. A missing secret and a key Google rejected look
   // identical from the browser, so name the missing one instead.
-  for (const name of ['GOOGLE_TILES_KEY', 'CLIENT_KEY', 'ALLOWED_ORIGIN']) {
+  for (const name of ['ROOT_TILES_KEY', 'MESH_TILES_KEY', 'ALLOWED_ORIGIN']) {
     if (!env[name]) return json({error: 'misconfigured', missing: name}, 500, env);
   }
 
@@ -78,7 +79,7 @@ async function handleTileset(env) {
 
   return json(
     {
-      key: env.CLIENT_KEY,
+      meshKey: env.MESH_TILES_KEY,
       tileset: result.tileset,
       // Whether this reply cost anything. The document is identical either way,
       // so without this there is no way to tell a working cache from a broken
@@ -152,13 +153,13 @@ async function fetchRoot(env) {
         // Header rather than ?key=, which keeps the key out of URLs and so out
         // of logs. It does not bypass the key's restrictions — those bind both
         // forms equally.
-        'X-GOOG-API-KEY': env.GOOGLE_TILES_KEY,
-        // This key is restricted to a referrer nobody can hold: a random
+        'X-GOOG-API-KEY': env.ROOT_TILES_KEY,
+        // ROOT_TILES_KEY is restricted to a referrer nobody can hold: a random
         // subdomain of .invalid, which RFC 2606 reserves so it can never be
         // registered. A key lifted from a log line or a screenshot is useless
         // without it. Not a second factor — whoever can read the key in the
         // Google console can read its allowed referrer on the same screen.
-        ...(env.REFERER_SENTINEL && {Referer: env.REFERER_SENTINEL})
+        ...(env.ROOT_TILES_REFERER && {Referer: env.ROOT_TILES_REFERER})
       }
     });
   } catch (e) {

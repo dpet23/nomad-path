@@ -4,9 +4,9 @@ import {Tile3DLayer} from '@deck.gl/geo-layers';
 import {_TerrainExtension as TerrainExtension} from '@deck.gl/extensions';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-// Optional gate endpoint (DEPLOYMENT-DESIGN.md). When set, the root tileset
-// document and the key for child tiles both come from it, so no key is baked
-// into the build. When unset, the build-time key above is used directly.
+// The tileset Worker's /api/tileset URL. When set, the root tileset document
+// and the key for mesh tiles both come from it, so no key is baked into the
+// build. When unset, the build-time key above is used directly.
 const TILES_ENDPOINT = import.meta.env.VITE_TILES_ENDPOINT;
 const TILESET_URL = 'https://tile.googleapis.com/v1/3dtiles/root.json';
 const MAX_SSE = Number(import.meta.env.VITE_MAX_SCREEN_SPACE_ERROR) || 16;
@@ -44,16 +44,16 @@ const els = {
   panelToggle: $('panel-toggle')
 };
 
-// The key used for child tiles, and the whole of the tile state: with no key
-// there is nothing to draw, whether because none was configured, or because the
-// gate has not answered yet, or because it refused. Starts as the build key so
-// the direct path needs no special case; a gate response overwrites it.
-let clientKey = GOOGLE_MAPS_API_KEY ?? null;
-// The root tileset document, when the gate supplied it rather than Google.
+// The key mesh tiles are fetched with, and the whole of the tile state: with no
+// key there is nothing to draw, whether because none was configured, or because
+// the Worker has not answered yet, or because it refused. Starts as the build
+// key so the direct path needs no special case; a Worker reply overwrites it.
+let meshKey = GOOGLE_MAPS_API_KEY ?? null;
+// The root tileset document, when the Worker supplied it rather than Google.
 let rootTileset = null;
 
 // Boolean, not a null check: an unset VITE_GOOGLE_MAPS_API_KEY arrives as ''.
-const hasTiles = () => Boolean(clientKey);
+const hasTiles = () => Boolean(meshKey);
 
 const state = {
   tracks: [], // {path: [[lng,lat,z],...], name, day, group, mode}
@@ -110,7 +110,8 @@ function getTooltip({object, layer}) {
 
 const isRootTileset = url => String(url).split('?')[0] === TILESET_URL;
 
-// In gate mode the root document is already in hand, but loaders.gl still asks
+// When the Worker supplied it the root document is already in hand, but
+// loaders.gl still asks
 // the fetch layer for it, so hand back the bytes we hold rather than paying
 // Google for them twice. Everything here is the document Google actually served;
 // only `url` is put back by hand, because the Response constructor won't set it
@@ -138,7 +139,7 @@ function buildTileLayer() {
         if (rootTileset && isRootTileset(url)) return tilesetResponse(rootTileset);
         const response = await fetch(url, {
           ...options,
-          headers: {...options?.headers, 'X-GOOG-API-KEY': clientKey}
+          headers: {...options?.headers, 'X-GOOG-API-KEY': meshKey}
         });
         if (!response.ok) {
           showBanner(
@@ -243,11 +244,11 @@ function updateLayers() {
   deck.setProps({layers: buildLayers()});
 }
 
-// Ask the gate for a root tileset document and a key for child tiles, then turn
-// tiles on. Deliberately not awaited before the first render: a slow or dead gate
-// degrades to the existing no-tiles view instead of holding up the map. Every
-// failure path here leaves clientKey unset, which is the same state as having no
-// key configured at all — so there is nothing to unwind.
+// Ask the Worker for a root tileset document and a key for mesh tiles, then turn
+// tiles on. Deliberately not awaited before the first render: a slow or dead
+// Worker degrades to the existing no-tiles view instead of holding up the map.
+// Every failure path here leaves meshKey unset, which is the same state as
+// having no key configured at all — so there is nothing to unwind.
 async function requestTiles() {
   let payload;
   try {
@@ -269,12 +270,12 @@ async function requestTiles() {
     return;
   }
 
-  if (!payload?.key || !payload?.tileset) {
+  if (!payload?.meshKey || !payload?.tileset) {
     showBanner('The 3D basemap service sent an unexpected reply — tracks will render without it.', true);
     return;
   }
 
-  clientKey = payload.key;
+  meshKey = payload.meshKey;
   rootTileset = payload.tileset;
   els.clampRow.style.display = 'flex';
   updateLayers();
