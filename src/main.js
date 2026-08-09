@@ -175,10 +175,12 @@ function buildTileLayer() {
         }
       }
     },
-    // Google's logo goes up once its content is in hand, which is the root
-    // request coming back. This fires only after that load succeeds, so a
-    // rejected key leaves the logo off the empty scene it produces.
-    onTilesetLoad: () => document.body.classList.add('has-tiles'),
+    // Google's logo belongs with the imagery it credits, so it waits for a mesh
+    // tile rather than the root request that precedes one. The credits beside it
+    // are read off loaded tiles and are empty until the same moment. Raised on
+    // the first tile and never lowered: panning past the loaded ones must not
+    // blink the logo out.
+    onTileLoad: () => document.body.classList.add('has-tiles'),
     operation: 'terrain+draw'
   });
 }
