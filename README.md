@@ -184,6 +184,12 @@ from whatever happens to be behind it.
 For lessons aimed at the follow-up MapLibre + deck.gl multi-basemap app, see
 [LEARNINGS.md](LEARNINGS.md).
 
+## Licence
+
+All rights reserved — see [LICENSE](LICENSE). Published to be read, not reused.
+Google's logo asset and the rendered map data are Google's, not covered by that
+notice.
+
 ## Findings & limits (the point of the spike)
 
 - **It works.** deck.gl's `Tile3DLayer` + `PathLayer` handles 305 tracks / ~100k points
