@@ -73,11 +73,19 @@ Open `http://localhost:5173`. Two things to know:
    server. The app sends it via the `X-GOOG-API-KEY` header, so it never appears in
    request URLs.
 
-**Attribution:** the app aggregates the per-tile copyright strings Google requires and
-shows them bottom-right. Google's [policy](https://developers.google.com/maps/documentation/tile/policies)
-additionally requires the official Google logo (16–19dp, unmodified) wherever tiles are
-shown — this spike only renders the text attribution, so add the logo before showing
-this to anyone but yourself.
+**Attribution:** Google's [policy](https://developers.google.com/maps/documentation/tile/policies)
+requires two things wherever tiles are shown, and the app renders both in one bar along
+the bottom, which appears with the first mesh tile and not before.
+
+- The **logo**, bottom-left: `public/GoogleMaps_Logo_WithDarkOutline.svg`, Google's
+  published asset byte for byte. The outlined variant is the one the policy specifies
+  for a busy background like imagery. It is sized by height alone (never both
+  dimensions) so the aspect ratio cannot drift, and the bar holds the 10dp left/right/top
+  and 5dp bottom of clear space the policy asks for. Replacing it means re-downloading
+  from the policy page, not editing this file.
+- The **data credits**, bottom-right: the per-tile `asset.copyright` strings, aggregated
+  from the tiles on screen and ordered by how many of them each covers, most first,
+  which is the order the policy asks for.
 
 ## Staying within the free tier
 
@@ -89,10 +97,10 @@ How 3D tiles are billed (verified July 2026):
   pan around are **free**.
 - Free allowance: **1,000 root tileset requests per calendar month** (SKU
   "Map Tiles API: Photorealistic 3D Tiles"). Beyond that it's $6.00 per 1,000.
-- Practically: **every full page load/reload of this app costs one root tileset
-  request.** Vite hot-reload of CSS won't, but editing `src/main.js` triggers a full
-  reload, which will. 1,000/month is plenty for casual use, but a day of heavy dev
-  iteration against live tiles can eat into it — do code iteration in no-key mode.
+- Practically: **loading a GeoJSON costs one root tileset request.** Nothing is fetched
+  before that — the app has no basemap to show until there is data to show it over — so
+  page loads and reloads are free, and so is a day of code iteration as long as you
+  don't open a file. Opening a second file in the same session is free too.
 
 To guarantee $0:
 
@@ -138,8 +146,8 @@ by my track-building pipeline):
   be scaled, so at ×2 a mountain drive floats above the photorealistic summit. Most
   effective for flights and in no-key mode.
 - **Clamp tracks to 3D surface**: drapes tracks onto the photorealistic mesh, ignoring
-  GPS elevation (only shown when tiles are enabled; tracks stay hidden until terrain
-  tiles finish loading).
+  GPS elevation (appears once the basemap is switched on, which is when a file loads;
+  tracks stay hidden until terrain tiles finish loading).
 - **X-ray**: disables depth testing so tracks show through terrain/buildings.
 - **Hover** any track or POI for details.
 
@@ -177,4 +185,4 @@ For lessons aimed at the follow-up MapLibre + deck.gl multi-basemap app, see
   console).
 - **Not done / next ideas**: time animation along the per-point `times` arrays
   (`TripsLayer` is the natural fit), per-group visibility toggles, geoid-corrected
-  elevations, the required Google logo for anything public-facing.
+  elevations.
