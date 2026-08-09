@@ -52,8 +52,12 @@ let meshKey = GOOGLE_MAPS_API_KEY ?? null;
 // The root tileset document, when the Worker supplied it rather than Google.
 let rootTileset = null;
 
+// Whether the basemap is switched on. Separate from holding a key, because
+// holding one is not a reason to spend it — see startTiles.
+let tilesOn = false;
+
 // Boolean, not a null check: an unset VITE_GOOGLE_MAPS_API_KEY arrives as ''.
-const hasTiles = () => Boolean(meshKey);
+const hasTiles = () => tilesOn && Boolean(meshKey);
 
 const state = {
   tracks: [], // {path: [[lng,lat,z],...], name, day, group, mode}
@@ -82,8 +86,6 @@ if (!GOOGLE_MAPS_API_KEY && !TILES_ENDPOINT) {
     'No 3D tiles source configured — tracks will render without the basemap. Set ' +
       'VITE_GOOGLE_MAPS_API_KEY (local) or VITE_TILES_ENDPOINT (deployed) and rebuild. See README.'
   );
-} else if (hasTiles()) {
-  els.clampRow.style.display = 'flex';
 }
 
 const esc = s =>
@@ -259,9 +261,9 @@ function updateLayers() {
 }
 
 // Ask the Worker for a root tileset document and a key for mesh tiles, then turn
-// tiles on. Deliberately not awaited before the first render: a slow or dead
-// Worker degrades to the existing no-tiles view instead of holding up the map.
-// Every failure path here leaves meshKey unset, which is the same state as
+// tiles on. Deliberately not awaited by its caller: a slow or dead Worker
+// degrades to the no-tiles view instead of holding up the tracks that were just
+// loaded. Every failure path here leaves tiles off, which is the same state as
 // having no key configured at all — so there is nothing to unwind.
 async function requestTiles() {
   let payload;
@@ -291,11 +293,27 @@ async function requestTiles() {
 
   meshKey = payload.meshKey;
   rootTileset = payload.tileset;
+  enableTiles();
+}
+
+// Draw the basemap, and reveal the control that only means anything with one.
+function enableTiles() {
+  tilesOn = true;
   els.clampRow.style.display = 'flex';
   updateLayers();
 }
 
-if (isDeployed) requestTiles();
+// The basemap waits for something to see over it. Fetching the root document is
+// the one billable call, so a visitor who never opens a file never costs one;
+// locally, reloading the page while working on the code is free for the same
+// reason. Runs once — reloading a second file must not buy a second document.
+let tilesRequested = false;
+function startTiles() {
+  if (tilesRequested) return;
+  tilesRequested = true;
+  if (isDeployed) requestTiles();
+  else if (meshKey) enableTiles();
+}
 
 // ---------------------------------------------------------------------------
 // GeoJSON processing
@@ -497,6 +515,7 @@ function loadGeoJSONText(text, filename) {
 
   els.controls.style.display = 'block';
   renderLegend(modes, counts, colors);
+  startTiles();
   updateLayers();
   flyToData();
 
