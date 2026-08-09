@@ -4,10 +4,15 @@
   "compatibility_date": "2026-08-01",
   "observability": {"enabled": true},
 
+  // A deploy would normally delete every variable not listed here, which would
+  // wipe anything set in the dashboard. keep_vars stops that, so DAILY_CAP and
+  // MONTHLY_CAP can be retuned there without a commit — they are deliberately
+  // absent below, since anything listed is overwritten on every deploy.
+  "keep_vars": true,
+
   // The page runs on a different origin, so it needs naming here for CORS.
-  // Not a secret, and deliberately not a dashboard variable: a deploy deletes
-  // every var not present in this file, so a dashboard edit would silently
-  // revert on the next push. The two API keys are secrets, which survive.
+  // Pinned in the config rather than the dashboard because it changes only when
+  // the site moves, and then it should move in the same commit.
   "vars": {
     "ALLOWED_ORIGIN": "https://nomad-path.pages.dev"
   },

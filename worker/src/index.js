@@ -15,6 +15,8 @@
 
 import {DurableObject} from 'cloudflare:workers';
 
+import {capsFor, exhausted, rollPeriods} from './quota.js';
+
 const TILESET_URL = 'https://tile.googleapis.com/v1/3dtiles/root.json';
 
 // Google guarantees the session token inside the document for at least three
@@ -75,6 +77,11 @@ async function handleTileset(env) {
   const cache = env.TILESET_CACHE.get(env.TILESET_CACHE.idFromName('root'));
   const result = await cache.tileset();
 
+  // Hitting a cap does not mean the site got popular — the caps sit far above
+  // what cached traffic can reach — so it means the cache stopped working.
+  if (result.error === 'quota_exhausted') {
+    return json({error: result.error, scope: result.scope, resetsAt: result.resetsAt}, 429, env);
+  }
   if (!result.ok) return json({error: result.error, status: result.status}, 502, env);
 
   return json(
@@ -128,13 +135,26 @@ export class TilesetCache extends DurableObject {
     return isRefresher || !result.ok ? result : {...result, cached: true};
   }
 
+  // Counts and stored document move together, and only one refresh runs at a
+  // time, so a count can never be lost to a concurrent one.
   async #refresh() {
     try {
+      const now = new Date();
+      const counts = rollPeriods(await this.ctx.storage.get('counters'), now);
+
+      const spent = exhausted(counts, now, capsFor(this.env));
+      if (spent) return {ok: false, error: 'quota_exhausted', ...spent};
+
       const fetched = await fetchRoot(this.env);
       if (!fetched.ok) return fetched;
 
+      // Only a request Google actually served is counted: a rejected one is
+      // not billed, and counting it would overstate how close the cap is.
       const fetchedAt = Date.now();
-      await this.ctx.storage.put('tileset', {tileset: fetched.tileset, fetchedAt});
+      await this.ctx.storage.put({
+        tileset: {tileset: fetched.tileset, fetchedAt},
+        counters: {...counts, dayCount: counts.dayCount + 1, monthCount: counts.monthCount + 1}
+      });
       return {ok: true, tileset: fetched.tileset, fetchedAt, cached: false};
     } finally {
       // Cleared even on failure, or one failed fetch would wedge every later

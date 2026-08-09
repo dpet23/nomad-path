@@ -109,6 +109,38 @@ Worker setup is under *Setup: the tileset Worker*; how it works is in
     * Run twice -> expect `"cached":false` then `"cached":true`
     * `false` both times -> the cache is not working; do not point the site at it yet
 
+10. Point the site at the Worker
+    * Pages -> Settings -> Variables and Secrets -> Add -> type **Text**, not Secret
+        * `VITE_TILES_ENDPOINT`: `https://<worker>.<subdomain>.workers.dev/api/tileset`
+    * Deployments -> Retry deployment -> build-time variable, so it needs a rebuild
+    * Load the site -> 3D tiles render
+
+---
+
+## Check it is behaving
+
+Google will not cap spending on this account, so these two checks are what stand in
+for it. Neither needs the site, a phone, or devtools.
+
+1. Is the cache working?
+
+    ```sh
+    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset \
+      | grep -o '"cached":[a-z]*\|"fetchedAt":"[^"]*"'
+    ```
+
+    * There is one cached document shared by everyone -> checking from anywhere checks it for everyone
+    * `"cached":true` with a `fetchedAt` up to 2.5h old -> working
+    * `"cached":false` twice running -> broken; the caps will stop it at `DAILY_CAP`
+
+2. Is Google's usage what it should be?
+
+    * Google Maps Platform -> Quotas -> Map Tiles API -> *root tileset queries*
+    * **Expect at most ~10 per day**, whatever the traffic -> one per 2.5h TTL
+    * Materially more -> either the cache broke, or `MESH_TILES_KEY` leaked and is
+      being used elsewhere. The Worker cannot see the second case.
+    * Leak -> rotate `MESH_TILES_KEY` -> one secret edit, no rebuild
+
 ---
 
 ## Verify a deploy

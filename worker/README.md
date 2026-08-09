@@ -4,6 +4,10 @@ Hands a browser a Google 3D Tiles root document plus a key for the mesh tiles it
 points at. Deployed by Cloudflare from this directory on push; see `DEPLOY.md` at
 the repo root for the setup steps.
 
+```sh
+npm test    # the cap logic; no network, no deploy
+```
+
 ## Why it exists
 
 A tileset is a root document plus the mesh tiles hanging off it. **Only the root
@@ -37,16 +41,12 @@ key is locked to it, so a key lifted from a log line or a screenshot is useless 
 its own. It is not a second factor: whoever can read the key in the Google console
 can read its allowed referrer on the same screen.
 
-## Request flow
-
-`GET /api/tileset` is the only route.
+## `GET /api/tileset`
 
 1. Check every required secret and variable is set.
 2. Resolve the one cache object and ask it for the document.
 3. Cached and younger than the TTL -> return it, no upstream call, no cost.
-4. Otherwise fetch `root.json` from Google, store it, return it.
-
-Replies:
+4. Otherwise check the counters, fetch `root.json`, count it, store it, return it.
 
 | Field | Meaning |
 |---|---|
@@ -56,11 +56,44 @@ Replies:
 | `fetchedAt` | when the cached document was fetched |
 
 `cached` and `fetchedAt` exist because the document is identical either way. Two
-requests returning `cached: false` twice means the cache is broken, and without
-these fields that would only show up in billing a day later.
+requests both returning `cached: false` means the cache is broken, and without
+these fields that would only surface in billing a day later.
 
-Errors are `{error, ...}` with a `502` for upstream problems and a `500` for a
-missing secret. The key never appears in a response body or a log line.
+Errors are `{error, ...}`: `502` upstream, `500` for a missing secret, `429` when
+a cap is spent. The keys never appear in a response body or a log line.
+
+## Counters and caps
+
+| Cap | Value | Why |
+|---|---|---|
+| Monthly | 900 | Google's free tier is 1,000 root requests a month |
+| Daily | 40 | Stops one bad day eating the month |
+
+**These are not throttling.** With the cache working, honest traffic cannot come
+near them however many people visit — at a 2.5 hour TTL the ceiling is ~10 a day.
+So a `429` does not mean the site got popular, it means the caching path broke.
+That is also why there is no bring-your-own-key box on `429`: it would let
+visitors route around the one failure worth noticing.
+
+Both caps are dashboard variables, so one can be retuned — or dropped to 1 to
+prove the `429` path — without a commit and a deploy. `keep_vars` in
+`wrangler.jsonc` is what stops a deploy wiping them.
+
+Periods are keyed on UTC. Google bills on US/Pacific, so a Google day can overlap
+two of ours and allow up to twice the daily cap. Nothing compares these counts to
+a bill, so that drift does not matter, and 80 in a day is still far inside the
+monthly allowance.
+
+## What the counters do not cover
+
+A visitor who takes `MESH_TILES_KEY` out of devtools can call Google directly.
+That traffic never reaches this Worker, so the counters never see it and the caps
+never stop it. Referrer restrictions are forgeable by design; only IP restrictions
+are not, and Workers has no stable egress IP to pin one to.
+
+The caps guard against **one** thing: this Worker's own cache failing and it
+starting to fetch on every request. That is worth guarding, and it is the whole
+of what they do.
 
 ## Platform mechanics
 
@@ -86,6 +119,7 @@ The parts that are not visible in the code itself.
 | `ROOT_TILES_KEY` | secret | Cloudflare dashboard | `fetchRoot` |
 | `MESH_TILES_KEY` | secret | Cloudflare dashboard | the reply body |
 | `ROOT_TILES_REFERER` | secret | Cloudflare dashboard | `fetchRoot` |
+| `DAILY_CAP`, `MONTHLY_CAP` | variables | Cloudflare dashboard, defaults in `src/quota.js` | `TilesetCache` |
 | `ALLOWED_ORIGIN` | variable | `wrangler.jsonc` | `json()`, as the CORS header |
 | `TILESET_CACHE` | binding | `wrangler.jsonc` | `handleTileset` |
 | `name` | Worker name | `wrangler.jsonc` | must equal the dashboard's, or the build fails |
@@ -101,7 +135,8 @@ are separate deployables built from different roots:
   recognise the root request and to stamp the synthetic response.
 * `/api/tileset` is a literal here and the tail of `VITE_TILES_ENDPOINT` there.
 
-**Secrets are never edited in `wrangler.jsonc`.** Plain variables are, and a
-deploy deletes every variable not present in that file — so a dashboard edit to
-one would silently revert on the next push. Secrets survive deploys, which is why
-the keys are secrets and `ALLOWED_ORIGIN` is not.
+**Secrets are never put in `wrangler.jsonc`** — it is committed. Secrets survive
+deploys untouched. Plain variables do not: a deploy deletes any not listed in that
+file, which is why `keep_vars` is set, and why the caps are absent from it. A
+variable listed there is overwritten from the file on every deploy, so anything
+meant to be dashboard-editable must not appear in it.
