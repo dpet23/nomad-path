@@ -198,33 +198,61 @@ function buildTileLayer() {
   });
 }
 
+// Everything the casing and the track share: same geometry, same draping, same
+// depth behaviour. They differ in three properties and must not drift in any
+// of the rest, or the outline slides off the line it is outlining.
+function trackLayerProps() {
+  return {
+    data: state.tracks,
+    getPath: d =>
+      state.offset === 0 && state.exaggeration === 1
+        ? d.path
+        : d.path.map(([x, y, z]) => [x, y, z * state.exaggeration + state.offset]),
+    capRounded: true,
+    jointRounded: true,
+    billboard: false,
+    updateTriggers: {getPath: [state.offset, state.exaggeration]},
+    extensions: state.clamp && hasTiles() ? [new TerrainExtension()] : [],
+    parameters: state.xray ? {depthCompare: 'always'} : {}
+  };
+}
+
 function buildLayers() {
   const layers = [buildTileLayer()];
 
   if (state.tracks.length) {
     layers.push(
+      // The photorealistic basemap is not a chart surface: it is whatever was
+      // under the camera, so no colour is reliably visible against it — a pale
+      // step disappears into cloud and concrete, a dark one into water and
+      // shadow. A casing is how maps have always answered that. It separates
+      // every band from the background at once, which the ramp itself cannot
+      // do, and it is the same near-black the POI dots are already ringed with.
       new PathLayer({
+        ...trackLayerProps(),
+        id: 'tracks-casing',
+        getColor: [13, 13, 13],
+        getWidth: 7,
+        widthMinPixels: 5,
+        pickable: false,
+        // Casing and track sit at exactly the same depth, so whichever writes
+        // first would decide the other's fate. The casing tests depth — hills
+        // still hide it — but writes none, leaving the track free to draw over
+        // it instead of z-fighting with it.
+        parameters: {...trackLayerProps().parameters, depthWriteEnabled: false}
+      }),
+      new PathLayer({
+        ...trackLayerProps(),
         id: 'tracks',
-        data: state.tracks,
-        getPath: d =>
-          state.offset === 0 && state.exaggeration === 1
-            ? d.path
-            : d.path.map(([x, y, z]) => [x, y, z * state.exaggeration + state.offset]),
         // One colour per vertex: PathLayer accepts an array here and shades the
         // path along its length, so a track changes colour as its pace changes
         // rather than averaging into a single stripe.
         getColor: d => d.colors,
         getWidth: 4,
         widthMinPixels: 2.5,
-        capRounded: true,
-        jointRounded: true,
-        billboard: false,
         pickable: true,
         autoHighlight: true,
-        highlightColor: [255, 255, 255, 180],
-        updateTriggers: {getPath: [state.offset, state.exaggeration]},
-        extensions: state.clamp && hasTiles() ? [new TerrainExtension()] : [],
-        parameters: state.xray ? {depthCompare: 'always'} : {}
+        highlightColor: [255, 255, 255, 180]
       })
     );
   }
