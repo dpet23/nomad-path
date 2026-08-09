@@ -107,24 +107,32 @@ engineer around. Don't confuse them.
   3D view is ≈ one billable root request. The key must ride on the client because
   every tile request carries it and proxying the whole tile firehose is impractical.
   So make 3D **opt-in** (don't instantiate `Tile3DLayer` until the user asks for it —
-  not even hidden), referrer-restrict the key, set a Google-side hard quota override
-  (the only real cap), and default to a cheap basemap.
-- **A serverless key-gate is worth building — for what it actually does.** Pattern: a
-  Cloud Function (free tier) holds the key, keeps a daily counter in a durable store
-  (Firestore/Datastore free tier, using an atomic increment so concurrent loads don't
-  race), and returns the key to the client only while under a soft daily limit set
-  *below* the Google hard quota cap — otherwise it returns an error the app renders as
-  a friendly "3D view unavailable, back tomorrow." This is genuinely useful for three
-  reasons: (1) the key is no longer in static assets, so automated scrapers of your JS
-  or repo won't harvest it; (2) a soft budget-guard trips before anyone hits Google's
-  raw 403; (3) it's a central kill-switch and demand meter you can change without
-  redeploying the client. What it is **not**: a security boundary or an exact meter.
-  Once handed out, the key is plainly visible in the network tab and usable directly
-  against Google for its ~3-hour session window, bypassing your counter entirely — so
-  a determined abuser routes around it, and one handout can map to several (or zero)
-  real root fetches, so the count only approximates billable events. Referrer
-  restriction + the Google hard quota override stay the actual boundary; the function
-  is a friendly, scraper-resistant layer on top, not a replacement.
+  not even hidden), referrer-restrict the key, and default to a cheap basemap.
+  **Do not count on a Google-side quota cap**: this project could not set one — quota
+  editing was locked on the account and spend caps don't cover Map Tiles — so the
+  bound had to be built rather than configured. Check whether you have that lever
+  before designing around it.
+- **A key-gate is worth building, and it does more than predicted — because the
+  session token is portable.** This was built (Cloudflare Worker + one Durable
+  Object). The load-bearing discovery: a session token from `root.json` works from
+  *any* client, so the function does not have to hand out a key and hope. It fetches
+  `root.json` **itself**, caches the document for 2.5h against Google's ≥3h guarantee,
+  and serves copies. **Two keys, not one**: a root key that never leaves the server
+  and is the only thing permitted to fetch `root.json`, and a mesh key handed to
+  browsers for the (free) tile fetches.
+  That inverts the economics the bullet above assumes: **cost stops scaling with
+  users and starts scaling with time** — ~10 billable requests a day at saturation,
+  whatever the traffic — and the count becomes exact rather than approximate, because
+  the function is now the only caller. Tile bytes never pass through it, so it stays a
+  gatekeeper rather than a proxy.
+  What it still is **not**: a security boundary. The mesh key is visible in the
+  network tab and usable directly against Google, bypassing every counter — so caps
+  guard only against *your own cache breaking*, not against abuse. Two things that
+  cost real time: a server-held key **can** be referrer-restricted to a sentinel
+  domain, because the Workers runtime does let an outbound `fetch` set `Referer`
+  (browsers forbid it, and the docs don't say); and being single-threaded is not
+  enough for atomicity, since only storage operations hold events off — awaiting a
+  network call lets requests interleave, so share the in-flight promise.
 - **ToS and attribution stop being optional in public.** Google logo + aggregated
   per-tile copyright, no caching tiles beyond the session, plus the 3D Tiles usage
   restrictions. "Use at your own risk" does not cover a terms breach.

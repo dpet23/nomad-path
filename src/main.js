@@ -4,6 +4,10 @@ import {Tile3DLayer} from '@deck.gl/geo-layers';
 import {_TerrainExtension as TerrainExtension} from '@deck.gl/extensions';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+// The tileset Worker's /api/tileset URL. When set, the root tileset document
+// and the key for mesh tiles both come from it, so no key is baked into the
+// build. When unset, the build-time key above is used directly.
+const TILES_ENDPOINT = import.meta.env.VITE_TILES_ENDPOINT;
 const TILESET_URL = 'https://tile.googleapis.com/v1/3dtiles/root.json';
 const MAX_SSE = Number(import.meta.env.VITE_MAX_SCREEN_SPACE_ERROR) || 16;
 
@@ -40,7 +44,16 @@ const els = {
   panelToggle: $('panel-toggle')
 };
 
-const tilesEnabled = Boolean(GOOGLE_MAPS_API_KEY);
+// The key mesh tiles are fetched with, and the whole of the tile state: with no
+// key there is nothing to draw, whether because none was configured, or because
+// the Worker has not answered yet, or because it refused. Starts as the build
+// key so the direct path needs no special case; a Worker reply overwrites it.
+let meshKey = GOOGLE_MAPS_API_KEY ?? null;
+// The root tileset document, when the Worker supplied it rather than Google.
+let rootTileset = null;
+
+// Boolean, not a null check: an unset VITE_GOOGLE_MAPS_API_KEY arrives as ''.
+const hasTiles = () => Boolean(meshKey);
 
 const state = {
   tracks: [], // {path: [[lng,lat,z],...], name, day, group, mode}
@@ -58,12 +71,18 @@ function showBanner(msg, isError = false) {
   els.banner.textContent = msg;
 }
 
-if (!tilesEnabled) {
+// Every message below has two audiences. Running locally there is a developer at
+// a terminal who can fix the cause; on the deployed site there is a visitor who
+// cannot, and for whom the key is not theirs to check. TILES_ENDPOINT tells the
+// two apart.
+const isDeployed = Boolean(TILES_ENDPOINT);
+
+if (!GOOGLE_MAPS_API_KEY && !TILES_ENDPOINT) {
   showBanner(
-    'No Google Maps API key found — tracks will render without the 3D tiles basemap. ' +
-      'Copy .env.example to .env.local, set VITE_GOOGLE_MAPS_API_KEY and restart. See README.'
+    'No 3D tiles source configured — tracks will render without the basemap. Set ' +
+      'VITE_GOOGLE_MAPS_API_KEY (local) or VITE_TILES_ENDPOINT (deployed) and rebuild. See README.'
   );
-} else {
+} else if (hasTiles()) {
   els.clampRow.style.display = 'flex';
 }
 
@@ -89,8 +108,27 @@ function getTooltip({object, layer}) {
   return {html: `<b>${esc(object.name)}</b><br/>${parts.join(' · ')}`, style};
 }
 
+const isRootTileset = url => String(url).split('?')[0] === TILESET_URL;
+
+// When the Worker supplied it the root document is already in hand, but
+// loaders.gl still asks
+// the fetch layer for it, so hand back the bytes we hold rather than paying
+// Google for them twice. Everything here is the document Google actually served;
+// only `url` is put back by hand, because the Response constructor won't set it
+// (the browser fills it in from a real request) and loaders.gl reads it twice:
+// `Tiles3DLoader.parse` picks tileset-vs-binary-tile on `url.indexOf('.json')`,
+// and `parseTileset` derives the basePath that Google's root-relative child URIs
+// resolve against. An empty url fails both.
+function tilesetResponse(tileset) {
+  const response = new Response(JSON.stringify(tileset), {
+    headers: {'content-type': 'application/json'}
+  });
+  Object.defineProperty(response, 'url', {value: TILESET_URL});
+  return response;
+}
+
 function buildTileLayer() {
-  if (!tilesEnabled) return null;
+  if (!hasTiles()) return null;
   return new Tile3DLayer({
     id: 'google-3d-tiles',
     data: TILESET_URL,
@@ -98,14 +136,17 @@ function buildTileLayer() {
       // Custom fetch so HTTP failures (bad key, API not enabled) surface in
       // the UI instead of only the console.
       fetch: async (url, options) => {
+        if (rootTileset && isRootTileset(url)) return tilesetResponse(rootTileset);
         const response = await fetch(url, {
           ...options,
-          headers: {...options?.headers, 'X-GOOG-API-KEY': GOOGLE_MAPS_API_KEY}
+          headers: {...options?.headers, 'X-GOOG-API-KEY': meshKey}
         });
         if (!response.ok) {
           showBanner(
             `Google 3D Tiles request failed: ${response.status} ${response.statusText}. ` +
-              'Check that your API key is valid and the Map Tiles API is enabled (see README).',
+              (isDeployed
+                ? 'The basemap may be unavailable for a while.'
+                : 'Check that your API key is valid and the Map Tiles API is enabled (see README).'),
             true
           );
         }
@@ -152,7 +193,7 @@ function buildLayers() {
         autoHighlight: true,
         highlightColor: [255, 255, 255, 180],
         updateTriggers: {getPath: [state.offset, state.exaggeration]},
-        extensions: state.clamp && tilesEnabled ? [new TerrainExtension()] : [],
+        extensions: state.clamp && hasTiles() ? [new TerrainExtension()] : [],
         parameters: state.xray ? {depthCompare: 'always'} : {}
       })
     );
@@ -172,7 +213,7 @@ function buildLayers() {
         radiusMaxPixels: 10,
         pickable: true,
         // POIs carry no elevation — drape them onto the 3D surface when we have one.
-        extensions: tilesEnabled ? [new TerrainExtension()] : [],
+        extensions: hasTiles() ? [new TerrainExtension()] : [],
         parameters: state.xray ? {depthCompare: 'always'} : {}
       })
     );
@@ -190,7 +231,9 @@ const deck = new Deck({
     console.error(err);
     showBanner(
       `Layer error: ${err.message}. ` +
-        (tilesEnabled ? 'If 3D tiles fail to load, check that your API key is valid and Map Tiles API is enabled.' : ''),
+        (hasTiles() && !isDeployed
+          ? 'If 3D tiles fail to load, check that your API key is valid and Map Tiles API is enabled.'
+          : ''),
       true
     );
   },
@@ -200,6 +243,45 @@ const deck = new Deck({
 function updateLayers() {
   deck.setProps({layers: buildLayers()});
 }
+
+// Ask the Worker for a root tileset document and a key for mesh tiles, then turn
+// tiles on. Deliberately not awaited before the first render: a slow or dead
+// Worker degrades to the existing no-tiles view instead of holding up the map.
+// Every failure path here leaves meshKey unset, which is the same state as
+// having no key configured at all — so there is nothing to unwind.
+async function requestTiles() {
+  let payload;
+  try {
+    const response = await fetch(TILES_ENDPOINT);
+    if (response.status === 429) {
+      const {resetsAt} = await response.json().catch(() => ({}));
+      const until = new Date(resetsAt);
+      showBanner(
+        'The 3D basemap has reached its usage limit for now' +
+          (isNaN(until) ? '' : `, until ${until.toLocaleString()}`) +
+          ' — tracks will render without it.'
+      );
+      return;
+    }
+    if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    payload = await response.json();
+  } catch (e) {
+    showBanner(`Could not load the 3D basemap (${e.message}) — tracks will render without it.`, true);
+    return;
+  }
+
+  if (!payload?.meshKey || !payload?.tileset) {
+    showBanner('The 3D basemap service sent an unexpected reply — tracks will render without it.', true);
+    return;
+  }
+
+  meshKey = payload.meshKey;
+  rootTileset = payload.tileset;
+  els.clampRow.style.display = 'flex';
+  updateLayers();
+}
+
+if (isDeployed) requestTiles();
 
 // ---------------------------------------------------------------------------
 // GeoJSON processing

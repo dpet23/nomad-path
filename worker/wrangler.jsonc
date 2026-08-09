@@ -1,0 +1,29 @@
+{
+  "name": "nomad-path-google-tiles",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "observability": {"enabled": true},
+
+  // A deploy would normally delete every variable not listed here, which would
+  // wipe anything set in the dashboard. keep_vars stops that, so DAILY_CAP and
+  // MONTHLY_CAP can be retuned there without a commit — they are deliberately
+  // absent below, since anything listed is overwritten on every deploy.
+  "keep_vars": true,
+
+  // The page runs on a different origin, so it needs naming here for CORS.
+  // Pinned in the config rather than the dashboard because it changes only when
+  // the site moves, and then it should move in the same commit.
+  "vars": {
+    "ALLOWED_ORIGIN": "https://nomad-path.pages.dev"
+  },
+
+  // One object holds the cached document. Single-threaded per object, which is
+  // what makes check-then-fetch a real critical section; eventually consistent
+  // storage would let concurrent requests each fetch their own copy.
+  "durable_objects": {
+    "bindings": [{"name": "TILESET_CACHE", "class_name": "TilesetCache"}]
+  },
+
+  // SQLite-backed, which is the only kind the free plan offers.
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["TilesetCache"]}]
+}
