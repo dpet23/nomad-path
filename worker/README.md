@@ -8,6 +8,13 @@ the repo root for the setup steps.
 npm test    # the cap logic; no network, no deploy
 ```
 
+| File | Responsibility |
+|---|---|
+| `src/index.js` | HTTP surface: routing, CORS, the reply shape |
+| `src/cache.js` | The shared document, as a Durable Object |
+| `src/google.js` | The one upstream call |
+| `src/quota.js` | The caps, and the only part with tests |
+
 ## Why it exists
 
 A tileset is a root document plus the mesh tiles hanging off it. **Only the root
@@ -107,7 +114,7 @@ The parts that are not visible in the code itself.
 | `idFromName('root')` | Hashes a string to an object ID, deterministically. Every request everywhere resolves `'root'` to the same single instance — that is how the cache is shared. |
 | `.get(id)` | Returns a *stub*, not the object. The object may not exist yet; it is created on first use. |
 | `await cache.tileset()` | Looks local, is remote. An RPC to wherever the object lives, with the return value serialised back. Works only because the class extends `DurableObject`. |
-| `export class TilesetCache` | Nothing imports it. Cloudflare instantiates it by matching `class_name` in `wrangler.jsonc`. |
+| `export class TilesetCache` | Nothing constructs it. Cloudflare instantiates it by matching `class_name` in `wrangler.jsonc` against the **entry point's** exports — which is why `index.js` re-exports it from `cache.js`. |
 | `this.ctx` / `this.env` | Supplied by the `DurableObject` base class, never assigned here. |
 | `ctx.storage` | Per-object and durable. Holds structured values rather than text, and survives the instance being evicted. |
 | Input gates | Only *storage* operations hold incoming events off. Awaiting a network fetch lets other requests interleave — which is why an in-flight refresh is shared through one promise rather than relying on the object being single-threaded. |
@@ -123,8 +130,8 @@ The parts that are not visible in the code itself.
 | `ALLOWED_ORIGIN` | variable | `wrangler.jsonc` | `json()`, as the CORS header |
 | `TILESET_CACHE` | binding | `wrangler.jsonc` | `handleTileset` |
 | `name` | Worker name | `wrangler.jsonc` | must equal the dashboard's, or the build fails |
-| `TILESET_URL` | constant | `src/index.js` | `fetchRoot` |
-| `TTL_MS` | constant | `src/index.js` | `TilesetCache` |
+| `TILESET_URL` | constant | `src/google.js` | `fetchRoot` |
+| `TTL_MS` | constant | `src/cache.js` | `TilesetCache` |
 | `/api/tileset` | route | `src/index.js` | must match the path in `VITE_TILES_ENDPOINT` |
 | `VITE_TILES_ENDPOINT` | build variable | Pages build config | `src/main.js`, in the site |
 
