@@ -2,6 +2,14 @@ import {Deck, FlyToInterpolator, WebMercatorViewport} from '@deck.gl/core';
 import {PathLayer, ScatterplotLayer} from '@deck.gl/layers';
 import {Tile3DLayer} from '@deck.gl/geo-layers';
 import {_TerrainExtension as TerrainExtension} from '@deck.gl/extensions';
+import {
+  CompassWidget,
+  DarkGlassTheme,
+  FullscreenWidget,
+  ResetViewWidget,
+  ZoomWidget
+} from '@deck.gl/widgets';
+import '@deck.gl/widgets/stylesheet.css';
 
 import {NO_SPEED, NO_TIMING, formatSpeed, speedColor, speedScale, trackSpeeds} from './speed.js';
 import {parseTrackText, readTrackFile} from './track-file.js';
@@ -271,10 +279,33 @@ function buildLayers() {
   return layers.filter(Boolean);
 }
 
+// Top-right, because the panel holds the left and the credits bar the bottom.
+// The glass theme is the panel's own treatment — translucent dark over blur —
+// so the buttons belong to the same surface rather than sitting on the map as
+// separate furniture.
+//
+// Each earns its place on a phone, where the gestures they replace are the
+// awkward ones. Deliberately left out: the scale bar, which lies in a pitched
+// 3D view, and the loading spinner, which would blink on every pan as tiles
+// stream in rather than meaning anything.
+const widgetStyle = DarkGlassTheme;
+const widgets = [
+  // Rotating with two fingers is easy to do by accident; a north-up scene is
+  // hard to get back to by hand. One tap restores bearing and pitch.
+  new CompassWidget({placement: 'top-right', style: widgetStyle}),
+  // The camera is fitted to the data on load, and this is the way back to it:
+  // the widget resets to whatever initialViewState currently is, and flyToData
+  // makes that the fitted view rather than the opening globe.
+  new ResetViewWidget({placement: 'top-right', style: widgetStyle}),
+  new ZoomWidget({placement: 'top-right', style: widgetStyle}),
+  new FullscreenWidget({placement: 'top-right', style: widgetStyle})
+];
+
 const deck = new Deck({
   parent: $('map'),
   initialViewState: {longitude: 0, latitude: 20, zoom: 1.2, pitch: 0, bearing: 0},
   controller: {touchRotate: true, inertia: 250},
+  widgets,
   getTooltip,
   onError: err => {
     console.error(err);
