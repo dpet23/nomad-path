@@ -1,13 +1,17 @@
 # GPS tracks over Google Photorealistic 3D Tiles
 
-A spike exploring whether personal GPS holiday recordings (GeoJSON) can be rendered in
-true 3D over [Google Photorealistic 3D Tiles](https://developers.google.com/maps/documentation/tile/3d-tiles-overview)
+A spike exploring whether personal GPS recordings can be rendered in true 3D over
+[Google Photorealistic 3D Tiles](https://developers.google.com/maps/documentation/tile/3d-tiles-overview)
 using [deck.gl](https://deck.gl), based on the
 [deck.gl google-3d-tiles example](https://deck.gl/examples/google-3d-tiles).
 
-Tracks are drawn as 3D lines at their recorded GPS elevation — flights arc up to cruising
-altitude, drives hug the coast roads — colored by transport mode, over Google's
-photorealistic 3D globe.
+Drop in a GPX, KML, GeoJSON, KMZ or a zip of them. Tracks are drawn as 3D lines at
+their recorded GPS elevation — flights arc up to cruising altitude, drives hug the
+coast roads — coloured by how fast they were travelled, over Google's photorealistic
+3D globe.
+
+**Your files never leave the browser.** They are read and parsed on the page; nothing
+is uploaded anywhere. The only requests the app makes are for Google's map tiles.
 
 ## Quick start
 
@@ -19,9 +23,8 @@ cp .env.example .env.local        # then put your API key in .env.local
 npm run dev
 ```
 
-Open the printed URL (default `http://localhost:5173`) and **drag & drop a
-`trip-data.geojson` onto the page** (or use the *Open GeoJSON…* button). The camera
-flies to fit the data.
+Open the printed URL (default `http://localhost:5173`) and **drag & drop a track file
+onto the page** (or use the *Open a track…* button). The camera flies to fit the data.
 
 No API key? The app still works — tracks render in 3D over a black background, with a
 banner explaining what's missing. Useful for checking your data before spending tile
@@ -119,24 +122,51 @@ Cost/quality knob: `VITE_MAX_SCREEN_SPACE_ERROR` in `.env.local` (default 16, th
 deck.gl example uses 16–20). Higher values load fewer/blurrier tiles per session —
 irrelevant to billing (tile fetches are free) but easier on bandwidth and GPU.
 
-## Data format
+## What it reads
 
-The app accepts any GeoJSON `FeatureCollection` and understands this shape (as produced
-by my track-building pipeline):
+| Format | Notes |
+|---|---|
+| **GPX** | Tracks and waypoints. `<ele>` gives elevation, `<time>` gives speed, `<type>` becomes the transport mode in the tooltip, a waypoint's `<sym>` its category. |
+| **KML** | Placemark LineStrings and Points. Usually carries elevation but no timestamps, so no speed. |
+| **GeoJSON** | A `FeatureCollection`; the richest shape, described below. |
+| **KMZ / zip** | Unpacked in the browser. Every track file inside merges into one scene — a folder of GPX days loads as one trip. |
+
+Nothing is chosen by file extension. The bytes are sniffed: a zip by its magic number,
+then markup or JSON by the first character, then GPX or KML by the root element. A file
+with the wrong extension, or none, still loads.
+
+Inside an archive the same sniff picks the entries, so photos, readmes and the
+AppleDouble twins Finder hides in `__MACOSX` are skipped without a rule of their own.
+An entry that looks like a track and then fails to parse is counted in the stats line
+rather than failing the load.
+
+The GeoJSON shape (as produced by my track-building pipeline):
 
 - **LineString** features = tracks. Coordinates may be 2D `[lon, lat]`; per-point
   elevation is read from `properties.elevations` (array aligned 1:1 with coordinates,
-  meters). Falls back to a coordinate's own third element, then 0. Tracks whose
-  `elevations` array is missing or misaligned render at ground level and are counted in
-  the stats line.
-- `properties.transportMode` drives the color. The mode set is read dynamically from
-  the loaded file and assigned palette slots in a fixed, CVD-safe order; files with
-  more than 8 modes get gray for the overflow. `name`, `day`, `group` feed the hover
-  tooltip.
+  meters). Falls back to a coordinate's own third element, then 0. Tracks with neither
+  render at ground level and are counted in the stats line.
+- `properties.times` (aligned 1:1 with coordinates, ISO strings or epoch numbers) gives
+  speed. `properties.transportMode`, `name`, `day`, `group` feed the hover tooltip.
 - **Point** features = POIs (accommodation etc.), drawn as white dots draped onto the
   3D surface, with `name`/`category` tooltips.
-- MultiLineStrings render (without the elevation-array treatment); other geometry
-  types are skipped and counted.
+- MultiLineStrings render (without the elevation- or time-array treatment); other
+  geometry types are skipped and counted.
+
+### Colour
+
+Tracks are coloured by speed, on a single-hue ramp of five bands. The bands are
+**quantiles of the loaded file**, not a fixed scale: one transpacific flight among a
+hundred walks would otherwise put every walk in the slowest band. The legend prints the
+speeds each band covers, so the split is on screen rather than implied.
+
+Two absences, two answers. A track with no timing among tracks that have it is grey — it
+has dropped out of a scale the rest of the screen is using. A file with no timing
+anywhere is drawn in red, because grey everywhere reads as a fault rather than a fact.
+
+Each track is drawn over a near-black casing. The basemap is photography, not a chart
+surface, so no colour is reliably visible against it; the outline separates every band
+from whatever happens to be behind it.
 
 ## Controls
 
