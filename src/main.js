@@ -131,6 +131,24 @@ function tilesetResponse(tileset) {
   return response;
 }
 
+// The two halves of the credits line. Google asks that a scene mixing its
+// imagery with anything else say which part is theirs, so the providers are
+// labelled rather than listed bare — the tracks drawn over them are not Google
+// data and the line has to make that legible. The producer is whatever the
+// track file named itself as, and is simply absent when it named nothing;
+// there is no wording to invent in that case.
+let imageryCredits = [];
+let trackProducer = null;
+
+function renderCredits() {
+  els.attribution.textContent = [
+    imageryCredits.length && `3D imagery: ${imageryCredits.join(' • ')}`,
+    trackProducer && `Tracks: ${trackProducer}`
+  ]
+    .filter(Boolean)
+    .join(' — ');
+}
+
 function buildTileLayer() {
   if (!hasTiles()) return null;
   return new Tile3DLayer({
@@ -171,10 +189,8 @@ function buildTileLayer() {
               if (name) credits.set(name, (credits.get(name) ?? 0) + 1);
             }
           }
-          els.attribution.textContent = [...credits]
-            .sort(([, a], [, b]) => b - a)
-            .map(([name]) => name)
-            .join(' • ');
+          imageryCredits = [...credits].sort(([, a], [, b]) => b - a).map(([name]) => name);
+          renderCredits();
           return selectedTiles;
         }
       }
@@ -505,9 +521,9 @@ function loadTrackText(text, filename) {
     return;
   }
 
-  let geojson;
+  let geojson, producer;
   try {
-    ({geojson} = parseTrackFile(text));
+    ({geojson, producer} = parseTrackFile(text));
   } catch (e) {
     showBanner(`Could not read ${filename}: ${e.message}`, true);
     return;
@@ -518,6 +534,7 @@ function loadTrackText(text, filename) {
     showBanner(`${filename}: no tracks or points found.`, true);
     return;
   }
+  trackProducer = producer;
 
   state.tracks = tracks;
   state.pois = pois;
@@ -534,6 +551,7 @@ function loadTrackText(text, filename) {
 
   els.controls.style.display = 'block';
   renderLegend(modes, counts, colors);
+  renderCredits();
   startTiles();
   updateLayers();
   flyToData();
