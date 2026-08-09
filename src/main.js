@@ -123,23 +123,14 @@ function tilesetResponse(tileset) {
   return response;
 }
 
-// The two halves of the credits line. Google asks that a scene mixing its
-// imagery with anything else say which part is theirs, so the providers are
-// labelled rather than listed bare — the tracks drawn over them are not Google
-// data and the line has to make that legible. The producer is whatever the
-// track files named themselves as, and is simply absent when they named
-// nothing; there is no wording to invent in that case. An archive can hold
-// files from several devices, so this is a list.
+// Google asks that a scene mixing its imagery with anything else say which part
+// of it is theirs. One word does that: it scopes the list to the imagery, so the
+// tracks drawn over it are visibly not among the things being credited. A bare
+// list would leave a reader unable to tell which of the two the names cover.
 let imageryCredits = [];
-let trackProducers = [];
 
 function renderCredits() {
-  els.attribution.textContent = [
-    imageryCredits.length && `3D imagery: ${imageryCredits.join(' • ')}`,
-    trackProducers.length && `Tracks: ${trackProducers.join(' • ')}`
-  ]
-    .filter(Boolean)
-    .join(' — ');
+  els.attribution.textContent = imageryCredits.length ? `Imagery: ${imageryCredits.join(' • ')}` : '';
 }
 
 function buildTileLayer() {
@@ -568,8 +559,6 @@ function showTracks({geojson, producers, read, unreadable}, filename) {
     showBanner(`${filename}: no tracks or points found.`, true);
     return;
   }
-  trackProducers = [...new Set(producers)];
-
   state.tracks = tracks;
   state.pois = pois;
   const scale = assignSpeedColors(tracks);
@@ -582,8 +571,14 @@ function showTracks({geojson, producers, read, unreadable}, filename) {
   if (skipped) notes.push(`${skipped} unsupported feature(s) skipped`);
   const nTracks = tracks.filter(t => !t.isCopy).length;
   const nPois = pois.filter(p => !p.isCopy).length;
+  // Whoever made the file belongs beside the file's name, not down in the
+  // credits bar competing with Google's providers for one line on a phone. An
+  // archive can hold files from several devices, hence the list.
+  const madeBy = [...new Set(producers)];
   els.stats.textContent =
-    `${filename}: ${nTracks} tracks, ${nPois} POIs.` + (notes.length ? ` ${notes.join('; ')}.` : '');
+    `${filename}: ${nTracks} tracks, ${nPois} POIs.` +
+    (madeBy.length ? ` From ${madeBy.join(', ')}.` : '') +
+    (notes.length ? ` ${notes.join('; ')}.` : '');
 
   els.controls.style.display = 'block';
   renderLegend(scale, missingTimes);
