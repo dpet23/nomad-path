@@ -1,4 +1,6 @@
-# GPS tracks over Google Photorealistic 3D Tiles
+# Nomad Path 3D
+
+GPS tracks over Google Photorealistic 3D Tiles.
 
 A spike exploring whether personal GPS recordings can be rendered in true 3D over
 [Google Photorealistic 3D Tiles](https://developers.google.com/maps/documentation/tile/3d-tiles-overview)
