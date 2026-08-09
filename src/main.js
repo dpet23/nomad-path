@@ -298,7 +298,13 @@ const widgets = [
   // makes that the fitted view rather than the opening globe.
   new ResetViewWidget({placement: 'top-right', style: widgetStyle}),
   new ZoomWidget({placement: 'top-right', style: widgetStyle}),
-  new FullscreenWidget({placement: 'top-right', style: widgetStyle})
+  // The whole page, not the map. Left to itself the widget makes deck's parent
+  // fullscreen, and #map is a sibling of the panel and the credits bar rather
+  // than their ancestor — so both would be left outside the fullscreen element
+  // and stop being rendered. Losing the controls would be an annoyance; losing
+  // Google's logo and data credits while their tiles are still on screen is not
+  // allowed, and it is the reason this argument is not optional.
+  new FullscreenWidget({placement: 'top-right', style: widgetStyle, container: document.body})
 ];
 
 const deck = new Deck({
