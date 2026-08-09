@@ -3,6 +3,7 @@ import {PathLayer, ScatterplotLayer} from '@deck.gl/layers';
 import {Tile3DLayer} from '@deck.gl/geo-layers';
 import {_TerrainExtension as TerrainExtension} from '@deck.gl/extensions';
 
+import {NO_SPEED, NO_TIMING, formatSpeed, speedColor, speedScale, trackSpeeds} from './speed.js';
 import {parseTrackText, readTrackFile} from './track-file.js';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -13,19 +14,8 @@ const TILES_ENDPOINT = import.meta.env.VITE_TILES_ENDPOINT;
 const TILESET_URL = 'https://tile.googleapis.com/v1/3dtiles/root.json';
 const MAX_SSE = Number(import.meta.env.VITE_MAX_SCREEN_SPACE_ERROR) || 16;
 
-// Categorical palette: fixed slot order (CVD-optimized), dark-surface variants.
-// Modes beyond 8 fold into the muted "other" gray — never generate extra hues.
-const PALETTE = [
-  [57, 135, 229], // blue
-  [25, 158, 112], // aqua
-  [201, 133, 0], // yellow
-  [0, 131, 0], // green
-  [144, 133, 233], // violet
-  [230, 103, 103], // red
-  [213, 81, 129], // magenta
-  [217, 89, 38] // orange
-];
-const OTHER_COLOR = [137, 135, 129];
+// How fast, not what by: the speed ramp and its two absences live in speed.js,
+// along with why each is the colour it is.
 
 const $ = id => document.getElementById(id);
 const els = {
@@ -62,9 +52,8 @@ let tilesOn = false;
 const hasTiles = () => tilesOn && Boolean(meshKey);
 
 const state = {
-  tracks: [], // {path: [[lng,lat,z],...], name, day, group, mode}
+  tracks: [], // {path: [[lng,lat,z],...], colors: [[r,g,b],...], name, day, group, mode, averageSpeed}
   pois: [], // {position: [lng,lat,z], name, category}
-  modeColors: new Map(), // mode -> [r,g,b]
   offset: 0,
   exaggeration: 1,
   clamp: false,
@@ -108,7 +97,10 @@ function getTooltip({object, layer}) {
   if (layer.id === 'pois') {
     return {html: `<b>${esc(object.name)}</b>${object.category ? `<br/>${esc(object.category)}` : ''}`, style};
   }
-  const parts = [object.day, object.mode, object.group].filter(Boolean).map(esc);
+  // Speed is on the screen as colour but only as a band; the number is what
+  // makes the band legible, and the tooltip is where it can be exact.
+  const speed = object.averageSpeed === null ? null : `${formatSpeed(object.averageSpeed)} km/h avg`;
+  const parts = [object.day, object.mode, object.group, speed].filter(Boolean).map(esc);
   return {html: `<b>${esc(object.name)}</b><br/>${parts.join(' · ')}`, style};
 }
 
@@ -218,7 +210,10 @@ function buildLayers() {
           state.offset === 0 && state.exaggeration === 1
             ? d.path
             : d.path.map(([x, y, z]) => [x, y, z * state.exaggeration + state.offset]),
-        getColor: d => state.modeColors.get(d.mode) ?? OTHER_COLOR,
+        // One colour per vertex: PathLayer accepts an array here and shades the
+        // path along its length, so a track changes colour as its pace changes
+        // rather than averaging into a single stripe.
+        getColor: d => d.colors,
         getWidth: 4,
         widthMinPixels: 2.5,
         capRounded: true,
@@ -370,6 +365,7 @@ function processGeoJSON(geojson) {
   const tracks = [];
   const pois = [];
   let missingElevations = 0;
+  let missingTimes = 0;
   let skipped = 0;
 
   for (const f of geojson.features ?? []) {
@@ -387,6 +383,12 @@ function processGeoJSON(geojson) {
       const aligned = Array.isArray(elevs) && elevs.length === geom.coordinates.length;
       if (!aligned && !lines.some(coords => coords.some(c => Number.isFinite(c[2])))) missingElevations++;
 
+      // Timestamps sit beside the coordinates the same way elevations do, under
+      // two names: mine, and the one togeojson gives a GPX track's <time> tags.
+      // Both are per-point and only line up for a single LineString.
+      const times =
+        geom.type === 'LineString' ? (props.times ?? props.coordinateProperties?.times) : null;
+
       for (const coords of lines) {
         const path = unwrapPath(
           coords.map((c, i) => [
@@ -395,15 +397,20 @@ function processGeoJSON(geojson) {
             aligned && Number.isFinite(elevs[i]) ? elevs[i] : Number.isFinite(c[2]) ? c[2] : 0
           ])
         );
+        const {speeds, average} = trackSpeeds(path, times);
+        if (!speeds) missingTimes++;
         pushWithMirrors(
           tracks,
           {
             path,
+            speeds,
+            averageSpeed: average,
             name: props.name ?? 'Unnamed track',
             day: props.day,
             group: props.group,
             // GPX carries the same idea as transportMode under <type>, which is
-            // where "cycling", "running" and friends come out of a watch.
+            // where "cycling", "running" and friends come out of a watch. It is
+            // tooltip material now that colour is spent on speed.
             mode: props.transportMode ?? props.type ?? 'unknown'
           },
           shiftTrack
@@ -427,37 +434,50 @@ function processGeoJSON(geojson) {
     }
   }
 
-  return {tracks, pois, missingElevations, skipped};
+  return {tracks, pois, missingElevations, missingTimes, skipped};
 }
 
-function assignModeColors(tracks) {
-  const counts = new Map();
-  for (const t of tracks) {
-    if (t.isCopy) continue;
-    counts.set(t.mode, (counts.get(t.mode) ?? 0) + 1);
+// The scale spans the whole file, so it cannot be built until every track is
+// read, which is why colours are attached here rather than during processing.
+// One array per vertex, filled with shared colour references, is the shape
+// PathLayer takes for a path whose colour changes along it.
+function assignSpeedColors(tracks) {
+  const scale = speedScale(tracks);
+  for (const track of tracks) {
+    track.colors = track.path.map((_, i) => speedColor(track.speeds?.[i] ?? null, scale));
   }
-  const modes = [...counts.keys()].sort();
-
-  const colors = new Map();
-  modes.forEach((mode, i) => colors.set(mode, i < PALETTE.length ? PALETTE[i] : OTHER_COLOR));
-  return {colors, counts, modes};
+  return scale;
 }
 
-function renderLegend(modes, counts, colors) {
+// A continuous scale has to print its numbers or the colours mean nothing, and
+// because the bands are quantiles of this particular file the numbers change
+// with every load. The absences get a row each, and only when they occur.
+function renderLegend(scale, untimedTracks) {
+  const rows = scale.hasSpeed
+    ? scale.bands.map((band, i) => ({
+        color: band.color,
+        label: `${i === 0 ? '0' : formatSpeed(band.from)}–${formatSpeed(band.to)}`
+      }))
+    : [{color: NO_SPEED, label: 'no timing in this file'}];
+  if (scale.hasSpeed && untimedTracks) rows.push({color: NO_TIMING, label: 'no timing'});
+
   els.legend.style.display = 'block';
   els.legend.innerHTML = '';
-  for (const mode of modes) {
+
+  const heading = document.createElement('div');
+  heading.className = 'legend-title';
+  heading.textContent = scale.hasSpeed ? 'Speed (km/h)' : 'Speed';
+  els.legend.appendChild(heading);
+
+  for (const {color, label} of rows) {
     const row = document.createElement('div');
     row.className = 'row';
     const swatch = document.createElement('span');
     swatch.className = 'swatch';
-    swatch.style.background = `rgb(${colors.get(mode).join(',')})`;
-    const label = document.createElement('span');
-    label.textContent = mode;
-    const count = document.createElement('span');
-    count.className = 'count';
-    count.textContent = counts.get(mode);
-    row.append(swatch, label, count);
+    swatch.style.background = `rgb(${color.join(',')})`;
+    const text = document.createElement('span');
+    text.textContent = label;
+    row.append(swatch, text);
     els.legend.appendChild(row);
   }
 }
@@ -515,7 +535,7 @@ function flyToData() {
 }
 
 function showTracks({geojson, producers, read, unreadable}, filename) {
-  const {tracks, pois, missingElevations, skipped} = processGeoJSON(geojson);
+  const {tracks, pois, missingElevations, missingTimes, skipped} = processGeoJSON(geojson);
   if (!tracks.length && !pois.length) {
     showBanner(`${filename}: no tracks or points found.`, true);
     return;
@@ -524,13 +544,13 @@ function showTracks({geojson, producers, read, unreadable}, filename) {
 
   state.tracks = tracks;
   state.pois = pois;
-  const {colors, counts, modes} = assignModeColors(tracks);
-  state.modeColors = colors;
+  const scale = assignSpeedColors(tracks);
 
   const notes = [];
   if (read > 1) notes.push(`${read} files read from the archive`);
   if (unreadable) notes.push(`${unreadable} file(s) inside could not be read`);
   if (missingElevations) notes.push(`${missingElevations} track(s) without elevations (rendered at ground level)`);
+  if (missingTimes) notes.push(`${missingTimes} track(s) without timing (no speed)`);
   if (skipped) notes.push(`${skipped} unsupported feature(s) skipped`);
   const nTracks = tracks.filter(t => !t.isCopy).length;
   const nPois = pois.filter(p => !p.isCopy).length;
@@ -538,7 +558,7 @@ function showTracks({geojson, producers, read, unreadable}, filename) {
     `${filename}: ${nTracks} tracks, ${nPois} POIs.` + (notes.length ? ` ${notes.join('; ')}.` : '');
 
   els.controls.style.display = 'block';
-  renderLegend(modes, counts, colors);
+  renderLegend(scale, missingTimes);
   renderCredits();
   startTiles();
   updateLayers();

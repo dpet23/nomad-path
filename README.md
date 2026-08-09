@@ -186,3 +186,11 @@ For lessons aimed at the follow-up MapLibre + deck.gl multi-basemap app, see
 - **Not done / next ideas**: time animation along the per-point `times` arrays
   (`TripsLayer` is the natural fit), per-group visibility toggles, geoid-corrected
   elevations.
+- **Speed as line thickness, transport mode back as colour.** Considered and
+  deferred, not rejected: it carries both encodings at once with no toggle, which
+  is more than colour-by-speed manages. The reason it lost for now is that
+  thickness is read far less precisely than colour, especially against busy
+  imagery, and `PathLayer` takes a per-vertex width array (`getWidth` accepts
+  `number | number[]`, same as `getColor`) so the work is the same shape as what
+  the speed ramp already does. Worth trying if speed-by-colour turns out to be
+  the wrong trade.
