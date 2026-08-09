@@ -1,13 +1,19 @@
-# GPS tracks over Google Photorealistic 3D Tiles
+# Nomad Path 3D
 
-A spike exploring whether personal GPS holiday recordings (GeoJSON) can be rendered in
-true 3D over [Google Photorealistic 3D Tiles](https://developers.google.com/maps/documentation/tile/3d-tiles-overview)
+GPS tracks over Google Photorealistic 3D Tiles.
+
+A spike exploring whether personal GPS recordings can be rendered in true 3D over
+[Google Photorealistic 3D Tiles](https://developers.google.com/maps/documentation/tile/3d-tiles-overview)
 using [deck.gl](https://deck.gl), based on the
 [deck.gl google-3d-tiles example](https://deck.gl/examples/google-3d-tiles).
 
-Tracks are drawn as 3D lines at their recorded GPS elevation — flights arc up to cruising
-altitude, drives hug the coast roads — colored by transport mode, over Google's
-photorealistic 3D globe.
+Drop in a GPX, KML, GeoJSON, KMZ or a zip of them. Tracks are drawn as 3D lines at
+their recorded GPS elevation — flights arc up to cruising altitude, drives hug the
+coast roads — coloured by how fast they were travelled, over Google's photorealistic
+3D globe.
+
+**Your files never leave the browser.** They are read and parsed on the page; nothing
+is uploaded anywhere. The only requests the app makes are for Google's map tiles.
 
 ## Quick start
 
@@ -19,9 +25,8 @@ cp .env.example .env.local        # then put your API key in .env.local
 npm run dev
 ```
 
-Open the printed URL (default `http://localhost:5173`) and **drag & drop a
-`trip-data.geojson` onto the page** (or use the *Open GeoJSON…* button). The camera
-flies to fit the data.
+Open the printed URL (default `http://localhost:5173`) and **drag & drop a track file
+onto the page** (or use the *Open a track…* button). The camera flies to fit the data.
 
 No API key? The app still works — tracks render in 3D over a black background, with a
 banner explaining what's missing. Useful for checking your data before spending tile
@@ -73,11 +78,19 @@ Open `http://localhost:5173`. Two things to know:
    server. The app sends it via the `X-GOOG-API-KEY` header, so it never appears in
    request URLs.
 
-**Attribution:** the app aggregates the per-tile copyright strings Google requires and
-shows them bottom-right. Google's [policy](https://developers.google.com/maps/documentation/tile/policies)
-additionally requires the official Google logo (16–19dp, unmodified) wherever tiles are
-shown — this spike only renders the text attribution, so add the logo before showing
-this to anyone but yourself.
+**Attribution:** Google's [policy](https://developers.google.com/maps/documentation/tile/policies)
+requires two things wherever tiles are shown, and the app renders both in one bar along
+the bottom, which appears with the first mesh tile and not before.
+
+- The **logo**, bottom-left: `public/GoogleMaps_Logo_WithDarkOutline.svg`, Google's
+  published asset byte for byte. The outlined variant is the one the policy specifies
+  for a busy background like imagery. It is sized by height alone (never both
+  dimensions) so the aspect ratio cannot drift, and the bar holds the 10dp left/right/top
+  and 5dp bottom of clear space the policy asks for. Replacing it means re-downloading
+  from the policy page, not editing this file.
+- The **data credits**, bottom-right: the per-tile `asset.copyright` strings, aggregated
+  from the tiles on screen and ordered by how many of them each covers, most first,
+  which is the order the policy asks for.
 
 ## Staying within the free tier
 
@@ -89,10 +102,10 @@ How 3D tiles are billed (verified July 2026):
   pan around are **free**.
 - Free allowance: **1,000 root tileset requests per calendar month** (SKU
   "Map Tiles API: Photorealistic 3D Tiles"). Beyond that it's $6.00 per 1,000.
-- Practically: **every full page load/reload of this app costs one root tileset
-  request.** Vite hot-reload of CSS won't, but editing `src/main.js` triggers a full
-  reload, which will. 1,000/month is plenty for casual use, but a day of heavy dev
-  iteration against live tiles can eat into it — do code iteration in no-key mode.
+- Practically: **loading a GeoJSON costs one root tileset request.** Nothing is fetched
+  before that — the app has no basemap to show until there is data to show it over — so
+  page loads and reloads are free, and so is a day of code iteration as long as you
+  don't open a file. Opening a second file in the same session is free too.
 
 To guarantee $0:
 
@@ -111,24 +124,51 @@ Cost/quality knob: `VITE_MAX_SCREEN_SPACE_ERROR` in `.env.local` (default 16, th
 deck.gl example uses 16–20). Higher values load fewer/blurrier tiles per session —
 irrelevant to billing (tile fetches are free) but easier on bandwidth and GPU.
 
-## Data format
+## What it reads
 
-The app accepts any GeoJSON `FeatureCollection` and understands this shape (as produced
-by my track-building pipeline):
+| Format | Notes |
+|---|---|
+| **GPX** | Tracks and waypoints. `<ele>` gives elevation, `<time>` gives speed, `<type>` becomes the transport mode in the tooltip, a waypoint's `<sym>` its category. |
+| **KML** | Placemark LineStrings and Points. Usually carries elevation but no timestamps, so no speed. |
+| **GeoJSON** | A `FeatureCollection`; the richest shape, described below. |
+| **KMZ / zip** | Unpacked in the browser. Every track file inside merges into one scene — a folder of GPX days loads as one trip. |
+
+Nothing is chosen by file extension. The bytes are sniffed: a zip by its magic number,
+then markup or JSON by the first character, then GPX or KML by the root element. A file
+with the wrong extension, or none, still loads.
+
+Inside an archive the same sniff picks the entries, so photos, readmes and the
+AppleDouble twins Finder hides in `__MACOSX` are skipped without a rule of their own.
+An entry that looks like a track and then fails to parse is counted in the stats line
+rather than failing the load.
+
+The GeoJSON shape (as produced by my track-building pipeline):
 
 - **LineString** features = tracks. Coordinates may be 2D `[lon, lat]`; per-point
   elevation is read from `properties.elevations` (array aligned 1:1 with coordinates,
-  meters). Falls back to a coordinate's own third element, then 0. Tracks whose
-  `elevations` array is missing or misaligned render at ground level and are counted in
-  the stats line.
-- `properties.transportMode` drives the color. The mode set is read dynamically from
-  the loaded file and assigned palette slots in a fixed, CVD-safe order; files with
-  more than 8 modes get gray for the overflow. `name`, `day`, `group` feed the hover
-  tooltip.
+  meters). Falls back to a coordinate's own third element, then 0. Tracks with neither
+  render at ground level and are counted in the stats line.
+- `properties.times` (aligned 1:1 with coordinates, ISO strings or epoch numbers) gives
+  speed. `properties.transportMode`, `name`, `day`, `group` feed the hover tooltip.
 - **Point** features = POIs (accommodation etc.), drawn as white dots draped onto the
   3D surface, with `name`/`category` tooltips.
-- MultiLineStrings render (without the elevation-array treatment); other geometry
-  types are skipped and counted.
+- MultiLineStrings render (without the elevation- or time-array treatment); other
+  geometry types are skipped and counted.
+
+### Colour
+
+Tracks are coloured by speed, on a single-hue ramp of five bands. The bands are
+**quantiles of the loaded file**, not a fixed scale: one transpacific flight among a
+hundred walks would otherwise put every walk in the slowest band. The legend prints the
+speeds each band covers, so the split is on screen rather than implied.
+
+Two absences, two answers. A track with no timing among tracks that have it is grey — it
+has dropped out of a scale the rest of the screen is using. A file with no timing
+anywhere is drawn in red, because grey everywhere reads as a fault rather than a fact.
+
+Each track is drawn over a near-black casing. The basemap is photography, not a chart
+surface, so no colour is reliably visible against it; the outline separates every band
+from whatever happens to be behind it.
 
 ## Controls
 
@@ -138,13 +178,19 @@ by my track-building pipeline):
   be scaled, so at ×2 a mountain drive floats above the photorealistic summit. Most
   effective for flights and in no-key mode.
 - **Clamp tracks to 3D surface**: drapes tracks onto the photorealistic mesh, ignoring
-  GPS elevation (only shown when tiles are enabled; tracks stay hidden until terrain
-  tiles finish loading).
+  GPS elevation (appears once the basemap is switched on, which is when a file loads;
+  tracks stay hidden until terrain tiles finish loading).
 - **X-ray**: disables depth testing so tracks show through terrain/buildings.
 - **Hover** any track or POI for details.
 
 For lessons aimed at the follow-up MapLibre + deck.gl multi-basemap app, see
 [LEARNINGS.md](LEARNINGS.md).
+
+## Licence
+
+All rights reserved — see [LICENSE](LICENSE). Published to be read, not reused.
+Google's logo asset and the rendered map data are Google's, not covered by that
+notice.
 
 ## Findings & limits (the point of the spike)
 
@@ -177,4 +223,12 @@ For lessons aimed at the follow-up MapLibre + deck.gl multi-basemap app, see
   console).
 - **Not done / next ideas**: time animation along the per-point `times` arrays
   (`TripsLayer` is the natural fit), per-group visibility toggles, geoid-corrected
-  elevations, the required Google logo for anything public-facing.
+  elevations.
+- **Speed as line thickness, transport mode back as colour.** Considered and
+  deferred, not rejected: it carries both encodings at once with no toggle, which
+  is more than colour-by-speed manages. The reason it lost for now is that
+  thickness is read far less precisely than colour, especially against busy
+  imagery, and `PathLayer` takes a per-vertex width array (`getWidth` accepts
+  `number | number[]`, same as `getColor`) so the work is the same shape as what
+  the speed ramp already does. Worth trying if speed-by-colour turns out to be
+  the wrong trade.

@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "deck.gl": "^9.3.0"
+    "@tmcw/togeojson": "^7.1.2",
+    "deck.gl": "^9.3.0",
+    "fflate": "^0.8.3"
   },
   "devDependencies": {
     "vite": "^7.0.0"

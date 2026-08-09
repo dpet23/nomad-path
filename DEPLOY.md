@@ -64,9 +64,11 @@ Worker setup is under *Setup: the tileset Worker*; how it works is in
 
 4. Check the code deployed
     ```sh
-    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset
+    curl -s -H "Origin: https://<name>.pages.dev" \
+      https://<worker>.<subdomain>.workers.dev/api/tileset
     ```
     * Expect `{"error":"misconfigured","missing":"ROOT_TILES_KEY"}`
+    * The `Origin` header is required on every call below -> without it the Worker answers `{"error":"forbidden"}`, by design
     * Template output or `404` -> Deployments -> open the build log
 
 5. Create two keys in the Google Cloud Console
@@ -96,15 +98,18 @@ Worker setup is under *Setup: the tileset Worker*; how it works is in
 
 8. Check the Worker serves a tileset
     ```sh
-    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset | head -c 120
+    curl -s -H "Origin: https://<name>.pages.dev" \
+      https://<worker>.<subdomain>.workers.dev/api/tileset | head -c 120
     ```
     * Expect `{"meshKey":"AIza...","tileset":{"asset":...`
     * `{"error":"upstream_failed","status":403}` -> root key rejected; compare its Websites value with `ROOT_TILES_REFERER`
+    * `{"error":"forbidden"}` -> the `Origin` header is missing or does not match `ALLOWED_ORIGIN` in `worker/wrangler.jsonc`
     * Each call is a billable root request -> check once, don't loop
 
 9. Check the cache
     ```sh
-    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset | grep -o '"cached":[a-z]*'
+    curl -s -H "Origin: https://<name>.pages.dev" \
+      https://<worker>.<subdomain>.workers.dev/api/tileset | grep -o '"cached":[a-z]*'
     ```
     * Run twice -> expect `"cached":false` then `"cached":true`
     * `false` both times -> the cache is not working; do not point the site at it yet
@@ -125,7 +130,8 @@ for it. Neither needs the site, a phone, or devtools.
 1. Is the cache working?
 
     ```sh
-    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset \
+    curl -s -H "Origin: https://<name>.pages.dev" \
+      https://<worker>.<subdomain>.workers.dev/api/tileset \
       | grep -o '"cached":[a-z]*\|"fetchedAt":"[^"]*"'
     ```
 
@@ -212,5 +218,6 @@ To apply a change:
 | Build succeeds, page blank/black | Expected with `VITE_TILES_ENDPOINT` unset. |
 | Worker build fails, `npm ci` / EUSAGE | `worker/package-lock.json` is missing. The build runs `npm clean-install`, which refuses without one. Regenerate: `cd worker && npm install --package-lock-only`. |
 | Tiles 403 after wiring the Worker | Mesh key's Websites restriction does not name the exact origin, or it is a preview hostname. |
+| `{"error":"forbidden"}` from the Worker | Deliberate: the call carried no `Origin`, or one that is not `ALLOWED_ORIGIN`. `curl` sends none unless told to. If the *site* sees this, `ALLOWED_ORIGIN` in `worker/wrangler.jsonc` no longer matches where the site is served from. |
 | Config edit had no effect | Build-time variable, needs a rebuild. See *Env vars → To apply a change*. |
 | Manage or reinstall the Git connection | Project → **Settings** → **Builds**. |
