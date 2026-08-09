@@ -39,56 +39,63 @@ black background, controls and GeoJSON loading all work.
 
 ## Setup: the gate Worker
 
-A second deployable, separate from the site. It holds both Google API keys and hands
-the browser a tileset document plus a child-tile key at runtime, so no key is baked
-into the site's bundle. Tile bytes don't pass through it — the browser fetches those
-straight from Google.
-
-Steps are added here as they are done. Later ones need values produced by earlier ones.
-
 1. Create the Worker
+    * Build -> Workers & Pages -> Create application -> start from any template
+        * Don't import a Git repository -> with no Wrangler config in the repo, autoconfig detects a framework and opens a PR against it
+        * Don't add variables or secrets
+    * Deploy once -> assigns the name and hostname
 
-    * Build -> Workers & Pages -> Create application -> start from a template
-        * Template code is a placeholder; the first deploy from git replaces it
-        * Don't import the git repository yet -> the repo has no Wrangler config to build
-        * Don't add variables or secrets yet
-    * Deploy once, so a name and hostname are assigned
-
-2. Record three values
-
-    | Value | Needed for |
-    |---|---|
-    | The Worker's name | `name` in the repo's Wrangler config |
-    | `https://<worker>.<subdomain>.workers.dev` | The site's `VITE_TILES_ENDPOINT`, plus `/api/tileset` |
-    | `https://<name>.pages.dev` | The Worker's `ALLOWED_ORIGIN`, and the client key's Websites restriction |
-
-    * The name must match: *"The Worker name in the Cloudflare dashboard must match the `name` in the Wrangler configuration file in the specified root directory, or the build will fail."*
-    * Origins are exact, never `*.pages.dev` -> that wildcard authorises every Pages site on the internet
+2. Record the hostname
+    * `<worker>.<subdomain>.workers.dev` -> the first label is the Worker's name
+    * The name must equal `name` in `worker/wrangler.jsonc`, or the build fails
+    * `https://<worker>.<subdomain>.workers.dev/api/tileset` -> the site's `VITE_TILES_ENDPOINT`
 
 3. Connect the Worker to the repo
-
-    * Push `worker/wrangler.jsonc` first -> without it in the root directory the build fails
+    * Push `worker/wrangler.jsonc` first -> the build reads it from the root directory
     * Worker -> Settings -> Builds -> Connect -> select the repo
+        * Root directory: `worker`
+        * Build command: <empty>
+        * Deploy command: `npx wrangler deploy`
+        * Production branch: the one the site deploys from
 
-    | Build setting | Value |
-    |---|---|
-    | Root directory | `worker` |
-    | Build command | *empty* -> no dependencies, no build step |
-    | Deploy command | `npx wrangler deploy` (the default) |
-
-    * Production branch: the same one the site deploys from
-    * Don't use *Create application -> import a repository* -> with no Wrangler config present, Cloudflare autoconfigures by framework detection and opens a PR against the repo
-
-4. Check the gate deployed, before any key exists
-
+4. Check the code deployed
     ```sh
     curl -s https://<worker>.<subdomain>.workers.dev/api/tileset
     ```
+    * Expect `{"error":"misconfigured","missing":"GOOGLE_TILES_KEY"}`
+    * Template output or `404` -> Deployments -> open the build log
 
-    | Response | Meaning |
-    |---|---|
-    | `{"error":"misconfigured","missing":"GOOGLE_TILES_KEY"}` | **Success.** Our code is live and routing. Costs nothing, exposes nothing. |
-    | Template output, or `404` | The build didn't run or didn't succeed -> Deployments -> open the build log |
+5. Create two keys in the Google Cloud Console
+    * Console paths: README -> *Getting a Google Maps API key*, steps 4-5
+    * Strong key -> the Worker fetches `root.json` with it, nothing else holds it
+        * API restrictions -> Restrict key -> Map Tiles API
+        * Application restrictions: none -> set in step 7
+    * Client key -> browsers fetch mesh tiles with it
+        * API restrictions -> Restrict key -> Map Tiles API
+        * Application restrictions -> Websites -> `https://<name>.pages.dev`, exact
+    * "Websites" is what the README calls HTTP referrers -> same control, relabelled
+    * Restriction types are mutually exclusive -> none, or Websites, or IP, or Android, or iOS
+    * Leave the `.env.local` key alone -> it stays IP-restricted, for local dev only
+
+6. Set both keys as Worker secrets
+    * Worker -> Settings -> Variables and Secrets -> Add -> type Secret -> Deploy
+        * `GOOGLE_TILES_KEY`: the strong key
+        * `CLIENT_KEY`: the client key
+
+7. Set the sentinel
+    * Generate: `printf 'https://%s.invalid/gate\n' "$(openssl rand -hex 8)"`
+    * One value, two strings, not interchangeable:
+        * Worker secret `REFERER_SENTINEL`: `https://<hex>.invalid/gate` -> sent as a header, so a URL
+        * Strong key -> Application restrictions -> Websites: `https://<hex>.invalid/*` -> stored by Google, so a pattern
+    * `.invalid` is reserved by RFC 2606 -> can never be registered
+
+8. Check the gate serves a tileset
+    ```sh
+    curl -s https://<worker>.<subdomain>.workers.dev/api/tileset | head -c 120
+    ```
+    * Expect `{"key":"AIza...","tileset":{"asset":...`
+    * `{"error":"upstream_failed","status":403}` -> strong key rejected; compare its Websites value with `REFERER_SENTINEL`
+    * Each call is a billable root request -> check once, don't loop
 
 ---
 

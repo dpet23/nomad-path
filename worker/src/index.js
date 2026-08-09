@@ -49,7 +49,15 @@ async function handleTileset(env) {
   let upstream;
   try {
     upstream = await fetch(TILESET_URL, {
-      headers: {'X-GOOG-API-KEY': env.GOOGLE_TILES_KEY}
+      headers: {
+        'X-GOOG-API-KEY': env.GOOGLE_TILES_KEY,
+        // This key is restricted to a referrer nobody can hold: a random
+        // subdomain of .invalid, which RFC 2606 reserves so it can never be
+        // registered. A key lifted from a log line or a screenshot is useless
+        // without it. Not a second factor — whoever can read the key in the
+        // Google console can read its allowed referrer on the same screen.
+        ...(env.REFERER_SENTINEL && {Referer: env.REFERER_SENTINEL})
+      }
     });
   } catch (e) {
     console.log(`root.json fetch threw: ${e.message}`);
