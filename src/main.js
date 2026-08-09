@@ -3,6 +3,8 @@ import {PathLayer, ScatterplotLayer} from '@deck.gl/layers';
 import {Tile3DLayer} from '@deck.gl/geo-layers';
 import {_TerrainExtension as TerrainExtension} from '@deck.gl/extensions';
 
+import {parseTrackFile} from './track-file.js';
+
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 // The tileset Worker's /api/tileset URL. When set, the root tileset document
 // and the key for mesh tiles both come from it, so no key is baked into the
@@ -316,7 +318,7 @@ function startTiles() {
 }
 
 // ---------------------------------------------------------------------------
-// GeoJSON processing
+// Track processing
 // ---------------------------------------------------------------------------
 
 const normalizeLon = lon => ((((lon + 180) % 360) + 360) % 360) - 180;
@@ -360,11 +362,13 @@ function processGeoJSON(geojson) {
 
     if (geom.type === 'LineString' || geom.type === 'MultiLineString') {
       const lines = geom.type === 'LineString' ? [geom.coordinates] : geom.coordinates;
-      // elevations is a per-point array in properties, aligned with coordinates
-      // (only meaningful for single LineStrings).
+      // Two places elevation can come from: a per-point array in properties,
+      // aligned with coordinates (only meaningful for single LineStrings), or a
+      // third element on each coordinate, which is where GPX and KML land it.
+      // Only a track with neither is drawn on the ground and worth reporting.
       const elevs = geom.type === 'LineString' ? props.elevations : null;
       const aligned = Array.isArray(elevs) && elevs.length === geom.coordinates.length;
-      if (geom.type === 'LineString' && !aligned) missingElevations++;
+      if (!aligned && !lines.some(coords => coords.some(c => Number.isFinite(c[2])))) missingElevations++;
 
       for (const coords of lines) {
         const path = unwrapPath(
@@ -381,7 +385,9 @@ function processGeoJSON(geojson) {
             name: props.name ?? 'Unnamed track',
             day: props.day,
             group: props.group,
-            mode: props.transportMode ?? 'unknown'
+            // GPX carries the same idea as transportMode under <type>, which is
+            // where "cycling", "running" and friends come out of a watch.
+            mode: props.transportMode ?? props.type ?? 'unknown'
           },
           shiftTrack
         );
@@ -390,7 +396,13 @@ function processGeoJSON(geojson) {
       const [lng, lat, z] = geom.coordinates;
       pushWithMirrors(
         pois,
-        {position: [normalizeLon(lng), lat, Number.isFinite(z) ? z : 0], name: props.name ?? 'POI', category: props.category},
+        {
+          position: [normalizeLon(lng), lat, Number.isFinite(z) ? z : 0],
+          name: props.name ?? 'POI',
+          // sym is the GPX waypoint's icon name — "Restaurant", "Lodging" —
+          // which is the closest thing it has to a category.
+          category: props.category ?? props.sym
+        },
         shiftPoi
       );
     } else {
@@ -485,18 +497,25 @@ function flyToData() {
   });
 }
 
-function loadGeoJSONText(text, filename) {
+function loadTrackText(text, filename) {
+  // A KMZ is a zip, so it arrives as the bytes "PK" and whatever the compressor
+  // put next. Unreadable here, but the fix is one step the reader can take.
+  if (text.startsWith('PK')) {
+    showBanner(`${filename} looks like a KMZ, which is a zipped KML. Unzip it and open the .kml inside.`, true);
+    return;
+  }
+
   let geojson;
   try {
-    geojson = JSON.parse(text);
+    ({geojson} = parseTrackFile(text));
   } catch (e) {
-    showBanner(`Could not parse ${filename}: ${e.message}`, true);
+    showBanner(`Could not read ${filename}: ${e.message}`, true);
     return;
   }
 
   const {tracks, pois, missingElevations, skipped} = processGeoJSON(geojson);
   if (!tracks.length && !pois.length) {
-    showBanner(`${filename}: no LineString or Point features found.`, true);
+    showBanner(`${filename}: no tracks or points found.`, true);
     return;
   }
 
@@ -506,7 +525,7 @@ function loadGeoJSONText(text, filename) {
   state.modeColors = colors;
 
   const notes = [];
-  if (missingElevations) notes.push(`${missingElevations} track(s) without aligned elevations (rendered at ground level)`);
+  if (missingElevations) notes.push(`${missingElevations} track(s) without elevations (rendered at ground level)`);
   if (skipped) notes.push(`${skipped} unsupported feature(s) skipped`);
   const nTracks = tracks.filter(t => !t.isCopy).length;
   const nPois = pois.filter(p => !p.isCopy).length;
@@ -524,8 +543,15 @@ function loadGeoJSONText(text, filename) {
   if (isNarrow()) setPanelCollapsed(true);
 }
 
-function loadFile(file) {
-  file.text().then(text => loadGeoJSONText(text, file.name));
+// Parsing a large export blocks the main thread for long enough to look like a
+// hang, and how long depends on the file and the device, so there is no size
+// worth refusing. Saying what is happening costs nothing and covers every case.
+// The frame is waited for deliberately: without it the message is painted after
+// the work it describes has already finished.
+async function loadFile(file) {
+  els.stats.textContent = `Reading ${file.name}…`;
+  await new Promise(requestAnimationFrame);
+  loadTrackText(await file.text(), file.name);
 }
 
 // ---------------------------------------------------------------------------
@@ -587,4 +613,4 @@ els.xray.addEventListener('change', () => {
 });
 
 // Expose for headless verification.
-window.__app = {state, deck, loadGeoJSONText};
+window.__app = {state, deck, loadTrackText};
