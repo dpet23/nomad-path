@@ -154,19 +154,31 @@ function buildTileLayer() {
       },
       tileset: {
         maximumScreenSpaceError: MAX_SSE,
-        // Google requires displaying data attributions; collect them from
-        // the tiles currently on screen.
+        // Google requires the data attributions for the tiles currently on
+        // screen, ordered by how many of those tiles each one covers, most
+        // first. Sorting is stable, so equal counts keep the order Google
+        // listed them in. The brand attribution is the logo, not a name in
+        // this line.
         onTraversalComplete(selectedTiles) {
-          const credits = new Set();
+          const credits = new Map();
           for (const tile of selectedTiles) {
-            const copyright = tile.content?.gltf?.asset?.copyright;
-            if (copyright) copyright.split(';').forEach(c => credits.add(c.trim()));
+            for (const credit of tile.content?.gltf?.asset?.copyright?.split(';') ?? []) {
+              const name = credit.trim();
+              if (name) credits.set(name, (credits.get(name) ?? 0) + 1);
+            }
           }
-          els.attribution.textContent = ['Google', ...credits].join(' • ');
+          els.attribution.textContent = [...credits]
+            .sort(([, a], [, b]) => b - a)
+            .map(([name]) => name)
+            .join(' • ');
           return selectedTiles;
         }
       }
     },
+    // Google's logo goes up once its content is in hand, which is the root
+    // request coming back. This fires only after that load succeeds, so a
+    // rejected key leaves the logo off the empty scene it produces.
+    onTilesetLoad: () => document.body.classList.add('has-tiles'),
     operation: 'terrain+draw'
   });
 }

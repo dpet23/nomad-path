@@ -73,10 +73,23 @@
     #legend .swatch { width: 14px; height: 4px; border-radius: 2px; flex: none; }
     #legend .count { margin-left: auto; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 
+    /* Google requires its logo and the per-tile data credits wherever tiles are
+       drawn — so the bar appears with the tiles and not before. Laying the two
+       out together is what stops a long credit line from running under the logo
+       on a narrow screen. */
+    #credits {
+      display: none; position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
+      align-items: flex-end; justify-content: space-between;
+      /* The 10dp / 5dp clear space the logo must keep around it. */
+      gap: 10px; padding: 0 12px 5px 10px;
+      pointer-events: none;
+    }
+    body.has-tiles #credits { display: flex; }
+    /* Height only, never both dimensions: the asset is 105x22 with the 18dp
+       logo inset inside its own border, and the aspect ratio must not change. */
+    #google-logo { height: 22px; width: auto; flex: none; }
     #attribution {
-      position: absolute; right: 12px; bottom: 10px; z-index: 10;
-      text-align: right;
-      max-width: 70vw; font-size: 11px; color: #ffffff;
+      text-align: right; font-size: 11px; color: #ffffff;
       text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
     }
 
@@ -130,7 +143,10 @@
     </div>
   </div>
 
-  <div id="attribution"></div>
+  <div id="credits">
+    <img id="google-logo" src="/GoogleMaps_Logo_WithDarkOutline.svg" alt="Google Maps" width="105" height="22" />
+    <div id="attribution"></div>
+  </div>
   <div id="drop-overlay">Drop GeoJSON to load</div>
 
   <script type="module" src="/src/main.js"></script>
