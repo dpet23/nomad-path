@@ -51,9 +51,16 @@ can read its allowed referrer on the same screen.
 ## `GET /api/tileset`
 
 1. Check every required secret and variable is set.
-2. Resolve the one cache object and ask it for the document.
-3. Cached and younger than the TTL -> return it, no upstream call, no cost.
-4. Otherwise check the counters, fetch `root.json`, count it, store it, return it.
+2. Check the request carries `Origin: ALLOWED_ORIGIN`, or refuse with `403`.
+3. Resolve the one cache object and ask it for the document.
+4. Cached and younger than the TTL -> return it, no upstream call, no cost.
+5. Otherwise check the counters, fetch `root.json`, count it, store it, return it.
+
+Step 2 is friction, not a boundary. Browsers attach `Origin` to every cross-origin
+fetch, so the site pays nothing for it, while a script has to set the header on
+purpose. That turns the endpoint from something anyone can paste into a terminal
+into something someone has to mean. `curl` needs `-H "Origin: <the site>"`, which
+is why every check below sends one.
 
 | Field | Meaning |
 |---|---|
@@ -66,8 +73,9 @@ can read its allowed referrer on the same screen.
 requests both returning `cached: false` means the cache is broken, and without
 these fields that would only surface in billing a day later.
 
-Errors are `{error, ...}`: `502` upstream, `500` for a missing secret, `429` when
-a cap is spent. The keys never appear in a response body or a log line.
+Errors are `{error, ...}`: `502` upstream, `500` for a missing secret, `403` for a
+request that did not come from the site, `429` when a cap is spent. The keys never
+appear in a response body or a log line.
 
 ## Counters and caps
 
@@ -96,11 +104,28 @@ monthly allowance.
 A visitor who takes `MESH_TILES_KEY` out of devtools can call Google directly.
 That traffic never reaches this Worker, so the counters never see it and the caps
 never stop it. Referrer restrictions are forgeable by design; only IP restrictions
-are not, and Workers has no stable egress IP to pin one to.
+are not, and Workers has no stable egress IP to pin one to. The `Origin` check on
+the endpoint does not help here either — by then the key is already out.
 
 The caps guard against **one** thing: this Worker's own cache failing and it
 starting to fetch on every request. That is worth guarding, and it is the whole
 of what they do.
+
+Nor do they cover the plan's own ceiling. Workers Free allows
+[100,000 requests a day](https://developers.cloudflare.com/workers/platform/limits/);
+past that Cloudflare stops running this Worker, the site's fetch fails, and it
+falls back to no-tiles mode with a banner. Honest traffic will not approach that
+number — one request per visitor who opens a file — but nothing here rate-limits,
+so a single machine in a loop can spend the day's allowance.
+
+That is accepted rather than solved. The failure costs no money and no data: the
+site keeps working without a basemap until UTC midnight. The lever, if it ever
+becomes worth pulling, is Cloudflare's rate limiting binding — a `ratelimits`
+block in `wrangler.jsonc` keyed on `cf-connecting-ip`. Worth knowing before
+reaching for it: the limit is per Cloudflare location rather than global, and the
+documentation calls the API "permissive, eventually consistent, and intentionally
+designed to not be used as an accurate accounting system". It would stop one
+machine in a loop and nothing more organised than that.
 
 ## Platform mechanics
 

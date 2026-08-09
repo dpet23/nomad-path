@@ -37,7 +37,7 @@ export default {
       return new Response('Method not allowed\n', {status: 405, headers: {allow: 'GET'}});
     }
 
-    return handleTileset(env);
+    return handleTileset(request, env);
   }
 };
 
@@ -56,12 +56,27 @@ function json(body, status, env) {
   });
 }
 
-async function handleTileset(env) {
+async function handleTileset(request, env) {
   // Secrets live in the dashboard, so a freshly deployed Worker can be running
   // with none of them set. A missing secret and a key Google rejected look
-  // identical from the browser, so name the missing one instead.
+  // identical from the browser, so name the missing one instead. Checked before
+  // the origin, or a Worker with no ALLOWED_ORIGIN would refuse every caller
+  // and report it as their fault.
   for (const name of ['ROOT_TILES_KEY', 'MESH_TILES_KEY', 'ALLOWED_ORIGIN']) {
     if (!env[name]) return json({error: 'misconfigured', missing: name}, 500, env);
+  }
+
+  // The reply carries MESH_TILES_KEY, so anyone who can call this can take a
+  // key. The CORS header already named one origin but only asked browsers to
+  // enforce it; nothing stopped a script. Browsers attach Origin to every
+  // cross-origin fetch, so requiring it costs the site nothing and makes the
+  // endpoint something you have to deliberately forge rather than something you
+  // can paste into a terminal.
+  //
+  // Not a security boundary — the header is trivially set by hand, and no
+  // header could be one. It removes the drive-by, which is the whole claim.
+  if (request.headers.get('Origin') !== env.ALLOWED_ORIGIN) {
+    return json({error: 'forbidden'}, 403, env);
   }
 
   // TILESET_CACHE is the binding named in wrangler.jsonc. idFromName hashes a
