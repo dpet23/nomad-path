@@ -210,6 +210,7 @@ To apply a change:
 | Cannot authorize an org repo | Need org **owner** or **GitHub Apps Manager**. |
 | Build fails, Node/engine error | Build system is v2 (Node 18.17.1); Vite 7 needs `^20.19 \|\| >=22.12`. Settings → Build → set build system **v3** (Node 22.16.0). Do not add `.node-version` or `NODE_VERSION`. |
 | Build succeeds, page blank/black | Expected with `VITE_TILES_ENDPOINT` unset. |
+| Worker build fails, `npm ci` / EUSAGE | `worker/package-lock.json` is missing. The build runs `npm clean-install`, which refuses without one. Regenerate: `cd worker && npm install --package-lock-only`. |
 | Tiles 403 after wiring the Worker | Mesh key's Websites restriction does not name the exact origin, or it is a preview hostname. |
 | Config edit had no effect | Build-time variable, needs a rebuild. See *Env vars → To apply a change*. |
 | Manage or reinstall the Git connection | Project → **Settings** → **Builds**. |
