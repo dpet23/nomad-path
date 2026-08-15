@@ -307,9 +307,25 @@ const widgets = [
   new FullscreenWidget({placement: 'top-right', style: widgetStyle, container: document.body})
 ];
 
+// Photorealistic 3D at a phone's own pixel ratio is what made this site
+// unusable on a handset, and what fixed it there was dropping the OS display
+// resolution — which a visitor cannot be asked to do. Rendering at CSS
+// resolution is the same saving made from inside the page, and it is the
+// largest one available: fragment count falls with the square of the ratio, so
+// a 3x screen shades about a ninth as many pixels.
+//
+// A coarse pointer is the whole test. It catches every phone and tablet, which
+// is the case this is known to be needed for; anything finer would be guessing
+// at devices nobody here has run it on.
+//
+// Read once, because a pointer does not change type mid-session, and because a
+// resolution that shifts under the camera is worse than one chosen and left.
+const USE_DEVICE_PIXELS = !window.matchMedia('(pointer: coarse)').matches;
+
 const deck = new Deck({
   parent: $('map'),
   initialViewState: {longitude: 0, latitude: 20, zoom: 1.2, pitch: 0, bearing: 0},
+  useDevicePixels: USE_DEVICE_PIXELS,
   controller: {touchRotate: true, inertia: 250},
   widgets,
   getTooltip,
