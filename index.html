@@ -93,6 +93,36 @@
       text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
     }
 
+    /* The tilt slider sits in deck's widget cluster and reads the same theme
+       variables deck applies to its own widgets, so it shares the glass surface
+       of the buttons above it instead of looking bolted on. */
+    .nomad-widget-tilt {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      width: var(--button-size); padding: 5px 0;
+      background: var(--button-background);
+      backdrop-filter: var(--button-backdrop-filter);
+      border: var(--button-inner-stroke);
+      border-radius: var(--button-corner-radius);
+      box-shadow: var(--button-shadow);
+      /* deck's widget container ignores pointer input, so that drags meant for
+         the map pass through the gaps between widgets; its stylesheet switches
+         input back on for <button> only, and this is an <input>. */
+      pointer-events: auto;
+    }
+    .nomad-tilt-readout {
+      font-size: 11px; line-height: 1; color: var(--button-text);
+      font-variant-numeric: tabular-nums;
+    }
+    .nomad-tilt-slider {
+      /* Vertical, running 0° at the top to 80° at the bottom: the thumb sinks
+         as the camera lies back from straight down towards the horizon. */
+      writing-mode: vertical-rl;
+      width: 100%; height: 96px; margin: 0;
+      accent-color: #3987e5;
+      /* A drag along the slider must move the slider, not the page. */
+      touch-action: none;
+    }
+
     #drop-overlay {
       display: none; position: absolute; inset: 0; z-index: 20;
       background: rgba(13, 13, 13, 0.7); border: 3px dashed #3987e5;

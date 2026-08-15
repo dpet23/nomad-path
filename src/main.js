@@ -11,6 +11,7 @@ import {
 } from '@deck.gl/widgets';
 import '@deck.gl/widgets/stylesheet.css';
 
+import {TiltWidget} from './tilt-widget.js';
 import {NO_SPEED, NO_TIMING, formatSpeed, speedColor, speedScale, trackSpeeds} from './speed.js';
 import {parseTrackText, readTrackFile} from './track-file.js';
 
@@ -21,6 +22,20 @@ const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const TILES_ENDPOINT = import.meta.env.VITE_TILES_ENDPOINT;
 const TILESET_URL = 'https://tile.googleapis.com/v1/3dtiles/root.json';
 const MAX_SSE = Number(import.meta.env.VITE_MAX_SCREEN_SPACE_ERROR) || 16;
+
+// The camera's tilt, in degrees from straight down. These configure the
+// controller, so they are the angles the camera actually obeys; the tilt slider
+// is handed the same three, which is what makes its scale degrees of viewpoint
+// rather than notches of its own.
+//
+// deck stops at 60°, which is short of the horizon, and looking along the
+// horizon is most of the reason to have photorealistic 3D at all. The last few
+// degrees before 90° are not worth reaching: the camera lies down into the
+// ground plane, the view fills with sky, and tile traversal pays for a horizon
+// that has nothing on it.
+const MIN_PITCH_DEGREES = 0;
+const MAX_PITCH_DEGREES = 80;
+const PITCH_STEP_DEGREES = 1;
 
 // How fast, not what by: the speed ramp and its two absences live in speed.js,
 // along with why each is the colour it is.
@@ -298,6 +313,16 @@ const widgets = [
   // makes that the fitted view rather than the opening globe.
   new ResetViewWidget({placement: 'top-right', style: widgetStyle}),
   new ZoomWidget({placement: 'top-right', style: widgetStyle}),
+  // Tilting by touch needs three fingers, which nobody discovers unaided and
+  // the OS may swallow. The slider is the single-pointer way to reach the same
+  // angles, and the only place the current pitch is written down.
+  new TiltWidget({
+    placement: 'top-right',
+    style: widgetStyle,
+    minPitchDegrees: MIN_PITCH_DEGREES,
+    maxPitchDegrees: MAX_PITCH_DEGREES,
+    stepDegrees: PITCH_STEP_DEGREES
+  }),
   // The whole page, not the map. Left to itself the widget makes deck's parent
   // fullscreen, and #map is a sibling of the panel and the credits bar rather
   // than their ancestor — so both would be left outside the fullscreen element
@@ -326,7 +351,19 @@ const deck = new Deck({
   parent: $('map'),
   initialViewState: {longitude: 0, latitude: 20, zoom: 1.2, pitch: 0, bearing: 0},
   useDevicePixels: USE_DEVICE_PIXELS,
-  controller: {touchRotate: true, inertia: 250},
+  controller: {
+    touchRotate: true,
+    inertia: 250,
+    minPitch: MIN_PITCH_DEGREES,
+    maxPitch: MAX_PITCH_DEGREES
+  },
+  // Tilting by touch is a multi-finger drag, which deck registers at two
+  // fingers — the same count pinch-zoom takes, so the two recognizers contend
+  // for every gesture and tilting usually loses. Pinch is hard-wired to two
+  // fingers and cannot be reconfigured, so moving the drag to three is what
+  // stops them competing. The drag still has to read as vertical to be
+  // recognized at all, which is why the slider exists beside it.
+  eventRecognizerOptions: {multipan: {pointers: 3}},
   widgets,
   getTooltip,
   onError: err => {
