@@ -12,7 +12,41 @@
       --ink-2: #c3c2b7;
       --ink-muted: #898781;
       --border: rgba(255, 255, 255, 0.1);
+      --widget-margin: 12px;
+      --button-size: 28px;
     }
+    /* 28px is a mouse target; a finger needs 44. Both variables are deck's own,
+       set here because deck applies its theme inline per widget, where a media
+       query cannot reach them. */
+    @media (pointer: coarse) {
+      :root { --button-size: 44px; }
+    }
+
+    /* The controls are one column while one column fits, and two when it does
+       not — a phone on its side, at finger size, is the case that does not. The
+       browser decides that during ordinary layout, by whether the stack fits
+       the height it has, so there is no breakpoint or measured pixel count
+       written down anywhere to be wrong now or to go stale later.
+
+       The two groups wrap as units, which is what makes the break land in one
+       specific place rather than wherever the pixels ran out: zoom and reset
+       leave together for the outer column, nearest the thumb, and the compass
+       and its slider stay together in the inner one. */
+    .widget-columns {
+      position: absolute; top: 0; right: 0; z-index: 2;
+      display: flex; flex-direction: column; flex-wrap: wrap;
+      max-height: 100%;
+      gap: var(--widget-margin); padding: var(--widget-margin);
+      /* Drags meant for the map have to pass through the gaps between widgets;
+         each widget takes its own input back below. */
+      pointer-events: none;
+    }
+    .widget-group { display: flex; flex-direction: column; gap: var(--widget-margin); }
+    /* deck margins each widget, and flex margins do not collapse the way the
+       stacked blocks they were written for do — so the gaps above space the
+       widgets, the groups and the two columns alike instead. */
+    .widget-columns .deck-widget,
+    .widget-columns .nomad-widget-tilt { margin: 0; pointer-events: auto; }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; }
     body {
