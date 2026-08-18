@@ -93,15 +93,22 @@ The hardest-won lessons in the spike, generalized:
 The risks split into ones you can't engineer away and ones a real deployment must
 engineer around. Don't confuse them.
 
-- **Performance is per-client and adaptive, not fixable once.** DPR, refresh rate,
+- **Performance is per-client and adaptive, not fixable once.** DPR,
   `maximumScreenSpaceError`, and tile memory all drive power, and the right value is
   device-dependent — on a dev phone you can drop OS resolution and refresh rate, but
   you can't ask users to. So detect the device (mobile, `navigator.deviceMemory`,
   `prefers-reduced-motion`, the Battery Status API) and set a DPR cap
-  (`useDevicePixelRatio: false` renders at CSS resolution — the biggest lever, ~DPR²
-  fewer pixels), an SSE value, and whether to offer 3D at all. Ship an in-app quality
-  toggle like Google Maps' own. Expect thermal throttling on sustained 3D; degrade,
-  don't fight it.
+  (`useDevicePixels: false` renders at CSS resolution — the biggest lever, ~DPR² fewer
+  pixels), an SSE value, and whether to offer 3D at all. Ship an in-app quality toggle
+  like Google Maps' own. Expect thermal throttling on sustained 3D; degrade, don't
+  fight it.
+  Two corrections from building the DPR half of that in deck 9.3.6. The prop is
+  `useDevicePixels`, not `useDevicePixelRatio`; it takes `boolean | number`, and the
+  number is an *absolute* ratio rather than a ceiling, so a cap has to be written
+  `Math.min(devicePixelRatio, n)` by hand. And **refresh rate has no in-app
+  equivalent** — deck's loop is rAF-driven with no frame-rate cap to set, so the only
+  way to reach it is to make each frame cheap enough that the device stops throttling
+  itself. Listing it beside the settable levers reads as if all four were knobs.
 - **Cost scales with users, and the key can't hide for 3D tiles.** The 1,000 free
   root-tileset requests/month is per *project*, not per user, and each entry into the
   3D view is ≈ one billable root request. The key must ride on the client because

@@ -11,6 +11,7 @@ import {
 } from '@deck.gl/widgets';
 import '@deck.gl/widgets/stylesheet.css';
 
+import {TiltWidget} from './tilt-widget.js';
 import {NO_SPEED, NO_TIMING, formatSpeed, speedColor, speedScale, trackSpeeds} from './speed.js';
 import {parseTrackText, readTrackFile} from './track-file.js';
 
@@ -21,6 +22,20 @@ const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const TILES_ENDPOINT = import.meta.env.VITE_TILES_ENDPOINT;
 const TILESET_URL = 'https://tile.googleapis.com/v1/3dtiles/root.json';
 const MAX_SSE = Number(import.meta.env.VITE_MAX_SCREEN_SPACE_ERROR) || 16;
+
+// The camera's tilt, in degrees from straight down. These configure the
+// controller, so they are the angles the camera actually obeys; the tilt slider
+// is handed the same three, which is what makes its scale degrees of viewpoint
+// rather than notches of its own.
+//
+// deck stops at 60°, which is short of the horizon, and looking along the
+// horizon is most of the reason to have photorealistic 3D at all. The last few
+// degrees before 90° are not worth reaching: the camera lies down into the
+// ground plane, the view fills with sky, and tile traversal pays for a horizon
+// that has nothing on it.
+const MIN_PITCH_DEGREES = 0;
+const MAX_PITCH_DEGREES = 80;
+const PITCH_STEP_DEGREES = 1;
 
 // How fast, not what by: the speed ramp and its two absences live in speed.js,
 // along with why each is the colour it is.
@@ -288,29 +303,108 @@ function buildLayers() {
 // awkward ones. Deliberately left out: the scale bar, which lies in a pitched
 // 3D view, and the loading spinner, which would blink on every pan as tiles
 // stream in rather than meaning anything.
-const widgetStyle = DarkGlassTheme;
+// deck applies this inline on each widget's root element, and an inline style
+// beats every stylesheet rule — so the one variable that has to answer to a
+// media query, the button size, is set in index.html and dropped here.
+const widgetStyle = Object.fromEntries(
+  Object.entries(DarkGlassTheme).filter(([name]) => name !== '--button-size')
+);
+// One column of controls while one column fits, and two when it does not. The
+// browser decides which during ordinary layout — index.html bounds the stack by
+// the height it has and lets it wrap — so nothing here measures anything or
+// knows a breakpoint.
+//
+// What it cannot decide is where to break, and left alone it would break
+// wherever the last widget stopped fitting. These two elements are the answer:
+// each holds a group that belongs together, and a group wraps as one item, so
+// there is exactly one boundary the column can split at. Inner keeps the
+// column; outer is the group that leaves, to the right of it and nearest the
+// thumb.
+const widgetColumns = document.createElement('div');
+widgetColumns.className = 'widget-columns';
+const innerColumn = document.createElement('div');
+const outerColumn = document.createElement('div');
+innerColumn.className = outerColumn.className = 'widget-group';
+widgetColumns.append(innerColumn, outerColumn);
+$('map').append(widgetColumns);
+
+// Ordered by reach, top to bottom: the bottom of the stack is the end nearest a
+// thumb, so zoom — used far more than anything else here — sits there, and
+// fullscreen sits furthest from it in either layout, being the one widget that
+// changes the page rather than the view and the one pressed once a session if
+// at all. That is the top of the single column, and the top of the inner one
+// once the stack has split.
 const widgets = [
-  // Rotating with two fingers is easy to do by accident; a north-up scene is
-  // hard to get back to by hand. One tap restores bearing and pitch.
-  new CompassWidget({placement: 'top-right', style: widgetStyle}),
-  // The camera is fitted to the data on load, and this is the way back to it:
-  // the widget resets to whatever initialViewState currently is, and flyToData
-  // makes that the fitted view rather than the opening globe.
-  new ResetViewWidget({placement: 'top-right', style: widgetStyle}),
-  new ZoomWidget({placement: 'top-right', style: widgetStyle}),
   // The whole page, not the map. Left to itself the widget makes deck's parent
   // fullscreen, and #map is a sibling of the panel and the credits bar rather
   // than their ancestor — so both would be left outside the fullscreen element
   // and stop being rendered. Losing the controls would be an annoyance; losing
   // Google's logo and data credits while their tiles are still on screen is not
   // allowed, and it is the reason this argument is not optional.
-  new FullscreenWidget({placement: 'top-right', style: widgetStyle, container: document.body})
+  //
+  // Only where the browser has the API. Without it the widget falls back to
+  // pinning document.body to the viewport, which this body already fills, so
+  // the button would swap its icon and change nothing. deck drops the null.
+  document.body.requestFullscreen
+    ? new FullscreenWidget({_container: innerColumn, style: widgetStyle, container: document.body})
+    : null,
+  // Rotating with two fingers is easy to do by accident; a north-up scene is
+  // hard to get back to by hand. One tap restores the bearing, a second one the
+  // pitch — the widget only reaches for pitch once the bearing is already zero.
+  new CompassWidget({_container: innerColumn, style: widgetStyle}),
+  // Beside the compass because they are one control between them: the compass
+  // face lies back as the camera tilts, and its second tap is what returns this
+  // slider to zero.
+  //
+  // Tilting by touch needs three fingers, which nobody discovers unaided and
+  // the OS may swallow. The slider is the single-pointer way to reach the same
+  // angles, and the only place the current pitch is written down.
+  new TiltWidget({
+    _container: innerColumn,
+    style: widgetStyle,
+    minPitchDegrees: MIN_PITCH_DEGREES,
+    maxPitchDegrees: MAX_PITCH_DEGREES,
+    stepDegrees: PITCH_STEP_DEGREES
+  }),
+  // The camera is fitted to the data on load, and this is the way back to it:
+  // the widget resets to whatever initialViewState currently is, and flyToData
+  // makes that the fitted view rather than the opening globe.
+  new ZoomWidget({_container: outerColumn, style: widgetStyle}),
+  new ResetViewWidget({_container: outerColumn, style: widgetStyle}),
 ];
+
+// Photorealistic 3D at a phone's own pixel ratio is what made this site
+// unusable on a handset, and what fixed it there was dropping the OS display
+// resolution — which a visitor cannot be asked to do. Rendering at CSS
+// resolution is the same saving made from inside the page, and it is the
+// largest one available: fragment count falls with the square of the ratio, so
+// a 3x screen shades about a ninth as many pixels.
+//
+// A coarse pointer is the whole test. It catches every phone and tablet, which
+// is the case this is known to be needed for; anything finer would be guessing
+// at devices nobody here has run it on.
+//
+// Read once, because a pointer does not change type mid-session, and because a
+// resolution that shifts under the camera is worse than one chosen and left.
+const USE_DEVICE_PIXELS = !window.matchMedia('(pointer: coarse)').matches;
 
 const deck = new Deck({
   parent: $('map'),
   initialViewState: {longitude: 0, latitude: 20, zoom: 1.2, pitch: 0, bearing: 0},
-  controller: {touchRotate: true, inertia: 250},
+  useDevicePixels: USE_DEVICE_PIXELS,
+  controller: {
+    touchRotate: true,
+    inertia: 250,
+    minPitch: MIN_PITCH_DEGREES,
+    maxPitch: MAX_PITCH_DEGREES
+  },
+  // Tilting by touch is a multi-finger drag, which deck registers at two
+  // fingers — the same count pinch-zoom takes, so the two recognizers contend
+  // for every gesture and tilting usually loses. Pinch is hard-wired to two
+  // fingers and cannot be reconfigured, so moving the drag to three is what
+  // stops them competing. The drag still has to read as vertical to be
+  // recognized at all, which is why the slider exists beside it.
+  eventRecognizerOptions: {multipan: {pointers: 3}},
   widgets,
   getTooltip,
   onError: err => {
