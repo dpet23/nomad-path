@@ -369,8 +369,8 @@ const widgets = [
   // The camera is fitted to the data on load, and this is the way back to it:
   // the widget resets to whatever initialViewState currently is, and flyToData
   // makes that the fitted view rather than the opening globe.
+  new ZoomWidget({_container: outerColumn, style: widgetStyle}),
   new ResetViewWidget({_container: outerColumn, style: widgetStyle}),
-  new ZoomWidget({_container: outerColumn, style: widgetStyle})
 ];
 
 // Photorealistic 3D at a phone's own pixel ratio is what made this site
